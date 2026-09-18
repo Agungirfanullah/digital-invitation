@@ -1,3 +1,7 @@
+import Link from "next/link";
+
+import { Button } from "@/components/ui/button";
+
 export default function Home() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-4 px-6 py-24 text-center">
@@ -11,6 +15,14 @@ export default function Home() {
         Halaman produk, editor undangan, dan fitur tamu akan hadir pada fase pengembangan
         berikutnya.
       </p>
+      <div className="mt-2 flex gap-3">
+        <Button asChild>
+          <Link href="/register">Buat Akun</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/login">Masuk</Link>
+        </Button>
+      </div>
     </main>
   );
 }

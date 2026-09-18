@@ -1,17 +1,16 @@
 "use client";
 
-import { createClient } from "@supabase/supabase-js";
+import { createBrowserClient } from "@supabase/ssr";
 
 import { getClientEnv } from "@/lib/env";
 
 /**
- * Browser-safe Supabase client using the public anon key. Row Level
- * Security policies govern what this client can access.
- *
- * This is the integration boundary for future Supabase Auth session
- * handling on the client; no auth flow is wired up yet.
+ * Browser Supabase client using the public anon key, backed by cookies
+ * (not localStorage) so the session is visible to server-side code that
+ * reads the same cookies via `@/lib/supabase/server`. Row Level Security
+ * policies govern what this client can access.
  */
 export function createSupabaseBrowserClient() {
   const env = getClientEnv();
-  return createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+  return createBrowserClient(env.NEXT_PUBLIC_SUPABASE_URL, env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
