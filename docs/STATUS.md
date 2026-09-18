@@ -12,12 +12,28 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 2 --- Event & Dashboard Foundation
+**Current Phase:** Phase 3 --- Invitation Foundation
 
-**Status:** Phase 0 and Phase 1 remain complete and passing. Phase 2 event
-CRUD + tenancy is implemented and verified against the real Supabase DEV
-Postgres database — including 11 integration tests that prove cross-user
-(IDOR) protection against live data, not mocks.
+**Status:** Phase 0, 1, and 2 remain complete and passing. Phase 3's public
+invitation rendering pipeline (`/invite/[slug]`, projection, template
+registry, theme validation, personalization) is implemented and verified
+against the real Supabase DEV Postgres database.
+
+**Note on phase numbering:** this engagement's "Phase 3 — Invitation
+Foundation" was scoped by an explicit task brief to consolidate parts of
+`docs/ROADMAP.md`'s Phase 3 (Template System), Phase 4 (Invitation Data —
+Theme specifically), and Phase 6 (Public Invitation), building the
+rendering foundation end-to-end in one pass rather than strictly
+sequentially. This is a deliberate execution-order adjustment permitted by
+`AGENT_EXECUTION.md` §9 ("adjust the implementation order while preserving
+the product priorities"), not a reinterpretation of the roadmap's actual
+content — `docs/ROADMAP.md` itself is left unchanged since it still
+correctly describes the target feature set for each of those phases; only
+the *grouping and sequencing* of this implementation pass differs from a
+literal phase-by-phase reading. Guest management (Roadmap Phase 7) and the
+invitation editor (Roadmap Phase 5) are explicitly **not** part of this
+phase and remain unimplemented — see "What Phase 3 deliberately does not
+include" below.
 
 ## Documentation Baseline
 
@@ -97,11 +113,13 @@ connectivity.
 -   [x] `npm run typecheck` — **PASS**
 -   [x] `npm run lint` — **PASS**
 -   [x] `npm run format:check` — **PASS**
--   [x] `npm run test` (Vitest) — **PASS** (79/79 as of Phase 2; 43/43 at
-    the end of Phase 1; 10/10 at the end of Phase 0)
+-   [x] `npm run test` (Vitest) — **PASS** (135/135 as of Phase 3; 79/79 at
+    the end of Phase 2; 43/43 at the end of Phase 1; 10/10 at the end of
+    Phase 0)
 -   [x] `npm run build` (Next.js production build) — **PASS**
--   [x] `npm run test:e2e` (Playwright) — **PASS** (8/8 as of Phase 2; 5/5
-    at the end of Phase 1; 1/1 at the end of Phase 0)
+-   [x] `npm run test:e2e` (Playwright) — **PASS** (15/15 as of Phase 3;
+    8/8 at the end of Phase 2; 5/5 at the end of Phase 1; 1/1 at the end
+    of Phase 0)
 -   [x] `npx prisma validate` — **PASS**
 -   [x] `npx prisma generate` — **PASS**
 -   [x] `npx prisma migrate status` against Supabase DEV — **PASS**
@@ -350,9 +368,231 @@ register a real account → create an event → confirm it appears on
     one, and duplicate-slug rejection on both create and update (I/J).
     Every row created is deleted in `afterEach` regardless of test
     outcome — verified with a follow-up query showing zero leftover rows
-    after the suite runs.
+    after the suite runs. **Extended in Phase 3** with publish/unpublish
+    IDOR coverage (R/S/T) — see Phase 3 below.
 -   `e2e/events.spec.ts` — unauthenticated access to the three new event
     routes redirects to `/login` with the correct `next` param
+
+## Phase 3 --- Invitation Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database. No fake/mocked authorization or projection logic.
+
+-   [x] Public route `/invite/[slug]` (`app/invite/[slug]/page.tsx`) —
+    Server Component; resolves slug → safe public data → renders via
+    `InvitationRenderer`. No template-specific logic lives in the route.
+-   [x] Public event lookup (`lib/invitations/service.ts`) — server-side
+    only; normalizes the slug through the same `slugSchema` Phase 2
+    already uses, so lookup behaves consistently with how slugs are
+    validated at creation/edit time.
+-   [x] Explicit published/private rule
+    (`lib/invitations/authorization.ts`) — `isEventPubliclyVisible()`:
+    `status === "PUBLISHED"` and (if set) `expiresAt` hasn't passed. Reuses
+    the existing `Event.status`/`Event.expiresAt` fields — no second
+    publication mechanism was invented.
+-   [x] Publish/unpublish (`lib/events/service.ts`:
+    `publishEventForUser`/`unpublishEventForUser`,
+    `lib/events/actions.ts`: `publishEventAction`/`unpublishEventAction`,
+    UI on `/dashboard/events/[eventId]`) — EDITOR-level authorization
+    (owner or EventMember), `publishedAt` set on every publish and left
+    as a historical record on unpublish. Added to the **existing** Event
+    domain/service layer rather than a new "invitations" mutation
+    surface, since publishing is fundamentally an Event state transition.
+-   [x] Safe public projection (`lib/invitations/projection.ts`,
+    `lib/invitations/types.ts`) — an explicit `PublicInvitation` DTO built
+    field-by-field from a narrow, hand-picked Prisma `include`
+    (`PUBLIC_EVENT_INCLUDE`); never spreads or returns a raw Event record.
+    Structurally cannot contain `ownerId`, `members`, `payments`,
+    `subscriptions`, `auditLogs`, or a guest list — proven by both a unit
+    test (fabricated input) and an integration test (real DB round trip).
+-   [x] `InvitationRenderer` (`components/invitation/invitation-renderer.tsx`)
+    — the only thing the public route needs to call; resolves the
+    template component from the registry and renders it.
+-   [x] Template registry (`lib/invitations/templates/registry.ts`) —
+    slug → component map. All 6 seeded `Template` rows (see
+    `prisma/seed.ts`, matching `docs/ROADMAP.md`'s Phase 3 template names)
+    resolve without error; only `minimal-elegant` has a real
+    implementation so far — an unrecognized or unimplemented slug safely
+    falls back to it rather than crashing or rendering blank. Building
+    five more visually-distinct templates without the editor/theme UI to
+    configure them (Roadmap Phase 5) would just be reskins pretending to
+    be finished products, so that was deliberately not done here — see
+    "What Phase 3 deliberately does not include" below.
+-   [x] First real template
+    (`components/invitation/templates/minimal-elegant-template.tsx`) —
+    genuinely renders whatever data the event actually has. Every section
+    beyond Hero/Closing is conditional on real backing data existing (own
+    guard per section component in `components/invitation/sections/`), so
+    an event with only a title still renders a complete, honest page
+    instead of empty placeholders — this is the realistic case today,
+    since there's no dashboard UI yet to create WeddingProfile/
+    EventSchedule/Venue/LoveStory/Gallery data (Roadmap Phase 4).
+-   [x] Theme contract + runtime validation (`lib/invitations/theme.ts`) —
+    `parseTheme()` validates each `Theme` column independently with Zod
+    and falls back to a neutral default per-field (not per-row), so one
+    malformed value (e.g. an invalid `backgroundImageUrl`) doesn't take
+    down the rest of the theme. Applied to the page via CSS custom
+    properties (`components/invitation/theme-vars.ts`) rather than
+    Tailwind static classes, since theme values are runtime data — colors
+    and fonts reach the DOM only through `style`/CSS custom properties,
+    never through `dangerouslySetInnerHTML` or string-built CSS.
+-   [x] Section architecture (`components/invitation/sections/`) — Hero,
+    Couple, Schedule (with nested Venue), LoveStory, Gallery, Closing.
+    Only sections with real backing data in the current schema/UI are
+    implemented; RSVP and Gift sections are explicitly **not** included
+    (no RSVP submission or GiftMethod management UI exists yet — adding
+    those sections now would mean fake, non-functional buttons).
+-   [x] Personalization foundation (`lib/invitations/token.ts`) —
+    `/invite/[slug]?to=[token]`. Token format is validated (opaque,
+    10-128 chars, `[A-Za-z0-9_-]`) before ever reaching a query. The
+    event scope check derives the event from the FK-enforced
+    `GuestInvitation → Guest → Event` chain, **not** from
+    `GuestInvitation.eventId` directly (see D-020) — so a token for Event
+    A cannot personalize Event B even if that column were ever
+    inconsistent. An invalid/foreign/nonexistent token resolves to `guest:
+    null` (generic invitation), never an error.
+-   [x] SEO metadata (`generateMetadata` in `app/invite/[slug]/page.tsx`)
+    — title/description/OG derived from the safe public DTO, `noindex` +
+    a generic not-found title when the invitation can't be resolved,
+    canonical URL set to the invitation's own slug. The metadata lookup
+    and the page body lookup are memoized per-request (`React.cache`) so
+    they share one database round trip instead of two.
+-   [x] Accessibility — semantic landmarks (`<main>`, `<section
+    aria-label(ledby)>`), a real `<h1>`/`<h2>` heading hierarchy, `alt`
+    text on every image, no information conveyed by color alone (every
+    status/label pairs a text description), no `dangerouslySetInnerHTML`
+    anywhere in the invitation rendering path.
+-   [x] Mobile-first, dashboard-isolated presentation — `/invite/[slug]`
+    renders under the same minimal root layout as the rest of the app
+    (`app/layout.tsx` has no navigation to begin with), so there is no
+    dashboard chrome to accidentally leak into the public page; verified
+    directly in `e2e/invitation.spec.ts`.
+-   [x] Authorization/privacy/personalization tests — see "Tests Added
+    (Phase 3)" below.
+
+### Database change
+
+One migration, `20260918161434_add_guest_invitation_event_relation`:
+added an enforced `@relation` (`onDelete: Cascade`) plus an index for
+`GuestInvitation.eventId` → `Event`, which previously existed only as an
+unconstrained scalar column (only `guestId` was FK-backed). Discovered
+while implementing token scoping — see docs/DECISIONS.md D-020 for the
+full rationale. Zero data impact: no `Guest`/`GuestInvitation` rows exist
+yet in any environment (guest management is Roadmap Phase 7, not built).
+Application code additionally never trusts this column directly for
+authorization regardless — see the personalization bullet above.
+
+No other schema changes were needed. `Template`, `Theme`,
+`WeddingProfile`, `EventSchedule`, `Venue`, `LoveStory`/`LoveStoryItem`,
+and `Gallery`/`GalleryItem` were already fully sufficient for this phase
+as designed in Phase 0.
+
+### What Phase 3 deliberately does not include
+
+-   **The invitation editor** (Roadmap Phase 5) — there is no dashboard UI
+    to create/edit a `WeddingProfile`, `EventSchedule`, `Venue`,
+    `LoveStory`, `Gallery`, or `Theme` row yet. The renderer fully
+    supports all of this data when it exists (proven by integration
+    tests that create it directly via Prisma), but a real user has no way
+    to enter it through the product yet. This is the correct scope
+    boundary for "rendering foundation," not a gap in this phase.
+-   **Guest management** (Roadmap Phase 7) — no dashboard UI to create
+    guests or send invitation tokens. `Guest`/`GuestInvitation` fixtures
+    in this phase's tests are created directly via Prisma, the same
+    pattern already used for test users in Phase 1/2.
+-   **RSVP and Gift sections** — no real backing functionality exists
+    for either yet (no RSVP submission endpoint, no GiftMethod
+    management UI), so no section was built for them. Adding either now
+    would be exactly the "fake section that says it works when it
+    doesn't" the phase brief explicitly prohibits.
+-   **Five more visually-distinct templates** — see the template registry
+    bullet above.
+-   **View/open tracking** (`InvitationView`, "track invitation open" per
+    `docs/PRD.md` §18/Roadmap Phase 8) — deliberately not wired up.
+    Writing to the database on every public GET request (personalized or
+    not) without a UI ever consuming that data yet is unnecessary write
+    load and a potential abuse surface for this phase's scope.
+-   **Caching of the public invitation page** — not introduced. The route
+    already renders dynamically because it reads `searchParams` (the
+    `?to=` token), which itself opts a Next.js route out of static/Full
+    Route Caching, so an unpublish always takes effect immediately with
+    no explicit cache invalidation to get wrong.
+
+### Tests Added (Phase 3)
+
+Pure unit tests (no database):
+
+-   `lib/invitations/theme.test.ts` — `parseTheme()`: defaults when no
+    Theme row exists, valid passthrough, independent per-field fallback
+    for null/malformed values, never throws
+-   `lib/invitations/authorization.test.ts` — `isEventPubliclyVisible()`:
+    PUBLISHED/DRAFT/ARCHIVED, expired vs. not-yet-expired
+-   `lib/invitations/format.test.ts` — Indonesian date/time formatting,
+    including a check that no timezone label is assumed
+-   `lib/invitations/templates/registry.test.ts` — known key resolves;
+    unknown/null key safely falls back to the same default rather than
+    throwing; every seeded template slug (`prisma/seed.ts`) resolves
+    without error
+-   `lib/invitations/projection.test.ts` — `toPublicInvitation()`: core
+    field mapping, **never exposes owner/member/payment/subscription/
+    audit fields or a guest list, and the ownerId value never appears
+    anywhere in the serialized payload**, schedule/venue mapping,
+    graceful handling when every optional relation is empty
+-   `lib/invitations/token.test.ts` — `guestTokenSchema` format
+    validation; `resolveGuestContext()` with Prisma mocked: valid token
+    resolves the guest, **a token whose guest belongs to a different
+    event returns null (cross-event protection)**, unknown token returns
+    null, malformed token never reaches the database at all
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/invitations/service.integration.test.ts` (14 tests) — the
+    authoritative proof of Phase 3Q's requirements A-K, L/M, O, P/Q:
+    resolves a published event by slug (A); malformed/nonexistent slug
+    (B); DRAFT and ARCHIVED events are not publicly accessible (C/D); an
+    expired PUBLISHED event is not accessible; the resolved DTO never
+    carries owner/member data even round-tripped through real relations,
+    including the WeddingProfile relation (E/F/G); real nested
+    schedule/venue/love-story/gallery data renders correctly and missing
+    optional data doesn't crash (P/Q); a malformed real Theme row falls
+    back safely (O); a real seeded Template + Theme resolve correctly
+    (L/M); a valid guest token personalizes the correct event (H); a
+    token from Event A cannot personalize Event B (I); invalid/nonexistent
+    tokens fall back safely (J); a second guest's name never leaks when
+    resolving the first guest's token (K)
+-   `lib/events/service.integration.test.ts` (extended, +4 tests) —
+    publish/unpublish authorization (R/S/T): the owner can publish then
+    unpublish their own event; another user cannot publish (S) or
+    unpublish (T) it; publish/unpublish reject a nonexistent event id
+
+E2E (real Supabase DEV database, fixtures seeded directly via Prisma —
+see "Known Limitation" below for why):
+
+-   `e2e/invitation.spec.ts` (6 tests) — a published event renders its
+    real title/couple/type; a generic greeting shows with no token; a
+    valid guest token personalizes the greeting; a token from an
+    unrelated event falls back to the generic greeting (not the foreign
+    guest's name); a DRAFT event and a nonexistent slug both show the
+    same not-found page; the public page contains no dashboard
+    navigation (`Dashboard` link, `Keluar` button)
+
+### Known Limitation
+
+Same underlying constraint as Phase 2: the Supabase DEV project's Auth
+configuration rejects signups from synthetic email domains, so a fully
+authenticated **register → create event → publish → view public
+invitation** browser flow can't be automated end-to-end. `e2e/
+invitation.spec.ts` works around this the way Phase 3R anticipated —
+seeding a User/Event/Guest/GuestInvitation directly via Prisma (the same
+strategy the Vitest integration suites already use) instead of driving a
+real signup through the UI. This is arguably a more precise test of the
+public-rendering pipeline anyway, since it isolates it from Auth email
+deliverability entirely.
+
+**Manually verify before relying on this in production:** publish a real
+event from the dashboard, open `/invite/<slug>` in an incognito window,
+confirm it renders and that unpublishing it makes the same URL 404
+immediately.
 
 ## Later Phases
 
@@ -424,18 +664,22 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (79/79 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
-                             lib/supabase, lib/events/* including 11 live-DB integration tests)
-Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware)
-E2E:                        PASS (8/8 — homepage smoke test, auth foundation suite, and
-                             event-route protection suite; auth suite exercises the real
-                             Supabase DEV Auth API)
+Unit tests:                 PASS (135/135 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+                             lib/supabase, lib/events/*, lib/invitations/*; 25 of these are
+                             live-DB integration tests, 0 leftover rows verified after each run)
+Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
+                             /invite/[slug] correctly dynamic, not statically prerendered)
+E2E:                        PASS (15/15 — homepage smoke test, auth foundation suite,
+                             event-route protection suite, and public invitation suite;
+                             auth + invitation suites exercise the real Supabase DEV
+                             database directly, no mocks)
 Prisma validate:            PASS
-Prisma migrate status:      PASS ("Database schema is up to date!" — no new migration
-                             needed for Phase 2)
+Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total,
+                             1 new in Phase 3: add_guest_invitation_event_relation)
 Vercel deployment:          NOT YET ATTEMPTED
-Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant
-                             authorization proof; Auth via live sign-in-rejection e2e test)
+Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event
+                             AND invitation-token authorization proofs; Auth via live
+                             sign-in-rejection e2e test)
 ```
 
 ## Update Rules

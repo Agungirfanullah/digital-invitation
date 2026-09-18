@@ -1,5 +1,5 @@
 import "server-only";
-import { EventMemberRole, Prisma } from "@prisma/client";
+import { EventMemberRole, EventStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
@@ -90,6 +90,32 @@ export async function updateEventForUser(eventId: string, userId: string, input:
     if (isUniqueConstraintError(error, "slug")) throw new SlugConflictError();
     throw error;
   }
+}
+
+/** Throws `EventNotFoundError` if not authorized at EDITOR level or above. Sets `publishedAt` on every publish (acts as "last published at"). */
+export async function publishEventForUser(eventId: string, userId: string) {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.EDITOR);
+  if (!event) throw new EventNotFoundError();
+
+  return prisma.event.update({
+    where: { id: eventId },
+    data: { status: EventStatus.PUBLISHED, publishedAt: new Date() },
+  });
+}
+
+/**
+ * Throws `EventNotFoundError` if not authorized at EDITOR level or above.
+ * `publishedAt` is intentionally left as-is (a historical "last published
+ * at" record) rather than cleared on unpublish.
+ */
+export async function unpublishEventForUser(eventId: string, userId: string) {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.EDITOR);
+  if (!event) throw new EventNotFoundError();
+
+  return prisma.event.update({
+    where: { id: eventId },
+    data: { status: EventStatus.DRAFT },
+  });
 }
 
 /**

@@ -8,6 +8,7 @@ import { EventNotFoundError } from "@/lib/events/errors";
 import { EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { Button } from "@/components/ui/button";
 import { DeleteEventButton } from "@/components/events/delete-event-button";
+import { PublishToggleButton } from "@/components/events/publish-toggle-button";
 
 export const metadata: Metadata = {
   title: "Detail Acara — Digital Invitation",
@@ -65,6 +66,29 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           </div>
         )}
       </dl>
+
+      <div className="rounded-lg border p-4">
+        <h2 className="text-sm font-medium">Publikasi</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          {event.status === "PUBLISHED"
+            ? "Undangan ini sudah bisa diakses publik."
+            : "Undangan ini masih draf dan belum bisa diakses publik."}
+        </p>
+
+        {event.status === "PUBLISHED" && (
+          <Link
+            href={`/invite/${event.slug}`}
+            target="_blank"
+            className="text-foreground mt-2 inline-block text-sm underline underline-offset-4"
+          >
+            Lihat undangan publik: /invite/{event.slug}
+          </Link>
+        )}
+
+        <div className="mt-4">
+          <PublishToggleButton eventId={event.id} isPublished={event.status === "PUBLISHED"} />
+        </div>
+      </div>
 
       <div>
         <h2 className="text-sm font-medium">Segera hadir</h2>

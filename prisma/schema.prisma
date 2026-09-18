@@ -177,6 +177,7 @@ model Event {
 
   members          EventMember[]
   guests           Guest[]
+  guestInvitations GuestInvitation[]
   schedules        EventSchedule[]
   venues           Venue[]
   galleries        Gallery[]
@@ -291,9 +292,18 @@ model GuestInvitation {
   createdAt DateTime               @default(now())
   updatedAt DateTime               @updatedAt
 
+  // `eventId` previously had no enforced relation to Event — only `guestId`
+  // was FK-backed. That left the event scoping of a guest token resting on
+  // an unenforced scalar, which is exactly the kind of gap that could let
+  // application code accidentally mismatch a token to the wrong event.
+  // Added as part of Phase 3 (public/personalized invitation lookup),
+  // where a token's event scope is a security boundary, not just data
+  // shape. See docs/DECISIONS.md D-020.
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   guest Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, guestId])
+  @@index([eventId])
 }
 
 // ---------------------------------------------------------------------------

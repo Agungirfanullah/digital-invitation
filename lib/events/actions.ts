@@ -5,7 +5,13 @@ import { revalidatePath } from "next/cache";
 
 import { requireAppUser } from "@/lib/auth/session";
 import { createEventSchema, updateEventSchema } from "@/lib/events/validation";
-import { createEventForUser, deleteEventForUser, updateEventForUser } from "@/lib/events/service";
+import {
+  createEventForUser,
+  deleteEventForUser,
+  publishEventForUser,
+  unpublishEventForUser,
+  updateEventForUser,
+} from "@/lib/events/service";
 import { EventNotFoundError, mapEventErrorMessage } from "@/lib/events/errors";
 
 export interface EventFormState {
@@ -68,6 +74,44 @@ export async function updateEventAction(
 
   try {
     await updateEventForUser(eventId, user.id, parsed.data);
+  } catch (error) {
+    if (error instanceof EventNotFoundError) notFound();
+    return { error: mapEventErrorMessage(error) };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/events/${eventId}`);
+  redirect(`/dashboard/events/${eventId}`);
+}
+
+export async function publishEventAction(
+  eventId: string,
+  _prevState: EventFormState,
+  _formData: FormData,
+): Promise<EventFormState> {
+  const user = await requireAppUser();
+
+  try {
+    await publishEventForUser(eventId, user.id);
+  } catch (error) {
+    if (error instanceof EventNotFoundError) notFound();
+    return { error: mapEventErrorMessage(error) };
+  }
+
+  revalidatePath("/dashboard");
+  revalidatePath(`/dashboard/events/${eventId}`);
+  redirect(`/dashboard/events/${eventId}`);
+}
+
+export async function unpublishEventAction(
+  eventId: string,
+  _prevState: EventFormState,
+  _formData: FormData,
+): Promise<EventFormState> {
+  const user = await requireAppUser();
+
+  try {
+    await unpublishEventForUser(eventId, user.id);
   } catch (error) {
     if (error instanceof EventNotFoundError) notFound();
     return { error: mapEventErrorMessage(error) };

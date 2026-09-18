@@ -146,3 +146,29 @@ When a finalized decision must change:
 6.  implement the change
 
 Never silently reverse a documented decision.
+
+## D-020 --- GuestInvitation.eventId Is Now a Real Foreign Key
+
+**Decision:** `GuestInvitation.eventId` gained an enforced
+`@relation` to `Event` (`onDelete: Cascade`) plus an index, instead of
+remaining a bare scalar column.
+
+**Rationale:** The Phase 0 schema declared `GuestInvitation.eventId` as a
+plain field with no Prisma relation — only `guestId` was FK-backed to
+`Guest`. Discovered while implementing Phase 3 personalized-invitation
+lookup (`/invite/[slug]?to=[token]`), where a guest token's event scope is
+a security boundary (a token for Event A must never personalize Event B).
+An unenforced `eventId` column is exactly the kind of gap that could let a
+future bug insert a `GuestInvitation` row with a mismatched `eventId` and
+have nothing catch it at the database level.
+
+**Impact:** Migration
+`20260918161434_add_guest_invitation_event_relation` adds the FK and
+index. Applied cleanly against Supabase DEV with zero data impact — no
+`Guest`/`GuestInvitation` rows exist yet (guest management ships in a
+later roadmap phase). Application code additionally never trusts
+`GuestInvitation.eventId` directly for authorization — token resolution
+derives the event from the FK-enforced `GuestInvitation → Guest → Event`
+chain and cross-checks it against the event resolved from the URL slug
+(see `lib/invitations/token.ts`), so correctness doesn't depend on this
+column alone even though it's now constrained.

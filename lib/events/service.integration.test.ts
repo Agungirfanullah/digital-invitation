@@ -19,6 +19,8 @@ import {
   deleteEventForUser,
   getEventForUser,
   listEventsForUser,
+  publishEventForUser,
+  unpublishEventForUser,
   updateEventForUser,
 } from "@/lib/events/service";
 import type { CreateEventInput } from "@/lib/events/validation";
@@ -175,5 +177,49 @@ describe("event service (integration — live Supabase DEV database)", () => {
     await expect(
       updateEventForUser(eventTwo.id, userA.id, validInput({ slug: eventOne.slug })),
     ).rejects.toThrow(SlugConflictError);
+  });
+
+  it("R: lets the owner publish and then unpublish their own event", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+    expect(event.status).toBe("DRAFT");
+
+    const published = await publishEventForUser(event.id, userA.id);
+    expect(published.status).toBe("PUBLISHED");
+    expect(published.publishedAt).not.toBeNull();
+
+    const unpublished = await unpublishEventForUser(event.id, userA.id);
+    expect(unpublished.status).toBe("DRAFT");
+  });
+
+  it("S: prevents another user from publishing the event (IDOR)", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+
+    await expect(publishEventForUser(event.id, userB.id)).rejects.toThrow(EventNotFoundError);
+
+    const stillDraft = await getEventForUser(event.id, userA.id);
+    expect(stillDraft.status).toBe("DRAFT");
+  });
+
+  it("T: prevents another user from unpublishing the event (IDOR)", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+    await publishEventForUser(event.id, userA.id);
+
+    await expect(unpublishEventForUser(event.id, userB.id)).rejects.toThrow(EventNotFoundError);
+
+    const stillPublished = await getEventForUser(event.id, userA.id);
+    expect(stillPublished.status).toBe("PUBLISHED");
+  });
+
+  it("publish/unpublish reject a nonexistent event id", async () => {
+    const userA = await createTestUser("a");
+    const missingId = `missing-${randomUUID()}`;
+
+    await expect(publishEventForUser(missingId, userA.id)).rejects.toThrow(EventNotFoundError);
+    await expect(unpublishEventForUser(missingId, userA.id)).rejects.toThrow(EventNotFoundError);
   });
 });
