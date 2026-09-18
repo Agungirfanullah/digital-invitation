@@ -4,8 +4,8 @@ import { useActionState } from "react";
 
 import { resetPasswordAction, type AuthActionState } from "@/lib/auth/actions";
 import { Button } from "@/components/ui/button";
-import { FormField } from "@/components/auth/form-field";
-import { FormError } from "@/components/auth/form-error";
+import { FormField } from "@/components/forms/form-field";
+import { FormError } from "@/components/forms/form-error";
 
 const initialState: AuthActionState = {};
 

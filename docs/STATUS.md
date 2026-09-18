@@ -12,14 +12,12 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 1 --- Authentication & User Foundation
+**Current Phase:** Phase 2 --- Event & Dashboard Foundation
 
-**Status:** Phase 0 foundation is complete, including live Supabase DEV
-database connectivity (previously blocked, now resolved). Phase 1
-authentication is implemented against the real Supabase Auth project (no
-mocked auth) and verified locally (typecheck/lint/format/unit
-tests/build/e2e all passing, including a live sign-in-rejection round trip
-against Supabase Auth).
+**Status:** Phase 0 and Phase 1 remain complete and passing. Phase 2 event
+CRUD + tenancy is implemented and verified against the real Supabase DEV
+Postgres database — including 11 integration tests that prove cross-user
+(IDOR) protection against live data, not mocks.
 
 ## Documentation Baseline
 
@@ -99,11 +97,11 @@ connectivity.
 -   [x] `npm run typecheck` — **PASS**
 -   [x] `npm run lint` — **PASS**
 -   [x] `npm run format:check` — **PASS**
--   [x] `npm run test` (Vitest) — **PASS** (43/43 as of Phase 1; 10/10 at
-    the end of Phase 0)
+-   [x] `npm run test` (Vitest) — **PASS** (79/79 as of Phase 2; 43/43 at
+    the end of Phase 1; 10/10 at the end of Phase 0)
 -   [x] `npm run build` (Next.js production build) — **PASS**
--   [x] `npm run test:e2e` (Playwright) — **PASS** (5/5 as of Phase 1; 1/1
-    at the end of Phase 0)
+-   [x] `npm run test:e2e` (Playwright) — **PASS** (8/8 as of Phase 2; 5/5
+    at the end of Phase 1; 1/1 at the end of Phase 0)
 -   [x] `npx prisma validate` — **PASS**
 -   [x] `npx prisma generate` — **PASS**
 -   [x] `npx prisma migrate status` against Supabase DEV — **PASS**
@@ -198,14 +196,163 @@ human with dashboard access:
     with a friendly, non-technical message; homepage links to
     register/login work
 
-## Phase 2 --- Event Management
+## Phase 2 --- Event & Dashboard Foundation
 
--   [ ] Event CRUD
--   [ ] Event ownership
--   [ ] Event types
--   [ ] Dashboard event list
--   [ ] Event settings
--   [ ] Authorization tests
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database (via Prisma). No mocked persistence for the
+authorization-critical paths. No schema migration was required — the
+Phase 0 `Event`/`EventMember` models already covered everything this
+phase needs.
+
+-   [x] Event CRUD (`lib/events/service.ts`) — create/list/get/update/delete,
+    all server-side, all authorization-checked
+-   [x] Event ownership + membership authorization
+    (`lib/events/authorization.ts`) — `getAuthorizedEvent(eventId, userId,
+    minRole)` checks `Event.ownerId` first, then falls back to an
+    `EventMember` row at or above the required role. There's no UI to add
+    members yet (that's team collaboration, a later phase), but the check
+    already covers both paths so authorization logic won't need to change
+    when that UI lands. Delete is restricted to the owner specifically
+    (`event.ownerId === userId`), not just any EDITOR member — the most
+    destructive operation gets the narrowest authorization.
+-   [x] IDOR-safe error handling — `EventNotFoundError` is thrown
+    identically for "doesn't exist" and "exists but not yours"; every page
+    that catches it calls Next's `notFound()`, so a prober can't
+    distinguish the two cases from the response.
+-   [x] Event types — reuses the Prisma `EventType` enum directly
+    (`z.enum(EventType)`); Indonesian labels in `lib/events/labels.ts`
+-   [x] Dashboard event list (`app/dashboard/page.tsx`) — replaces the
+    Phase 1 placeholder; real empty state, real data, `loading.tsx`
+    skeleton, Server Component (no client-side fetching)
+-   [x] Create event (`/dashboard/events/new`) — Zod-validated title/type/
+    slug/description; the slug field live-suggests from the title as the
+    user types (client-side `slugify()`) but stops auto-syncing the
+    moment the user edits the slug field directly, so an explicit slug is
+    never silently overwritten
+-   [x] Event detail dashboard (`/dashboard/events/[eventId]`) — overview,
+    edit link, delete action, and an honest "coming later" list for
+    unimplemented modules (guests/RSVP, editor, gallery, analytics) — no
+    dead/fake buttons, just plain text since those modules don't exist yet
+-   [x] Edit event (`/dashboard/events/[eventId]/edit`) — same validation
+    as create; slug does **not** auto-sync from title on edit (only on
+    create), so editing the title never silently changes an
+    already-established public URL
+-   [x] Delete event (`components/events/delete-event-button.tsx`) — a
+    two-step inline confirm (no accidental single-click delete), owner-only
+    authorization, friendly error if a future restrict-on-delete relation
+    (e.g. recorded gift transactions) ever blocks it
+-   [x] Slug handling (`lib/events/slug.ts`, `lib/events/validation.ts`) —
+    normalized (trim + lowercase) before format validation
+    (`^[a-z0-9]+(-[a-z0-9]+)*$`, 3-60 chars); DB unique constraint is the
+    source of truth for uniqueness, with the resulting Prisma `P2002`
+    mapped to a friendly Indonesian message (`SlugConflictError`) instead
+    of a raw database error
+-   [x] Never-trust-the-client — `ownerId` is always taken from
+    `requireAppUser()` (the authenticated session), never from form
+    input; ordinary events can't be created/updated/deleted without a
+    valid session (defense in depth: `proxy.ts` redirect + per-action
+    `requireAppUser()` + per-operation `getAuthorizedEvent()`)
+-   [x] Loading/empty/error/success states throughout — dashboard and
+    event-detail `loading.tsx` skeletons, a real empty state on the
+    dashboard, inline field errors + pending states on both forms, a
+    dedicated `not-found.tsx` for the `[eventId]` segment
+-   [x] Authorization/tenancy tests — see "Tests Added (Phase 2)" below
+
+### Incidental improvements made while implementing this phase
+
+-   `lib/auth/session.ts` — `getSupabaseUser`/`getCurrentAppUser` are now
+    wrapped in React's `cache()`, per the Next.js authentication guide's
+    DAL pattern. Phase 2 added several more nested routes under
+    `/dashboard` that each need the current user (layout + page + form
+    action); without this they'd each trigger their own
+    `supabase.auth.getUser()` network call and Prisma upsert per request.
+-   `components/auth/form-field.tsx` and `form-error.tsx` moved to
+    `components/forms/` (same content, `FormField` gained an optional
+    `hint` prop) — they were generic from the start but lived under
+    `components/auth/`; Phase 2's event forms needed them too, and
+    importing an auth-specific path from an unrelated feature was the
+    wrong signal. All four existing auth forms were updated accordingly;
+    behavior is unchanged.
+-   `components/ui/select.tsx` and `components/ui/textarea.tsx` — added as
+    plain-HTML, Tailwind-styled primitives (same pattern as the existing
+    `Input`/`Button`), not a new dependency — no Radix `Select` primitive
+    was installed.
+-   `eslint.config.mjs` — added `argsIgnorePattern: "^_"` /
+    `varsIgnorePattern: "^_"` to `@typescript-eslint/no-unused-vars`.
+    `deleteEventAction`'s signature needs an unused trailing
+    `_prevState`/`_formData` pair (required by `useActionState`'s
+    calling convention after `.bind(null, eventId)`), which the default
+    rule config flagged even with the underscore prefix.
+-   `vitest.setup.ts` now loads `.env.local` (via the `dotenv` package,
+    already a devDependency for `prisma.config.ts`) before tests run.
+    This is what makes the live-database integration tests in
+    `lib/events/service.integration.test.ts` possible without a separate
+    env-loading step for `npm run test`.
+
+### Remaining Limitation (not a blocker on this phase's completion)
+
+Full authenticated browser E2E for event create/edit/delete (register →
+login → create event → edit → delete, all through the UI) could not be
+automated: the Supabase DEV project's Auth configuration rejects
+signups from synthetic email domains (verified directly against the Auth
+API — `example.com`/`.invalid` addresses are both rejected as "invalid"),
+so there's no way to script a fresh authenticated session without a real,
+deliverable inbox. This is the same class of constraint as the Phase 1
+"Confirm email" dashboard setting — dashboard-controlled, not something
+the repository can change.
+
+What covers this instead:
+-   `lib/events/service.integration.test.ts` — 11 tests against the real
+    Supabase DEV Postgres database (via Prisma, not mocked) proving every
+    authorization requirement (A-J) directly against the service layer
+    these routes call. This is arguably a **more precise** test of tenancy
+    than a full browser flow would be, since it isolates the
+    authorization boundary from confounding variables like email
+    deliverability.
+-   `e2e/events.spec.ts` — confirms the new event routes
+    (`/dashboard/events/new`, `/dashboard/events/[eventId]`,
+    `/dashboard/events/[eventId]/edit`) redirect to `/login` when signed
+    out, proving Proxy-based route protection extends correctly to the
+    new nested dynamic routes.
+
+If a real test inbox becomes available (or the DEV project's email
+restrictions are relaxed), a full authenticated E2E event-CRUD spec would
+be a good addition — the manual click-through below stands in for it for
+now.
+
+**Manually verify before considering this phase production-trustworthy:**
+register a real account → create an event → confirm it appears on
+`/dashboard` → open it → edit it → confirm the change persists on reload
+→ delete it → confirm it's gone and `/dashboard/events/<id>` now 404s.
+
+### Tests Added (Phase 2)
+
+-   `lib/events/slug.test.ts` — `slugify()`: diacritic stripping, separator
+    collapsing, 60-char truncation without a trailing hyphen
+-   `lib/events/validation.test.ts` — `createEventSchema`/`slugSchema`:
+    valid input, title/slug/description length limits, invalid event
+    type, slug format (rejects spaces/underscores/leading-trailing
+    hyphens), and confirms uppercase input is *normalized* to lowercase
+    rather than rejected (deliberate — see "Slug handling" above)
+-   `lib/events/errors.test.ts` — domain error → Indonesian message
+    mapping; confirms an unexpected error's raw message never leaks to
+    the returned string
+-   `lib/events/actions.test.ts` — `createEventAction`/`updateEventAction`
+    reject invalid `FormData` **without calling the service layer**
+    (Prisma/service mocked here specifically to prove the short-circuit);
+    also proves a client-supplied `ownerId` form field is ignored — the
+    owner always comes from the authenticated session
+-   `lib/events/service.integration.test.ts` — **runs against the real
+    Supabase DEV Postgres database, no mocks.** Covers all of A-J from the
+    phase's authorization requirements: create/list/get/update/delete for
+    the owner (A-E), cross-user IDOR protection on get/update/delete
+    (F-H), a nonexistent event id behaving identically to an unauthorized
+    one, and duplicate-slug rejection on both create and update (I/J).
+    Every row created is deleted in `afterEach` regardless of test
+    outcome — verified with a follow-up query showing zero leftover rows
+    after the suite runs.
+-   `e2e/events.spec.ts` — unauthenticated access to the three new event
+    routes redirects to `/login` with the correct `next` param
 
 ## Later Phases
 
@@ -257,6 +404,19 @@ See "Remaining Manual Configuration" under Phase 1 above.
   surfaced here because `npm run test:e2e` fails outright without it —
   including the pre-existing Phase 0 homepage smoke test, confirming it's
   an environment gap and not a regression.
+- The Supabase DEV project's Auth configuration rejects signups from
+  synthetic email domains (confirmed directly against the Auth API —
+  `@example.com` and `@*.invalid` addresses are both rejected as
+  "invalid"). This blocks fully automated authenticated browser E2E for
+  any flow starting at registration (Phase 2's event CRUD included) unless
+  a real, deliverable inbox is available. See "Remaining Limitation" under
+  Phase 2 above for what covers this instead.
+- `npm run test` now runs a handful of integration tests
+  (`lib/events/service.integration.test.ts`) against the live Supabase DEV
+  Postgres database rather than a mock — this is intentional (see Phase 2
+  notes), but it does mean `npm run test` now requires the same working
+  `DATABASE_URL`/`DIRECT_URL` that `npx prisma migrate status` does, and
+  takes several seconds longer than a purely in-memory suite would.
 
 ## Latest Verification
 
@@ -264,14 +424,18 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (43/43 — lib/utils, lib/env, lib/auth/*, lib/rate-limit, lib/supabase)
+Unit tests:                 PASS (79/79 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+                             lib/supabase, lib/events/* including 11 live-DB integration tests)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware)
-E2E:                        PASS (5/5 — homepage smoke test + auth foundation suite,
-                             the latter exercising the real Supabase DEV Auth API)
+E2E:                        PASS (8/8 — homepage smoke test, auth foundation suite, and
+                             event-route protection suite; auth suite exercises the real
+                             Supabase DEV Auth API)
 Prisma validate:            PASS
-Prisma migrate status:      PASS ("Database schema is up to date!")
+Prisma migrate status:      PASS ("Database schema is up to date!" — no new migration
+                             needed for Phase 2)
 Vercel deployment:          NOT YET ATTEMPTED
-Supabase connectivity:      PASS (DB via Prisma; Auth via live sign-in-rejection e2e test)
+Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant
+                             authorization proof; Auth via live sign-in-rejection e2e test)
 ```
 
 ## Update Rules

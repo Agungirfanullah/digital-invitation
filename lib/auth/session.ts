@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { User as PrismaUser } from "@prisma/client";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -20,7 +21,7 @@ function deriveName(user: SupabaseUser): string {
  * Supabase Auth — `getSession()` trusts the local cookie and must never be
  * used for an authorization decision.
  */
-export async function getSupabaseUser(): Promise<SupabaseUser | null> {
+export const getSupabaseUser = cache(async (): Promise<SupabaseUser | null> => {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -29,10 +30,16 @@ export async function getSupabaseUser(): Promise<SupabaseUser | null> {
 
   if (error || !user) return null;
   return user;
-}
+});
 
-/** Returns the current user's Prisma record, provisioning it on first access. Null if unauthenticated. */
-export async function getCurrentAppUser(): Promise<PrismaUser | null> {
+/**
+ * Returns the current user's Prisma record, provisioning it on first
+ * access. Null if unauthenticated. Wrapped in React `cache()` (like
+ * `getSupabaseUser`) so a layout and its nested pages calling this in the
+ * same request share one Supabase round trip and one Prisma upsert instead
+ * of repeating both per segment.
+ */
+export const getCurrentAppUser = cache(async (): Promise<PrismaUser | null> => {
   const supabaseUser = await getSupabaseUser();
   if (!supabaseUser?.email) return null;
 
@@ -41,7 +48,7 @@ export async function getCurrentAppUser(): Promise<PrismaUser | null> {
     email: supabaseUser.email,
     name: deriveName(supabaseUser),
   });
-}
+});
 
 /** Redirects to /login when unauthenticated. Use in protected Server Components/layouts. */
 export async function requireAppUser(): Promise<PrismaUser> {

@@ -7,6 +7,17 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   eslintConfigPrettier,
+  {
+    rules: {
+      // Convention: a leading underscore marks a parameter/variable as
+      // intentionally unused (e.g. a Server Action's `prevState` required
+      // by useActionState's signature but not read by the action body).
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

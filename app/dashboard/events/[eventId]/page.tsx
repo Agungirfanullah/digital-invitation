@@ -1,0 +1,84 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { requireAppUser } from "@/lib/auth/session";
+import { getEventForUser } from "@/lib/events/service";
+import { EventNotFoundError } from "@/lib/events/errors";
+import { EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "@/lib/events/labels";
+import { Button } from "@/components/ui/button";
+import { DeleteEventButton } from "@/components/events/delete-event-button";
+
+export const metadata: Metadata = {
+  title: "Detail Acara — Digital Invitation",
+};
+
+interface EventDetailPageProps {
+  params: Promise<{ eventId: string }>;
+}
+
+export default async function EventDetailPage({ params }: EventDetailPageProps) {
+  const { eventId } = await params;
+  const user = await requireAppUser();
+
+  let event;
+  try {
+    event = await getEventForUser(eventId, user.id);
+  } catch (error) {
+    if (error instanceof EventNotFoundError) notFound();
+    throw error;
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{event.title}</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            {EVENT_TYPE_LABELS[event.type]} · {EVENT_STATUS_LABELS[event.status]}
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={`/dashboard/events/${event.id}/edit`}>Edit Acara</Link>
+        </Button>
+      </div>
+
+      <dl className="grid grid-cols-1 gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
+        <div>
+          <dt className="text-muted-foreground">Slug undangan</dt>
+          <dd className="mt-0.5">/{event.slug}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground">Dibuat</dt>
+          <dd className="mt-0.5">
+            {event.createdAt.toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </dd>
+        </div>
+        {event.description && (
+          <div className="sm:col-span-2">
+            <dt className="text-muted-foreground">Deskripsi</dt>
+            <dd className="mt-0.5 whitespace-pre-wrap">{event.description}</dd>
+          </div>
+        )}
+      </dl>
+
+      <div>
+        <h2 className="text-sm font-medium">Segera hadir</h2>
+        <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
+          <li>Tamu &amp; RSVP</li>
+          <li>Editor undangan &amp; tema</li>
+          <li>Galeri &amp; cerita cinta</li>
+          <li>Analitik</li>
+        </ul>
+      </div>
+
+      <div className="border-t pt-6">
+        <DeleteEventButton eventId={event.id} eventTitle={event.title} />
+      </div>
+    </div>
+  );
+}
