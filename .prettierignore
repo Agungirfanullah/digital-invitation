@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+coverage
+playwright-report
+test-results
+prisma/migrations
+
+# Pre-existing project documentation: left as authored, not reformatted.
+*.md
+.github/workflows/ci.yml

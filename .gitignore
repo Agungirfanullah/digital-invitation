@@ -44,6 +44,7 @@ uploads/
 tmp/
 *.tmp
 *.temp
+*.tsbuildinfo
 
 # Prisma
 # Keep prisma/schema.prisma and prisma/migrations tracked.
