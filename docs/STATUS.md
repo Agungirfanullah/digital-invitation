@@ -12,31 +12,33 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 4 --- Editor Foundation
+**Current Phase:** Phase 5 --- Guest Management Foundation
 
-**Status:** Phase 0-3 remain complete and passing. Phase 4's invitation
-editor (couple/theme/template/schedule/love-story/gallery editing, live
-preview via the real `InvitationRenderer`, debounced autosave) is
-implemented and verified against the real Supabase DEV Postgres database
-— including, for the first time, a genuinely authenticated E2E browser
-flow (see D-022 in `docs/DECISIONS.md`).
+**Status:** Phase 0-4 remain complete and passing. Phase 5's guest
+management (CRUD, search/filter/sort, pagination, per-guest personalized
+invitation tokens, CSV import/export) is implemented and verified against
+the real Supabase DEV Postgres database, including a genuinely
+authenticated E2E browser flow (see D-022).
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
 `docs/ROADMAP.md`'s Phase 3 (Template System), Phase 4 (Invitation Data —
 Theme specifically), and Phase 6 (Public Invitation), building the
 rendering foundation end-to-end in one pass rather than strictly
-sequentially. "Phase 4 — Editor Foundation" (this phase) then corresponds
-mainly to Roadmap Phase 5 (Invitation Editor) plus the data-entry side of
-Roadmap Phase 4. This is a deliberate execution-order adjustment permitted
-by `AGENT_EXECUTION.md` §9 ("adjust the implementation order while
-preserving the product priorities"), not a reinterpretation of the
-roadmap's actual content — `docs/ROADMAP.md` itself is left unchanged
-since it still correctly describes the target feature set for each phase;
-only the *grouping and sequencing* of these implementation passes differs
-from a literal phase-by-phase reading. Guest management (Roadmap Phase 7)
-remains unimplemented — see "What Phase 3 deliberately does not include"
-and Phase 4's own scope notes below.
+sequentially. "Phase 4 — Editor Foundation" then corresponded mainly to
+Roadmap Phase 5 (Invitation Editor) plus the data-entry side of Roadmap
+Phase 4. This phase, "Phase 5 — Guest Management Foundation," corresponds
+to Roadmap Phase 7 (Guest Management) — RSVP/check-in-related fields
+described there (`GuestInvitation.status` transitions past `NOT_SENT`,
+seat-quota enforcement) belong to Roadmap Phase 9 (RSVP) and Phase 14
+(Check-in), which remain future work; only the guest-record and
+invitation-token half of Phase 7 is in scope here. This is a deliberate
+execution-order adjustment permitted by `AGENT_EXECUTION.md` §9 ("adjust
+the implementation order while preserving the product priorities"), not a
+reinterpretation of the roadmap's actual content — `docs/ROADMAP.md`
+itself is left unchanged since it still correctly describes the target
+feature set for each phase; only the *grouping and sequencing* of these
+implementation passes differs from a literal phase-by-phase reading.
 
 ## Documentation Baseline
 
@@ -116,11 +118,12 @@ connectivity.
 -   [x] `npm run typecheck` — **PASS**
 -   [x] `npm run lint` — **PASS**
 -   [x] `npm run format:check` — **PASS**
--   [x] `npm run test` (Vitest) — **PASS** (220/220 as of Phase 4;
-    135/135 at the end of Phase 3; 79/79 at the end of Phase 2; 43/43 at
-    the end of Phase 1; 10/10 at the end of Phase 0)
+-   [x] `npm run test` (Vitest) — **PASS** (293/293 as of Phase 5; 220/220
+    at the end of Phase 4; 135/135 at the end of Phase 3; 79/79 at the end
+    of Phase 2; 43/43 at the end of Phase 1; 10/10 at the end of Phase 0)
 -   [x] `npm run build` (Next.js production build) — **PASS**
--   [x] `npm run test:e2e` (Playwright) — **PASS** (19/19 as of Phase 4;
+-   [x] `npm run test:e2e` (Playwright) — **PASS** (26/26 as of Phase 5;
+    19/19 at the end of Phase 4;
     15/15 at the end of Phase 3; 8/8 at the end of Phase 2; 5/5 at the
     end of Phase 1; 1/1 at the end of Phase 0)
 -   [x] `npx prisma validate` — **PASS**
@@ -831,6 +834,212 @@ D-022):
     VIEWER-role member is rejected with the same not-found page an
     unrelated user would see.
 
+## Phase 5 --- Guest Management Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including a genuine authenticated browser E2E flow (see
+D-022). No fake/mocked authorization, persistence, or CSV logic. No schema
+migration was required — `Guest` and `GuestInvitation` already existed
+from Phase 0 with every field this phase needs.
+
+-   [x] Guest domain layer (`lib/guests/`) — `service.ts` (load + mutate,
+    all authorization-checked), `validation.ts` (Zod), `errors.ts`
+    (re-exports `EventNotFoundError`, adds `GuestNotFoundError`/
+    `CsvTooLargeError`), `types.ts`, `actions.ts` (Server Actions),
+    `labels.ts` (Indonesian labels), `normalize.ts` (name/phone matching
+    helpers), `token.ts` (invitation token generation), `csv.ts`
+    (parser/serializer).
+-   [x] Guest route `/dashboard/events/[eventId]/guests` — list is
+    VIEWER-and-above readable (see D-023); create/edit/delete/import
+    require EDITOR. A VIEWER-role member sees the list without any
+    mutation controls; a stranger/nonexistent event gets the same
+    not-found behavior as everywhere else in the app.
+-   [x] Guest CRUD — create (`/guests/new`), edit (`/guests/[guestId]/edit`),
+    delete (two-step confirm, same pattern as `DeleteEventButton`). Every
+    field (`name`, `phone`, `email`, `category`, `seatQuota`, `notes`)
+    reuses the existing Prisma `Guest` columns; nothing new was added to
+    the schema.
+-   [x] Personalized invitation tokens — every guest gets an opaque,
+    cryptographically random `GuestInvitation` token
+    (`lib/guests/token.ts`, `crypto.randomBytes(24)` base64url) created in
+    the **same transaction** as the guest itself (see D-024), so a guest
+    can never exist without one. Tokens are format-compatible with the
+    existing Phase 3 `guestTokenSchema`/`resolveGuestContext()` — no
+    changes to `lib/invitations/token.ts` were needed. A "Salin Tautan"
+    button copies the full `/invite/[slug]?to=[token]` link — rendered
+    only for OWNER/EDITOR, never for a VIEWER, since a token is a
+    personalization secret and not guest-list data (see D-023's explicit
+    permission matrix).
+-   [x] Search/filter/sort/pagination — server-side (`getGuestPageData`):
+    case-insensitive search across name/phone/email, category filter,
+    four sort orders, real `skip`/`take` pagination (25 per page) with a
+    `count` query for total pages. No unbounded "load everything" query.
+-   [x] CSV import (`/guests/import`) — a client wizard
+    (`components/guests/csv-import-wizard.tsx`) reads the file locally
+    (`FileReader`, no upload endpoint needed) and submits the raw text to
+    a preview Server Action, which parses, validates every row with
+    Zod, and flags duplicates (against both the database and other rows
+    in the same file) without writing anything. A second "confirm" action
+    **re-parses and re-validates the same text from scratch** — it never
+    trusts the preview step's result as already-safe, so a
+    tampered/replayed confirm can't smuggle in a row the preview never
+    approved. Only valid, non-duplicate rows are created; duplicates and
+    invalid rows are skipped with a plain-language summary (X imported, Y
+    duplicates skipped, Z invalid skipped). Capped at 500 rows / 200,000
+    characters (`CsvTooLargeError`) against oversized payloads.
+-   [x] CSV export (`/guests/export`, a Route Handler, not a Server
+    Action — needed to return a file response) — VIEWER-and-above,
+    same authorization as the list. Invitation tokens are **deliberately
+    excluded** from the export; they're a personalization secret, not
+    guest-list data.
+-   [x] CSV injection defense (`lib/guests/csv.ts`) — a cell whose first
+    character is a spreadsheet formula trigger (`=`, `+`, `-`, `@`) is
+    prefixed with a leading apostrophe on export, since a name field is
+    guest-controlled data that a real spreadsheet app could later
+    misinterpret as a formula.
+-   [x] IDOR defense — every guest mutation re-verifies `{ id: guestId,
+    eventId }` via `findFirst` before acting (never `guest.update({
+    where: { id } })` alone), the same pattern established in Phase 4 for
+    nested editor entities. Directly tested: the event owner *themselves*
+    cannot update/delete a guest belonging to their own **other** event by
+    passing the wrong `eventId`.
+-   [x] Loading/empty/error states — `guests/loading.tsx` skeleton, a real
+    empty state distinguishing "no guests yet" from "no results for this
+    filter," inline field errors on the guest form, the shared
+    `not-found.tsx` for unauthorized/nonexistent events.
+
+### Security review findings
+
+No new gaps were found in existing code during this phase (Phase 4 already
+closed the `javascript:`/`data:` URL and theme-color issues). Guest-specific
+review points, all satisfied by the design above:
+
+-   Guest data (phone/email/notes) never reaches the public invitation
+    projection — `lib/invitations/projection.ts` has no guest-list field
+    at all, unchanged by this phase, and the full pre-existing invitation
+    test suite (unit + integration + E2E) still passes unmodified.
+-   Invitation tokens are excluded from CSV export (above).
+-   No `userId`/`ownerId`/ `eventId`-authorization field is ever read from
+    client input — every action derives the user from `requireAppUser()`
+    and re-validates `eventId` via `getAuthorizedEvent()`, proven by
+    `actions.test.ts` asserting a malicious extra form field is ignored.
+-   No raw Prisma/internal error text reaches the client —
+    `mapGuestErrorMessage()` logs server-side and returns a generic
+    Indonesian message for anything unexpected, tested in `errors.test.ts`.
+-   No `dangerouslySetInnerHTML` anywhere in `components/guests/` — every
+    guest-controlled string (name, notes, etc.) renders through ordinary
+    JSX text interpolation, which React escapes automatically.
+-   Rate limiting on guest creation/CSV import was **not** added — the
+    existing rate limiter (`lib/rate-limit/`) is applied only to the
+    unauthenticated auth endpoints (register/login/password-reset) per
+    Phase 1; abuse-resistant limits on authenticated dashboard mutations
+    are `docs/ROADMAP.md` Phase 20 (Production Hardening) scope, not
+    Phase 7. The CSV row/size caps above are the only volume control added
+    here.
+
+### Scope decisions
+
+-   **Duplicate detection applies to CSV import, not the single-guest
+    "Tambah Tamu" form.** `docs/ROADMAP.md`'s CSV import requirement
+    explicitly calls for duplicate detection; the manual add form does
+    not block or warn on a repeated name, since real guest lists
+    legitimately contain multiple people with the same common name (e.g.
+    several "Budi"s) — blocking that would be an incorrect assumption,
+    not a safety feature. Duplicate matching (both paths, where it
+    applies) compares normalized name and digits-only phone
+    (`lib/guests/normalize.ts`), not raw string equality, so formatting
+    differences (`0812...` vs `+62812...`) still match.
+-   **CSV import creates each row's `Guest` + `GuestInvitation` in its own
+    transaction**, not the whole batch as one — a token-collision retry
+    needs a fresh transaction scope (Postgres aborts an entire
+    transaction after any failed statement, so a caught unique-violation
+    can't just be retried in place). Every row was already individually
+    validated and deduplicated before this runs, so a mid-batch failure
+    is expected to be rare; when it happens, already-created rows stay
+    persisted rather than the whole import rolling back.
+-   **The CSV parser is hand-rolled** (`lib/guests/csv.ts`), not a new
+    dependency — the format is small and fixed (six guest columns), and a
+    ~100-line, thoroughly-unit-tested RFC4180-style parser was simpler to
+    verify than vetting and wiring an external library for this scope.
+-   **Guest list read access is VIEWER-and-above**, unlike the Phase 4
+    editor (which is EDITOR-only per D-021) — see D-023 for the rationale
+    (viewing a guest list is a materially different risk than mutating
+    invitation content).
+
+### Tests Added (Phase 5)
+
+Pure unit tests (no database):
+
+-   `lib/guests/csv.test.ts` (13 tests) — `parseCsv`/`toCsv`: quoted
+    fields with embedded commas/newlines/escaped quotes, CRLF/LF, trailing
+    blank lines, no-trailing-newline, and the CSV-injection leading-quote
+    defense; a round-trip through both functions
+-   `lib/guests/normalize.test.ts` (6 tests) — name normalization
+    (lowercase/trim/collapse whitespace, diacritics preserved) and phone
+    digit normalization (leading-`0` vs `+62` equivalence)
+-   `lib/guests/token.test.ts` (3 tests) — generated tokens pass the
+    existing Phase 3 `guestTokenSchema` format check, are URL-safe, and
+    don't collide across 1,000 generations
+-   `lib/guests/validation.test.ts` (14 tests) — every schema: guest
+    input (empty-string-to-null handling, length limits, phone/email
+    format, category enum, seat-quota bounds/coercion), list-query
+    defaults and safe fallback for garbage query-string values, CSV row
+    schema defaults
+-   `lib/guests/errors.test.ts` (4 tests) — domain error → Indonesian
+    message mapping; confirms unexpected errors never leak raw details
+-   `lib/guests/actions.test.ts` (7 tests) — every action rejects invalid
+    input **without calling the service layer**; confirms the
+    authenticated user's id (never a client-supplied one) reaches the
+    service layer for both the guest CRUD and CSV import actions
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/guests/service.integration.test.ts` (26 tests) — the
+    authoritative authorization/IDOR/persistence proof: owner and
+    EDITOR-role member can create/update/delete; VIEWER-role member can
+    read but not mutate; a stranger/nonexistent event is rejected
+    identically; **a guest belonging to a different event cannot be
+    updated or deleted even by that other event's rightful owner**, by
+    passing the wrong `eventId`; two guests in different events may share
+    a name without a token collision; search/filter/sort/pagination each
+    verified against real rows; CSV preview writes nothing; CSV confirm
+    creates only valid/non-duplicate rows and gives every imported guest
+    its own invitation token; duplicate detection catches both
+    DB-existing and within-file duplicates; export excludes invitation
+    tokens and is available to VIEWER but not a stranger. Every row
+    created is deleted in `afterEach` regardless of outcome — verified
+    with a follow-up query showing zero leftover rows.
+
+E2E (real Supabase DEV database and a real authenticated session — see
+D-022):
+
+-   `e2e/guests.spec.ts` (7 tests) — unauthenticated access redirects to
+    `/login`; an owner logs in for real, adds a guest through the actual
+    form, sees it appear in the list, edits it, reloads the page and
+    confirms the change persisted server-side; the owner deletes a guest
+    and sees the empty state return; a VIEWER-role member sees the list
+    read-only with no Tambah/Edit/Hapus controls rendered at all; a
+    VIEWER-role member navigating directly to `/guests/new` gets the
+    shared not-found page; a stranger cannot access another owner's guest
+    list.
+
+### Known Limitations
+
+-   RSVP-related `GuestInvitation.status` transitions (`RSVPED`,
+    `CHECKED_IN`) and seat-quota **enforcement** are not part of this
+    phase — those belong to Roadmap Phase 9/14. `seatQuota` is captured
+    and stored (it's a genuine `Guest` field), but nothing currently reads
+    or enforces it; there's no RSVP submission surface yet for it to
+    constrain.
+-   No WhatsApp deep-link generation (Roadmap Phase 12) — "Salin Tautan"
+    copies the raw invitation URL; a formatted WhatsApp message is later,
+    separate scope.
+-   No bulk selection/bulk-delete in the guest list UI — CSV import
+    already covers bulk *creation*; bulk mutation of existing rows was
+    not requested and would be new UI surface beyond this phase's scope.
+-   Manual single-guest duplicate detection is intentionally not enforced
+    — see "Scope decisions" above.
+
 ## Later Phases
 
 Follow `docs/ROADMAP.md`. Do not mark later phases complete here without
@@ -901,24 +1110,29 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (220/220 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
-                             lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*;
-                             60 of these are live-DB integration tests — 15 events, 14
-                             invitations, 31 editor — 0 leftover rows verified after each run)
+Unit tests:                 PASS (293/293 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+                             lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
+                             lib/guests/*; 86 of these are live-DB integration tests — 15
+                             events, 14 invitations, 31 editor, 26 guests — 0 leftover rows
+                             verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
-                             /invite/[slug] and the editor route correctly dynamic)
-E2E:                        PASS (19/19 — homepage smoke test, auth foundation suite,
-                             event-route protection suite, public invitation suite, and
-                             editor suite; auth/invitation/editor suites exercise the real
-                             Supabase DEV database directly, no mocks — the editor suite
-                             additionally drives a real authenticated session, see D-022)
+                             /invite/[slug], the editor route, and all guest routes
+                             correctly dynamic)
+E2E:                        PASS (26/26 — homepage smoke test, auth foundation suite,
+                             event-route protection suite, public invitation suite, editor
+                             suite, and guest management suite; auth/invitation/editor/
+                             guests suites exercise the real Supabase DEV database directly,
+                             no mocks — the editor and guests suites additionally drive a
+                             real authenticated session, see D-022)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 4, the existing schema was fully sufficient)
+                             none new in Phase 5, the existing Guest/GuestInvitation schema
+                             was fully sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
-                             invitation-token, AND editor/IDOR authorization proofs; Auth
-                             via a real authenticated login in e2e/editor.spec.ts)
+                             invitation-token, editor/IDOR, AND guest/IDOR authorization
+                             proofs; Auth via a real authenticated login in
+                             e2e/editor.spec.ts and e2e/guests.spec.ts)
 ```
 
 ## Update Rules

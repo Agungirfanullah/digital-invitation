@@ -227,3 +227,79 @@ existing tests were left as-is (not reworked retroactively — out of scope
 for Phase 4, and they already pass); this decision only governs new work
 going forward. The service role key must never leave test/server code —
 this pattern is not, and must never become, something client code touches.
+Phase 5's `e2e/guests.spec.ts` reuses this exact pattern, confirming it
+generalizes as intended.
+
+## D-023 --- Guest List Is VIEWER-Readable, Not EDITOR-Only
+
+**Decision:** `/dashboard/events/[eventId]/guests` (the list, search,
+export) is gated at `EventMemberRole.VIEWER` — a VIEWER-role member can
+see the guest list read-only. Create/edit/delete/import all still require
+`EventMemberRole.EDITOR`.
+
+**Rationale:** This deliberately differs from D-021 (the Phase 4 editor,
+gated at EDITOR for both reading and writing). The two surfaces carry
+different risk: the invitation editor's read view *is* essentially its
+write view (the same form fields, prefilled) with no product reason yet
+to view it read-only, whereas a guest list is genuinely useful to browse
+without being able to change anything — e.g. a family member helping track
+RSVPs by eye, or a future read-only "coordinator" role. `getAuthorizedEvent`
+already supports arbitrary role thresholds per-call, so this is a plain
+choice of threshold per operation, not a new authorization mechanism.
+
+**Impact:** `lib/guests/service.ts`'s `getGuestPageData` and
+`exportGuestsToCsv` check `EventMemberRole.VIEWER`; every mutation
+(`createGuestForUser`, `updateGuestForUser`, `deleteGuestForUser`,
+`previewGuestImport`, `confirmGuestImport`) and the `/guests/new`,
+`/guests/[guestId]/edit`, `/guests/import` pages check
+`EventMemberRole.EDITOR`. The list page computes the caller's role once
+(`resolveRole()`) to decide what to render — this is UX only; the real
+enforcement is the per-operation server check above, proven directly by
+`lib/guests/service.integration.test.ts` and `e2e/guests.spec.ts` (a
+VIEWER can read the list but every mutation attempt is rejected
+server-side regardless of what the UI shows).
+
+**Explicit permission matrix** (`app/dashboard/events/[eventId]/guests/page.tsx`):
+
+| Action                                    | VIEWER | EDITOR | OWNER |
+| ------------------------------------------ | :----: | :----: | :---: |
+| View list, search, filter, sort, paginate |   ✓    |   ✓    |   ✓   |
+| Export CSV                                |   ✓    |   ✓    |   ✓   |
+| Copy personalized invitation link          |        |   ✓    |   ✓   |
+| Add / edit / delete a guest                |        |   ✓    |   ✓   |
+| Import CSV                                 |        |   ✓    |   ✓   |
+
+Invitation tokens are a personalization secret, not guest-list data — the
+same principle that already excludes them from CSV export excludes the
+"Salin Tautan" (copy link) control from a VIEWER's view. A VIEWER's page
+render never passes a guest's `invitationToken` to any client component,
+so the token does not reach the browser at all for that role, not merely
+"is hidden by CSS." This was corrected after a Phase 5 review found the
+copy-link button had been rendered unconditionally (a UI oversight, not a
+server-authorization gap) and the export button had been incorrectly
+nested inside the EDITOR-only control group.
+
+## D-024 --- Every Guest Gets Its Invitation Token at Creation, in the Same Transaction
+
+**Decision:** `Guest` and `GuestInvitation` are always created together,
+inside one Prisma transaction (`createGuestWithInvitation` in
+`lib/guests/service.ts`) — there is no code path that creates a guest
+without also creating its invitation token, and no separate "generate
+link" step.
+
+**Rationale:** `docs/ROADMAP.md`'s Phase 7 acceptance criteria states
+"Each guest receives a unique invitation token" as a flat requirement, not
+a follow-up action the owner has to remember to trigger. Making token
+issuance atomic with guest creation means the application can rely on the
+invariant "every `Guest` row has exactly one `GuestInvitation`" everywhere
+downstream (`lib/guests/service.ts`'s `toListItem()` depends on this
+directly) instead of defensively handling a guest with no token yet.
+
+**Impact:** Tokens are generated with `crypto.randomBytes(24)` (192 bits)
+base64url-encoded (`lib/guests/token.ts`) — format-compatible with the
+existing Phase 3 `guestTokenSchema`/`resolveGuestContext()`
+(`lib/invitations/token.ts`), which needed no changes. On the
+astronomically unlikely event of a token collision, the transaction is
+retried with a freshly generated token (up to 5 attempts) rather than
+failing the guest creation outright. CSV import reuses the same function
+per row, so every imported guest also gets its own token atomically.
