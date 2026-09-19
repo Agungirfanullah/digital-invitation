@@ -5,6 +5,7 @@ import { CoupleSection } from "@/components/invitation/sections/couple-section";
 import { ScheduleSection } from "@/components/invitation/sections/schedule-section";
 import { LoveStorySection } from "@/components/invitation/sections/love-story-section";
 import { GallerySection } from "@/components/invitation/sections/gallery-section";
+import { GiftSection } from "@/components/invitation/sections/gift-section";
 import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { ClosingSection } from "@/components/invitation/sections/closing-section";
 
@@ -28,6 +29,7 @@ export function MinimalElegantTemplate({ invitation, rsvp }: InvitationTemplateP
         <LoveStorySection loveStory={invitation.loveStory} />
         <GallerySection galleries={invitation.galleries} />
         <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />
+        <GiftSection giftMethods={invitation.giftMethods} />
         <ClosingSection />
       </div>
     </main>

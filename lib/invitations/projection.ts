@@ -27,6 +27,24 @@ export const PUBLIC_EVENT_INCLUDE = {
     orderBy: { sortOrder: "asc" },
     include: { items: { orderBy: { sortOrder: "asc" } } },
   },
+  // Only active methods, and only the display columns — see
+  // docs/DECISIONS.md D-034 on why this lives in the shared public
+  // projection rather than a separately-resolved lookup like RSVP (D-025):
+  // a gift method is static, event-wide configuration, not guest-specific
+  // state, so it belongs alongside schedules/galleries here.
+  giftMethods: {
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      type: true,
+      providerName: true,
+      accountName: true,
+      accountNumber: true,
+      qrImageUrl: true,
+      instructions: true,
+    },
+  },
 } satisfies Prisma.EventInclude;
 
 export type PublicEventRecord = Prisma.EventGetPayload<{ include: typeof PUBLIC_EVENT_INCLUDE }>;
@@ -102,6 +120,15 @@ export function toPublicInvitation(
           thumbnailUrl: toSafeHttpUrl(item.thumbnailUrl),
           caption: item.caption,
         })),
+    })),
+    giftMethods: event.giftMethods.map((method) => ({
+      id: method.id,
+      type: method.type,
+      providerName: method.providerName,
+      accountName: method.accountName,
+      accountNumber: method.accountNumber,
+      qrImageUrl: toSafeHttpUrl(method.qrImageUrl),
+      instructions: method.instructions,
     })),
     guest,
   };

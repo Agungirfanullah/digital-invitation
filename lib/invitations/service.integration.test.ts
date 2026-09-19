@@ -265,4 +265,66 @@ describe("getPublicInvitationBySlug (integration — live Supabase DEV database)
     expect(invitation).not.toHaveProperty("guestList");
     expect(serialized).not.toContain("Guest Two");
   });
+
+  it("renders an active gift method configured for the event", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+    await prisma.giftMethod.create({
+      data: {
+        eventId: event.id,
+        type: "BANK",
+        providerName: "Bank Contoh",
+        accountName: "Budi Santoso",
+        accountNumber: "1234567890",
+        isActive: true,
+      },
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+
+    expect(invitation.giftMethods).toHaveLength(1);
+    expect(invitation.giftMethods[0]).toMatchObject({
+      type: "BANK",
+      providerName: "Bank Contoh",
+      accountNumber: "1234567890",
+    });
+  });
+
+  it("excludes an inactive gift method from the public invitation", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+    await prisma.giftMethod.create({
+      data: { eventId: event.id, type: "BANK", accountNumber: "1234567890", isActive: false },
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.giftMethods).toEqual([]);
+  });
+
+  it("never exposes another event's gift methods", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const eventA = await createTestEvent(userA.id);
+    const eventB = await createTestEvent(userB.id);
+    await prisma.giftMethod.create({
+      data: {
+        eventId: eventB.id,
+        type: "BANK",
+        providerName: "Bank Rahasia",
+        accountNumber: "999",
+        isActive: true,
+      },
+    });
+
+    const invitation = await getPublicInvitationBySlug(eventA.slug);
+    expect(invitation.giftMethods).toEqual([]);
+  });
+
+  it("gift methods default to an empty array when none are configured", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.giftMethods).toEqual([]);
+  });
 });

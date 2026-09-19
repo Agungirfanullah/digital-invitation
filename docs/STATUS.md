@@ -12,15 +12,19 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 8 --- RSVP Dashboard & Guest Response Management
+**Current Phase:** Phase 9 --- Digital Gift / Angpao Foundation
 
-**Status:** Phase 0-7 remain complete and passing. Phase 8 turns Phase
-6's RSVP foundation into a usable event-management workflow: the
-dashboard now supports server-side search/filter/sort/pagination, a
-response-rate metric, per-guest invitation status alongside RSVP status,
-an authenticated CSV export, and RSVP status is now surfaced directly on
-the guest management list — all implemented and verified against the
-real Supabase DEV Postgres database and a real browser E2E flow.
+**Status:** Phase 0-8 remain complete and passing. Phase 9 adds a real,
+secure gift-method configuration and public-display foundation: event
+owners/editors can create bank transfer, e-wallet, QRIS, or a manual/
+physical-gift method under `/dashboard/events/[eventId]/gifts`, and any
+active method is displayed on the public invitation's new "Kirim Hadiah"
+section with a copy-to-clipboard action. No schema migration was
+required — the Phase 0 `GiftMethod` model already covered everything
+this phase needs. This is configuration/display only — no payment
+processing, no fake transaction confirmation, and `GiftRegistry`/
+`GiftItem`/`GiftReservation`/`GiftTransaction` remain fully deferred (see
+D-037).
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -53,7 +57,18 @@ priorities"), not a reinterpretation of the roadmap's actual content —
 `docs/ROADMAP.md` itself is left unchanged since it still correctly
 describes the target feature set for each phase; only the *grouping and
 sequencing* of these implementation passes differs from a literal
-phase-by-phase reading.
+phase-by-phase reading. This phase, "Phase 9 — Digital Gift / Angpao
+Foundation," was requested under the label "Roadmap Phase 9," but its
+actual scope (gift method configuration/display, explicitly not RSVP)
+matches `docs/ROADMAP.md`'s **Phase 16** ("Digital Gift", P2) — the
+Roadmap's own Phase 9 is RSVP, which this engagement already delivered
+as "Phase 6 — RSVP & Guest Response Foundation." The same reconciliation
+rule applies: the brief's literal content (bank transfer/e-wallet/
+physical-gift configuration, copy-to-clipboard, "no fake payment
+confirmation") is unambiguous and was implemented as described, and the
+label mismatch is recorded here rather than silently resolved or used as
+a reason to halt. `docs/ROADMAP.md`'s own Phase 17 ("Gift Registry", P2)
+remains deferred — see D-037.
 
 ## Documentation Baseline
 
@@ -1696,6 +1711,197 @@ D-022):
 Follow `docs/ROADMAP.md`. Do not mark later phases complete here without
 implementation and verification evidence.
 
+## Phase 9 --- Digital Gift / Angpao Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including a real browser E2E flow. No schema
+migration required — `GiftMethod` (Phase 0) already had every field this
+phase needed. No fake payment processing, transaction settlement, or
+payment verification of any kind was added.
+
+-   [x] Gift method dashboard (`/dashboard/events/[eventId]/gifts`) —
+    list, create, edit, delete. Reuses `GiftMethod`'s existing four
+    conceptual types (`BANK`/`EWALLET`/`QR`/`OTHER`) and its existing
+    fixed column set (`providerName`/`accountName`/`accountNumber`/
+    `qrImageUrl`/`instructions`) for every type, including the brief's
+    "physical gift/address" concept, mapped onto `OTHER` — see D-034 for
+    why no new type/column was added.
+-   [x] Authorization — OWNER/EDITOR can create/edit/delete, VIEWER is
+    read-only, matching the guest list's established read boundary
+    (D-023). Every mutation re-verifies `{ id: giftMethodId, eventId }`
+    before touching a row (never `giftMethod.update({ where: { id } })`
+    alone) — proven directly by IDOR integration tests (cross-event
+    update/delete rejected, the target row provably untouched
+    afterward).
+-   [x] Server-side validation (`lib/gifts/validation.ts`) — a
+    cross-field `superRefine` enforces the fields each type actually
+    needs (`BANK`/`EWALLET` require a provider name + account number,
+    `QR` requires an image URL, `OTHER` requires a title + instructions)
+    without forcing irrelevant fields on the other types. `qrImageUrl`
+    reuses the existing `isSafeHttpUrl()` guard (http/https only, no
+    `javascript:`) that `lib/editor/validation.ts` already established
+    for every other owner-supplied image/link field. Account
+    number/identifier fields only bound length — no format forced, per
+    the brief's explicit instruction not to over-restrict legitimate
+    Indonesian bank/e-wallet formats.
+-   [x] `sanitizeGiftMethodInput()` (`lib/gifts/service.ts`, pure,
+    unit-tested) nulls out whichever columns don't apply to the
+    submitted `type` before every create/update, so a method that was
+    switched from QR to BANK (for example) never keeps a stray
+    `qrImageUrl` value in storage.
+-   [x] Public "Kirim Hadiah" section
+    (`components/invitation/sections/gift-section.tsx`) — added to
+    `MinimalElegantTemplate` through the existing `InvitationRenderer` →
+    template → sections pipeline, no second rendering path. Reads
+    `invitation.giftMethods` directly off the same `PublicInvitation`
+    object every other section reads from (see D-035, contrasting with
+    how RSVP data is deliberately resolved separately, D-025) — zero
+    changes needed to `app/invite/[slug]/page.tsx`. Hidden entirely
+    (returns `null`) when no active gift method is configured — no
+    placeholder/empty-state content, per CLAUDE.md §9E and §1.5.
+-   [x] Copy-to-clipboard (`components/gifts/copy-value-button.tsx`) —
+    used for the account number and, for a physical-gift (`OTHER`)
+    method, the address. Never reports success unless
+    `navigator.clipboard.writeText` actually resolves; never sends the
+    copied value anywhere (no analytics, no network call) — same
+    contract as the existing `CopyInviteLinkButton`/`MessagePreview`.
+-   [x] Account numbers are shown in full, not masked — see D-036 for
+    why this differs from how `GuestInvitation.token` is treated.
+-   [x] Indonesian dashboard UX — "Hadiah", "Metode Hadiah", "Tambah
+    Metode", "Bank Transfer" → "Transfer Bank", labels adapted per type
+    (`lib/gifts/labels.ts`'s `GIFT_METHOD_FIELD_LABELS`), a two-step
+    inline delete confirmation (same pattern as
+    `DeleteGuestButton`/`DeleteGiftMethodButton`), and an empty state
+    ("Belum ada metode hadiah.") with its own call to action.
+-   [x] Loading/error states — `gifts/loading.tsx` skeleton, the shared
+    `not-found.tsx` for unauthorized/nonexistent events, inline field
+    errors + a pending "Menyimpan..." state on the form (same
+    `useActionState` pattern as every other form in the app).
+
+### Security review findings
+
+-   **IDOR** — every gift-method query/mutation requires
+    `getAuthorizedEvent(eventId, userId, minRole)`, and every mutation
+    additionally re-verifies `{ id: giftMethodId, eventId }` before
+    acting. Proven directly: creating a method under Event A and then
+    calling update/delete against it via Event B's id is rejected with
+    `GiftMethodNotFoundError`, and the row is confirmed unchanged/still
+    present afterward.
+-   **Public projection scoping** — `PUBLIC_EVENT_INCLUDE`'s
+    `giftMethods` relation is filtered to `isActive: true` and selects
+    only display columns (never `eventId`/`isActive`/timestamps);
+    proven by both a unit test (fabricated input asserting the excluded
+    properties) and an integration test creating a gift method on a
+    *different* event and confirming it never appears in the first
+    event's public invitation.
+-   **No secret/token exposure** — grepped: no file under `lib/gifts/`,
+    `components/gifts/`, the gifts dashboard routes, or the gift section
+    component references `invitationToken`/`.token` at all; this domain
+    has no relationship to the guest-token system.
+-   **URL safety** — `qrImageUrl` is validated as http/https-only at
+    the write boundary (`isSafeHttpUrl`) and re-filtered again at the
+    public-read boundary (`toSafeHttpUrl`, same defense-in-depth pattern
+    every other public image/link field already uses) — proven by a
+    unit test asserting a `javascript:` QR image URL is rejected on
+    write and, separately, stripped on read even if one somehow reached
+    the database.
+-   **No sensitive-value logging** — grepped: no `console.*` call in
+    `lib/gifts/` includes an account number, instructions, or any other
+    submitted field value; `mapGiftErrorMessage()` logs the raw `Error`
+    object only, matching every other domain's error-mapping
+    convention.
+-   **No fake functionality** — grepped and manually reviewed: no code
+    in this phase marks a transfer as paid, generates a fake
+    transaction id, or fabricates any provider response. `GiftTransaction`
+    is untouched.
+
+### `GiftRegistry`/`GiftTransaction` status
+
+Both remain fully deferred — see D-037. No service, no UI, no schema
+change. `GiftTransaction` in particular needs a real payment-provider
+integration (webhook signature verification, provider credentials) that
+does not exist yet and which CLAUDE.md §7.4/§1.4 forbid faking;
+`GiftRegistry`/`GiftItem`/`GiftReservation` need their own
+concurrency-safe availability/duplicate-reservation logic
+(`docs/PRD.md` §29) that would be a guess if bolted onto this phase
+rather than built as its own roadmap item (`docs/ROADMAP.md` Phase 17).
+
+### Tests Added (Phase 9)
+
+Pure unit tests (no database):
+
+-   `lib/gifts/errors.test.ts` (3 tests) — Indonesian error-message
+    mapping, confirms an unexpected error's raw message (containing a
+    fake account number) never leaks into the returned string
+-   `lib/gifts/validation.test.ts` (14 tests) — per-type required-field
+    enforcement (BANK/EWALLET need provider+account number, QR needs an
+    image URL, OTHER needs a title+instructions), unsafe `javascript:`
+    QR URL rejection, FormData empty-string-to-null handling, checkbox
+    (`isActive`) semantics, max-length enforcement
+-   `lib/gifts/service.test.ts` (5 tests) — `sanitizeGiftMethodInput()`:
+    correct column nulling for every type, confirms the input object
+    itself is never mutated
+-   `lib/gifts/actions.test.ts` (6 tests) — server-side validation
+    short-circuits before the service layer runs, a client-supplied
+    `userId` form field is ignored, `notFound()` on
+    `EventNotFoundError`/`GiftMethodNotFoundError`
+-   `lib/invitations/projection.test.ts` (+3 tests) — a configured gift
+    method's display fields map correctly, an unsafe QR image URL is
+    stripped, `eventId`/`isActive`/timestamps are never present on the
+    public DTO
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/gifts/service.integration.test.ts` (18 tests) — full CRUD
+    authorization matrix (owner/editor can mutate, viewer cannot,
+    stranger cannot, nonexistent event rejected), cross-event IDOR
+    protection on read/update/delete with the target row proven
+    unchanged, `sanitizeGiftMethodInput()`'s effect verified against
+    actually-persisted rows, deletion proven event-scoped (deleting one
+    event's method never removes another's)
+-   `lib/invitations/service.integration.test.ts` (+4 tests) — an active
+    gift method renders on the public invitation, an inactive one is
+    excluded, another event's gift method never leaks across, an event
+    with none configured returns an empty array (not an error)
+
+E2E (real Supabase DEV database; dashboard tests drive a real
+authenticated session — D-022):
+
+-   `e2e/gifts-dashboard.spec.ts` (7 tests) — an owner can create, edit,
+    and delete a gift method end-to-end through the real UI; an editor
+    can create an `OTHER` (manual/physical-gift) method with its
+    type-specific field labels; a viewer sees the list with no
+    create/edit/delete controls; a stranger gets the shared not-found
+    page; the public invitation displays a configured active method
+    with a visible copy button; the gift section is completely absent
+    when no method is configured; an inactive method never appears
+    publicly
+-   Confirmed via a full `npm run test:e2e` run: all 39 pre-existing
+    Phase 0-8 E2E tests continue passing (46/46 total)
+
+### Known Limitations
+
+-   The invitation editor's live preview (`lib/editor/preview.ts`) does
+    not reflect gift methods — they're managed on their own dedicated
+    dashboard page, not the editor, so there's no unsaved/in-progress
+    gift state for the preview to show. The real published invitation
+    still renders whatever is actually configured; this only affects
+    what the editor's preview panel specifically shows.
+-   No reorder/sort-order control for gift methods — `GiftMethod` has no
+    `sortOrder` column (unlike `Gallery`/`LoveStory`, which do), so
+    methods are listed in creation order. Adding one would be a schema
+    change not otherwise required by this phase's scope; the brief
+    itself made reordering conditional on "if schema/UI supports
+    ordering."
+-   `GiftRegistry`/`GiftItem`/`GiftReservation`/`GiftTransaction` are
+    fully deferred — see "Status" above and D-037.
+-   No editor-panel integration — gift methods are a dedicated dashboard
+    section (`/dashboard/events/[eventId]/gifts`), not part of the
+    Phase 4 editor shell, following the brief's own fallback ("if the
+    editor architecture is not appropriate ... keep gift management as
+    a dedicated dashboard section"). The public invitation still reads
+    real, live gift data regardless of where it's managed.
+
 ## Known Blockers
 
 None currently. The Supabase DEV database credential blocker recorded here
@@ -1761,42 +1967,47 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (419/419 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (472/472 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
-                             lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*; 136 of
-                             these are live-DB integration tests — 15 events, 14
-                             invitations, 31 editor, 40 guests, 36 rsvp — 0 leftover rows
-                             verified after each run)
+                             lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
+                             lib/gifts/*; 158 of these are live-DB integration tests — 15
+                             events, 18 invitations, 31 editor, 40 guests, 36 rsvp, 18
+                             gifts — 0 leftover rows verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
                              /invite/[slug], the editor route, all guest routes, the
-                             per-guest invitation route, the RSVP dashboard route, and the
-                             RSVP export route correctly dynamic)
-E2E:                        PASS (39/39 — homepage smoke test, auth foundation suite,
+                             per-guest invitation route, the RSVP dashboard/export routes,
+                             and the new gift-method dashboard routes correctly dynamic)
+E2E:                        PASS (46/46 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
                              suite, guest management suite, RSVP suite, guest invitation
-                             delivery suite, and RSVP dashboard suite; auth/invitation/
-                             editor/guests/rsvp/guest-invitation/rsvp-dashboard suites
+                             delivery suite, RSVP dashboard suite, and gift method
+                             dashboard suite; auth/invitation/editor/guests/rsvp/
+                             guest-invitation/rsvp-dashboard/gifts-dashboard suites
                              exercise the real Supabase DEV database directly, no mocks —
-                             the editor, guests, guest-invitation, and rsvp-dashboard
-                             suites additionally drive a real authenticated session
-                             (D-022); the RSVP guest flow is public/unauthenticated by
-                             design, so its suite seeds fixtures directly via Prisma
+                             the editor, guests, guest-invitation, rsvp-dashboard, and
+                             gifts-dashboard suites additionally drive a real authenticated
+                             session (D-022); the RSVP guest flow is public/unauthenticated
+                             by design, so its suite seeds fixtures directly via Prisma
                              instead, the same pattern e2e/invitation.spec.ts already
                              uses. The rsvp-dashboard suite additionally drives one real
                              public RSVP submission through the actual invitation flow to
-                             prove Phase 6 hasn't regressed)
+                             prove Phase 6 hasn't regressed; the gifts-dashboard suite
+                             drives a real create/edit/delete flow through the UI and
+                             confirms the public invitation renders real, live gift data)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 8, the existing RSVP/Guest schema was fully
+                             none new in Phase 9, the existing GiftMethod schema was fully
                              sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
                              seat-quota/IDOR, guest-invitation token-masking/regeneration
-                             IDOR, AND RSVP dashboard filter/export/cross-event
+                             IDOR, RSVP dashboard filter/export/cross-event authorization,
+                             AND gift-method CRUD/cross-event/public-projection
                              authorization proofs; Auth via a real authenticated login in
                              e2e/editor.spec.ts, e2e/guests.spec.ts,
-                             e2e/guest-invitation.spec.ts, and e2e/rsvp-dashboard.spec.ts)
+                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts, and
+                             e2e/gifts-dashboard.spec.ts)
 ```
 
 ## Update Rules

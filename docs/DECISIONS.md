@@ -592,3 +592,125 @@ new dashboard summary card, one destination.
 VIEWER-and-above, matching the brief's explicit instruction that Viewer/
 Editor/Owner all may view RSVP information with no mutation controls
 added.
+
+## D-034 --- Gift Methods Reuse `GiftMethod`'s Existing Fixed Columns for Every Conceptual Type, Including "Physical Gift"
+
+**Decision:** Phase 9 ("Digital Gift / Angpao Foundation") uses the
+`GiftMethod` model exactly as it already existed in `prisma/schema.prisma`
+and `docs/DATABASE.md` §18 — `id`, `eventId`, `type` (`BANK` / `EWALLET` /
+`QR` / `OTHER`), `providerName`, `accountName`, `accountNumber`,
+`qrImageUrl`, `instructions`, `isActive` — with **no migration**. The task
+brief additionally asked for a "physical gift / address" conceptual
+method with fields like recipient name and delivery instructions; since
+neither `docs/DATABASE.md` nor `docs/PRD.md` §28 defines a `PHYSICAL`
+type or an `address` column (the schema's four types and columns are
+final, not a partial draft), this is mapped onto the existing `OTHER`
+type: `providerName` becomes a free-text title (e.g. "Alamat Pengiriman
+Kado"), `accountName`/`accountNumber` become optional recipient
+name/contact, and `instructions` carries the address and any delivery
+notes. `lib/gifts/service.ts`'s `sanitizeGiftMethodInput()` nulls out
+whichever columns don't apply to the selected `type` before persisting
+(e.g. a `QR` method never stores `accountName`/`accountNumber`; `BANK`/
+`EWALLET`/`OTHER` never store `qrImageUrl`), so a method's stored data
+always matches what its own type actually displays.
+
+**Rationale:** CLAUDE.md §8.1 requires relational fields over a JSON
+blob when they already exist, and the roadmap/database-reconciliation
+rule (CLAUDE.md §41: existing implementation → PRD → Architecture →
+Database → Roadmap → judgment) puts the actual schema ahead of a task
+brief's illustrative field list. Adding a fifth `GiftMethodType` value or
+new columns for one conceptual variant of an already-generic "gift
+method" would be schema churn for a UI-only distinction — the four
+existing columns already say everything a manual/physical instruction
+needs to say once given type-appropriate field labels
+(`lib/gifts/labels.ts`'s `GIFT_METHOD_FIELD_LABELS`).
+
+**Impact:** No Prisma migration in this phase. The gift method form
+(`components/gifts/gift-method-form.tsx`) relabels the same four columns
+per selected type rather than rendering type-specific inputs, and the
+dashboard/public-projection field selection never differs by type either
+— only what's shown/required does.
+
+## D-035 --- Public Gift Methods Are Resolved Through the Shared `PublicInvitation` Projection, Not a Separate Lookup Like RSVP
+
+**Decision:** Unlike Phase 6's RSVP data (D-025, deliberately resolved
+outside `PublicInvitation` via its own `getRsvpGuestView()` call), active
+gift methods are added directly to `lib/invitations/projection.ts`'s
+`PUBLIC_EVENT_INCLUDE` (`where: { isActive: true }`, display columns
+only) and mapped onto a new `PublicInvitation.giftMethods` field in
+`toPublicInvitation()`.
+
+**Rationale:** D-025's separation was specifically about RSVP being
+per-guest, mutable, and independently domain-owned end-to-end (its own
+read/write logic, matching `lib/guests/`'s shape). A gift method is
+none of those things from the public renderer's point of view: it is
+static, event-wide configuration configured once by the owner and read
+identically by every visitor, exactly like `Schedule`/`Venue`/`Gallery`
+data that already lives in this same projection. Splitting it into a
+separate resolved prop would copy D-025's shape without its underlying
+reason, adding an extra query and an extra prop to thread through
+`InvitationRenderer` for no isolation benefit.
+
+**Impact:** `app/invite/[slug]/page.tsx` needed zero changes for gift
+methods — `getPublicInvitationBySlug()` already returns them as part of
+the existing `invitation` object. `components/invitation/sections/gift-
+section.tsx` reads `invitation.giftMethods` the same way
+`GallerySection` reads `invitation.galleries`, and renders nothing when
+the array is empty (never a placeholder — CLAUDE.md §9E, §1.5).
+
+## D-036 --- Account Numbers Are Displayed in Full on the Public Invitation, Not Masked
+
+**Decision:** A configured gift method's `accountNumber` (and, for the
+`OTHER`/physical-gift case, the address inside `instructions`) is shown
+in full on the public invitation, with a client-side "Salin" copy button
+next to it (`components/gifts/copy-value-button.tsx`). Nothing is masked
+behind a reveal action.
+
+**Rationale:** The Phase 9 brief explicitly allows this ("account number
+may be displayed because the explicit purpose is transfer") and
+`docs/PRD.md` §28 only requires copy-to-clipboard, not masking. A bank
+account or e-wallet number configured here exists for one purpose —
+guests transferring a gift to it — and masking would only add friction
+without protecting anything: the number is not a secret the owner is
+trying to keep from the very people they're publishing the invitation
+to. This intentionally differs from `GuestInvitation.token`
+(D-027/D-024), which is a per-guest access-control secret and stays
+masked from anyone without EDITOR/OWNER role; a gift account number has
+no such access-control role to play.
+
+**Impact:** `lib/invitations/projection.ts` passes `accountNumber`
+through unmodified (only `qrImageUrl` is safety-filtered, via the same
+`toSafeHttpUrl()` every other public image/link field uses). The copy
+button never reports success unless `navigator.clipboard.writeText`
+actually resolves, and never sends the copied value anywhere (no
+analytics, no network call) — same contract as the existing
+`CopyInviteLinkButton`/`MessagePreview` copy actions.
+
+## D-037 --- `GiftRegistry`/`GiftItem`/`GiftReservation` and `GiftTransaction` Remain Deferred
+
+**Decision:** Phase 9 implements gift *methods* only (configuration +
+public display + copy-to-clipboard). The already-existing
+`GiftRegistry`/`GiftItem`/`GiftReservation` models are left completely
+untouched (no service, no UI), and `GiftTransaction` is left untouched
+as well — no code in this phase reads, writes, or references any of the
+four.
+
+**Rationale:** `docs/ROADMAP.md` scopes these to its own later phases
+(Phase 16 "Digital Gift" — what this phase actually implements, despite
+being requested under the label "Roadmap Phase 9" — vs. Phase 17 "Gift
+Registry", P2 priority, a distinct acceptance-criteria set about
+inventory/reservation/duplicate-prevention that gift *methods* don't
+need). The Phase 9 brief itself instructed exactly this: implement the
+registry "only if the existing schema/PRD clearly support a basic
+registry foundation" and explicitly "do not force registry
+implementation" or "implement fake payment processing." A real
+reservation flow needs its own concurrency-safe
+available-quantity/duplicate-reservation logic (docs/PRD.md §29) that
+would be a half-implemented guess if bolted onto this phase; a real
+`GiftTransaction` needs an actual payment provider integration, which
+CLAUDE.md §7.4/§1.4 forbid faking.
+
+**Impact:** No new code touches these four models. This is noted here,
+alongside the phase-numbering mismatch pattern already documented in
+`docs/STATUS.md`, so the deferral is a recorded decision rather than a
+silent omission.

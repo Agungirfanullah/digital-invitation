@@ -1,4 +1,4 @@
-import type { EventType, GalleryItemType } from "@prisma/client";
+import type { EventType, GalleryItemType, GiftMethodType } from "@prisma/client";
 
 /**
  * Public-safe DTOs for the `/invite/[slug]` rendering pipeline. Nothing
@@ -57,6 +57,22 @@ export interface PublicGallery {
   items: PublicGalleryItem[];
 }
 
+/**
+ * Only the display fields a guest needs — never `eventId`, `isActive`, or
+ * timestamps (docs/DECISIONS.md D-034). `id` is included the same way
+ * `PublicSchedule.id`/`PublicGalleryItem.id` are: a stable React key, not
+ * anything sensitive (a `cuid`, not a sequential/guessable value).
+ */
+export interface PublicGiftMethod {
+  id: string;
+  type: GiftMethodType;
+  providerName: string | null;
+  accountName: string | null;
+  accountNumber: string | null;
+  qrImageUrl: string | null;
+  instructions: string | null;
+}
+
 export interface PublicWeddingProfile {
   brideFullName: string | null;
   brideNickname: string | null;
@@ -91,5 +107,6 @@ export interface PublicInvitation {
   schedules: PublicSchedule[];
   loveStory: PublicLoveStory | null;
   galleries: PublicGallery[];
+  giftMethods: PublicGiftMethod[];
   guest: PublicGuestContext | null;
 }

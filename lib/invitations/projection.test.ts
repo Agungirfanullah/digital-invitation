@@ -23,6 +23,7 @@ function fakeEvent(overrides: Partial<PublicEventRecord> = {}): PublicEventRecor
     schedules: [],
     loveStories: [],
     galleries: [],
+    giftMethods: [],
   };
 
   return { ...base, ...overrides } as unknown as PublicEventRecord;
@@ -192,5 +193,81 @@ describe("toPublicInvitation", () => {
     expect(dto.weddingProfile).toBeNull();
     expect(dto.loveStory).toBeNull();
     expect(dto.galleries).toEqual([]);
+    expect(dto.giftMethods).toEqual([]);
+  });
+
+  it("maps a configured gift method's display fields", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        giftMethods: [
+          {
+            id: "gift-1",
+            type: "BANK",
+            providerName: "Bank Contoh",
+            accountName: "Budi Santoso",
+            accountNumber: "1234567890",
+            qrImageUrl: null,
+            instructions: "Mohon konfirmasi setelah transfer.",
+          },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.giftMethods).toHaveLength(1);
+    expect(dto.giftMethods[0]).toEqual({
+      id: "gift-1",
+      type: "BANK",
+      providerName: "Bank Contoh",
+      accountName: "Budi Santoso",
+      accountNumber: "1234567890",
+      qrImageUrl: null,
+      instructions: "Mohon konfirmasi setelah transfer.",
+    });
+  });
+
+  it("strips an unsafe (javascript:) gift method QR image URL rather than passing it through", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        giftMethods: [
+          {
+            id: "gift-1",
+            type: "QR",
+            providerName: null,
+            accountName: null,
+            accountNumber: null,
+            qrImageUrl: "javascript:alert(1)",
+            instructions: null,
+          },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.giftMethods[0].qrImageUrl).toBeNull();
+  });
+
+  it("never exposes eventId/isActive/timestamps on a gift method", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        giftMethods: [
+          {
+            id: "gift-1",
+            type: "OTHER",
+            providerName: "Alamat Pengiriman",
+            accountName: null,
+            accountNumber: null,
+            qrImageUrl: null,
+            instructions: "Jl. Contoh No. 1",
+          },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.giftMethods[0]).not.toHaveProperty("eventId");
+    expect(dto.giftMethods[0]).not.toHaveProperty("isActive");
+    expect(dto.giftMethods[0]).not.toHaveProperty("createdAt");
+    expect(dto.giftMethods[0]).not.toHaveProperty("updatedAt");
   });
 });
