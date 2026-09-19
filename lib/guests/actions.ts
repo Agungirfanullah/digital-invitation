@@ -10,8 +10,10 @@ import {
   createGuestForUser,
   deleteGuestForUser,
   previewGuestImport,
+  regenerateGuestInvitationToken,
   updateGuestForUser,
 } from "@/lib/guests/service";
+import { checkGuestInvitationRateLimit } from "@/lib/guests/rate-limit";
 import { EventNotFoundError, GuestNotFoundError, mapGuestErrorMessage } from "@/lib/guests/errors";
 import type { CsvImportPreview, CsvImportSummary } from "@/lib/guests/types";
 
@@ -101,6 +103,46 @@ export async function deleteGuestAction(
 
   revalidatePath(`/dashboard/events/${eventId}/guests`);
   redirect(`/dashboard/events/${eventId}/guests`);
+}
+
+export interface RegenerateTokenState {
+  status: "idle" | "success" | "error";
+  error?: string;
+}
+
+const RATE_LIMIT_MESSAGE = "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.";
+
+/**
+ * Invalidates the guest's current invitation link and issues a new one.
+ * Rate-limited per-user (not just per-guest) since a compromised/buggy
+ * client could otherwise hammer this across many guests. Never returns
+ * the old or new token in its own payload — the caller re-renders from
+ * `revalidatePath`, so the new token only ever reaches the client through
+ * the same server-rendered props path it always does (see
+ * `lib/guests/service.ts`'s `regenerateGuestInvitationToken`).
+ */
+export async function regenerateInvitationTokenAction(
+  eventId: string,
+  guestId: string,
+  _prevState: RegenerateTokenState,
+  _formData: FormData,
+): Promise<RegenerateTokenState> {
+  const user = await requireAppUser();
+
+  if (!(await checkGuestInvitationRateLimit(user.id))) {
+    return { status: "error", error: RATE_LIMIT_MESSAGE };
+  }
+
+  try {
+    await regenerateGuestInvitationToken(eventId, user.id, guestId);
+  } catch (error) {
+    if (error instanceof EventNotFoundError || error instanceof GuestNotFoundError) notFound();
+    return { status: "error", error: mapGuestErrorMessage(error) };
+  }
+
+  revalidatePath(`/dashboard/events/${eventId}/guests/${guestId}/invitation`);
+  revalidatePath(`/dashboard/events/${eventId}/guests`);
+  return { status: "success" };
 }
 
 export interface ImportPreviewState {

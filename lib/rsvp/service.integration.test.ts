@@ -19,7 +19,12 @@ import {
   InvalidRsvpTokenError,
   SeatQuotaExceededError,
 } from "@/lib/rsvp/errors";
-import { getRsvpDashboardData, getRsvpGuestView, submitRsvpForGuest } from "@/lib/rsvp/service";
+import {
+  getRsvpDashboardData,
+  getRsvpForGuest,
+  getRsvpGuestView,
+  submitRsvpForGuest,
+} from "@/lib/rsvp/service";
 import type { RsvpFormInput } from "@/lib/rsvp/validation";
 
 const createdUserIds: string[] = [];
@@ -344,5 +349,57 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
     expect(data.counts.notAttending).toBe(1);
     expect(data.counts.confirmedSeats).toBe(2);
     expect(data.counts.totalSeatsInvited).toBe(6);
+  });
+});
+
+describe("getRsvpForGuest — event scoping for the Phase 7 per-guest invitation view (integration)", () => {
+  it("returns null when the guest has not responded yet", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const { guest } = await createTestGuest(event.id);
+
+    expect(await getRsvpForGuest(event.id, owner.id, guest.id)).toBeNull();
+  });
+
+  it("returns the guest's RSVP once they've responded", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const { guest, invitation } = await createTestGuest(event.id, 4);
+    await submitRsvpForGuest(event.id, invitation.token, attending);
+
+    const rsvp = await getRsvpForGuest(event.id, owner.id, guest.id);
+    expect(rsvp).toEqual({ attendance: "ATTENDING", attendeeCount: 2, message: "Sampai jumpa!" });
+  });
+
+  it("lets a VIEWER-role member read it", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
+    const { guest } = await createTestGuest(event.id);
+
+    await expect(getRsvpForGuest(event.id, viewer.id, guest.id)).resolves.toBeNull();
+  });
+
+  it("rejects a stranger", async () => {
+    const owner = await createTestUser("owner");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id);
+    const { guest } = await createTestGuest(event.id);
+
+    await expect(getRsvpForGuest(event.id, stranger.id, guest.id)).rejects.toThrow(
+      EventNotFoundError,
+    );
+  });
+
+  it("never returns another event's RSVP for a guestId that happens to match under a different event", async () => {
+    const owner = await createTestUser("owner");
+    const eventA = await createTestEvent(owner.id);
+    const eventB = await createTestEvent(owner.id);
+    const { guest, invitation } = await createTestGuest(eventA.id, 4);
+    await submitRsvpForGuest(eventA.id, invitation.token, attending);
+
+    // Same owner, same guestId, but the WRONG event — must not see Event A's RSVP.
+    expect(await getRsvpForGuest(eventB.id, owner.id, guest.id)).toBeNull();
   });
 });

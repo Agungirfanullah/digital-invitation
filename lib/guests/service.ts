@@ -1,5 +1,5 @@
 import "server-only";
-import { EventMemberRole, GuestCategory, Prisma } from "@prisma/client";
+import { EventMemberRole, GuestCategory, GuestInvitationStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
@@ -21,6 +21,7 @@ import type {
   CsvImportRowResult,
   CsvImportSummary,
   GuestDetail,
+  GuestInvitationDetail,
   GuestListItem,
 } from "@/lib/guests/types";
 
@@ -40,8 +41,15 @@ const GUEST_SELECT = {
 
 type GuestRow = Prisma.GuestGetPayload<{ select: typeof GUEST_SELECT }>;
 
-/** Every guest is created together with exactly one `GuestInvitation` (see `createGuestWithInvitation`) — this invariant is what makes `invitations[0]` safe here. */
-function toListItem(guest: GuestRow): GuestListItem {
+/**
+ * Every guest is created together with exactly one `GuestInvitation` (see
+ * `createGuestWithInvitation`) — this invariant is what makes
+ * `invitations[0]` safe here. `includeToken` defaults to `true`; every
+ * call site reachable only by EDITOR/OWNER leaves it at the default,
+ * `getGuestPageData()` is the one VIEWER-reachable caller and explicitly
+ * passes `false` for a VIEWER-resolved role.
+ */
+function toListItem(guest: GuestRow, includeToken = true): GuestListItem {
   const invitation = guest.invitations[0];
   if (!invitation) {
     throw new Error(`Guest ${guest.id} is missing its invitation row — data invariant violated`);
@@ -56,7 +64,7 @@ function toListItem(guest: GuestRow): GuestListItem {
     seatQuota: guest.seatQuota,
     notes: guest.notes,
     createdAt: guest.createdAt,
-    invitationToken: invitation.token,
+    invitationToken: includeToken ? invitation.token : null,
     invitationStatus: invitation.status,
   };
 }
@@ -186,10 +194,16 @@ export async function getGuestPageData(
     }),
   ]);
 
+  const role = resolveRole(event, userId);
+  // The one VIEWER-reachable read path returning `GuestListItem[]` — the
+  // token is masked here, at the source, rather than relying solely on
+  // the page choosing not to render a copy-link control for VIEWER.
+  const includeToken = role === EventMemberRole.OWNER || role === EventMemberRole.EDITOR;
+
   return {
     event: { id: event.id, title: event.title, slug: event.slug },
-    role: resolveRole(event, userId),
-    guests: guests.map(toListItem),
+    role,
+    guests: guests.map((guest) => toListItem(guest, includeToken)),
     total,
     page: query.page,
     pageSize: GUEST_PAGE_SIZE,
@@ -275,6 +289,125 @@ export async function deleteGuestForUser(
   // Cascades GuestInvitation/RSVP/Wish/CheckIn/etc. — enforced at the
   // database level via `onDelete: Cascade` (see prisma/schema.prisma).
   await prisma.guest.delete({ where: { id: guestId } });
+}
+
+/**
+ * VIEWER-and-above — the per-guest "Invitation" view. Re-verifies
+ * `{ id: guestId, eventId }` (IDOR-safe, same as every other nested guest
+ * lookup). The token is masked to `null` for a VIEWER-resolved role,
+ * exactly like `getGuestPageData()`; `invitationTokenAvailable` stays
+ * `true` regardless of role, since a personalized link always exists
+ * (docs/DECISIONS.md D-024) and a VIEWER may see that fact without ever
+ * receiving the token value itself.
+ */
+export async function getGuestInvitationDetail(
+  eventId: string,
+  userId: string,
+  guestId: string,
+): Promise<GuestInvitationDetail> {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
+  if (!event) throw new EventNotFoundError();
+
+  const guest = await prisma.guest.findFirst({
+    where: { id: guestId, eventId },
+    select: {
+      id: true,
+      name: true,
+      category: true,
+      phone: true,
+      invitations: { select: { token: true, status: true } },
+    },
+  });
+  if (!guest) throw new GuestNotFoundError();
+
+  const invitation = guest.invitations[0];
+  if (!invitation) {
+    throw new Error(`Guest ${guest.id} is missing its invitation row — data invariant violated`);
+  }
+
+  const role = resolveRole(event, userId);
+  const includeToken = role === EventMemberRole.OWNER || role === EventMemberRole.EDITOR;
+
+  return {
+    guestId: guest.id,
+    guestName: guest.name,
+    category: guest.category,
+    phone: guest.phone,
+    invitationStatus: invitation.status,
+    invitationTokenAvailable: true,
+    invitationToken: includeToken ? invitation.token : null,
+    role,
+    event: { id: event.id, title: event.title, slug: event.slug },
+  };
+}
+
+/**
+ * Regenerating the token only makes sense for the delivery-progress part
+ * of the lifecycle (NOT_SENT/SENT/OPENED) — those describe the *current*
+ * link, which is about to stop existing. RSVPED/CHECKED_IN describe
+ * something the guest actually *did*, independent of which token value
+ * they used to do it, so those are preserved rather than reset back to
+ * NOT_SENT. Pure and unit-tested in isolation (see docs/DECISIONS.md).
+ */
+export function resolveInvitationAfterRegeneration(currentStatus: GuestInvitationStatus): {
+  status: GuestInvitationStatus;
+  resetTimestamps: boolean;
+} {
+  if (
+    currentStatus === GuestInvitationStatus.RSVPED ||
+    currentStatus === GuestInvitationStatus.CHECKED_IN
+  ) {
+    return { status: currentStatus, resetTimestamps: false };
+  }
+  return { status: GuestInvitationStatus.NOT_SENT, resetTimestamps: true };
+}
+
+/**
+ * EDITOR-and-above. Verifies the guest belongs to `eventId` via the
+ * `GuestInvitation`'s own `{ eventId, guestId }` scoping (IDOR-safe —
+ * identical treatment for "no such guest" and "guest belongs to another
+ * event"). Generates a fresh cryptographically random token (same
+ * generator as guest creation, D-024), retrying on the astronomically
+ * unlikely event of a collision. The old token is never returned or
+ * logged — once this resolves, the previous URL stops working
+ * immediately (the next lookup by the old token simply matches no row).
+ */
+export async function regenerateGuestInvitationToken(
+  eventId: string,
+  userId: string,
+  guestId: string,
+): Promise<{ invitationToken: string; invitationStatus: GuestInvitationStatus }> {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.EDITOR);
+  if (!event) throw new EventNotFoundError();
+
+  const invitation = await prisma.guestInvitation.findFirst({
+    where: { eventId, guestId },
+    select: { id: true, status: true },
+  });
+  if (!invitation) throw new GuestNotFoundError();
+
+  const resolved = resolveInvitationAfterRegeneration(invitation.status);
+
+  for (let attempt = 1; attempt <= MAX_TOKEN_ATTEMPTS; attempt += 1) {
+    const token = generateGuestToken();
+    try {
+      const updated = await prisma.guestInvitation.update({
+        where: { id: invitation.id },
+        data: {
+          token,
+          status: resolved.status,
+          ...(resolved.resetTimestamps ? { sentAt: null, openedAt: null } : {}),
+        },
+        select: { token: true, status: true },
+      });
+      return { invitationToken: updated.token, invitationStatus: updated.status };
+    } catch (error) {
+      if (isUniqueConstraintError(error, "token") && attempt < MAX_TOKEN_ATTEMPTS) continue;
+      throw error;
+    }
+  }
+
+  throw new Error("Unreachable: exhausted token generation attempts");
 }
 
 const CSV_HEADER = ["nama", "telepon", "email", "kategori", "kuota", "catatan"];

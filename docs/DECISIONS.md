@@ -368,3 +368,146 @@ applies it inside the same `$transaction` as the RSVP upsert. Covered by
 both the unit test (`service.test.ts`) and an integration test that
 manually sets `CHECKED_IN` first and confirms a subsequent RSVP
 submission doesn't revert it (`service.integration.test.ts`).
+
+## D-027 --- Guest Invitation Token Masking Hardened at the Service Layer
+
+**Decision:** `lib/guests/service.ts`'s `GuestListItem`/`GuestInvitationDetail`
+now carry `invitationToken: string | null` — `null` whenever the caller's
+resolved role is `VIEWER`, decided inside the service functions
+themselves (`getGuestPageData()`, `getGuestInvitationDetail()`), not left
+to the page component's choice of what to render.
+
+**Rationale:** Before this phase, the token was always present in the
+data `lib/guests/service.ts` returned; a VIEWER never actually received
+it in practice only because `app/dashboard/events/[eventId]/guests/page.tsx`
+happened to gate the `<CopyInviteLinkButton>` behind `canEdit`. That was
+correct today, but fragile: any future change to that page (or a new page
+built against the same service function) could pass the guest object to
+a client component for an unrelated reason and silently leak the token
+to a VIEWER, with nothing at the data layer to catch it. Phase 7's
+explicit security review requirement ("never leak tokens through...
+generic dashboard loaders") is exactly this class of risk. Moving the
+mask into the service layer means the token simply isn't *present* in
+data returned to a VIEWER-resolved caller, regardless of what any current
+or future page does with it.
+
+**Impact:** `toListItem()` takes an `includeToken` flag (default `true`
+— every EDITOR/OWNER-gated caller keeps the default); the two
+VIEWER-reachable read paths (`getGuestPageData()`,
+`getGuestInvitationDetail()`) compute the caller's role first and pass
+`false` when it's `VIEWER`. `invitationTokenAvailable: boolean` was added
+alongside the masked field so a VIEWER can still see "a personalized link
+exists" without ever receiving its value (used by the new per-guest
+Invitation page). Proven directly: `lib/guests/service.integration.test.ts`
+asserts a VIEWER's `GuestListItem`/`GuestInvitationDetail` both have
+`invitationToken: null` from real live-DB calls (not just a page-level
+rendering check), and `e2e/guest-invitation.spec.ts` asserts the raw
+token string never appears anywhere in a VIEWER's rendered page.
+
+## D-028 --- Token Regeneration Semantics
+
+**Decision:** `/dashboard/events/[eventId]/guests/[guestId]/invitation`
+lets an EDITOR/OWNER regenerate a guest's invitation token
+(`lib/guests/service.ts`'s `regenerateGuestInvitationToken()`). The old
+token is invalidated immediately (the next lookup by it simply matches no
+row) and is never returned, displayed, or logged again once the new one
+is issued. `GuestInvitationStatus` is reset to `NOT_SENT` (clearing
+`sentAt`/`openedAt`) when it was `NOT_SENT`/`SENT`/`OPENED` — those
+describe the *link that's about to stop existing* — but `RSVPED`/
+`CHECKED_IN` are preserved unchanged, since those describe something the
+guest actually *did*, independent of which token value they used to do
+it.
+
+**Rationale:** This was implemented (rather than skipped as
+"technically easy but unrequested") because `docs/PRD.md`/`docs/ROADMAP.md`
+treat personalized links as bearer secrets that can leak (shared to the
+wrong person, posted somewhere public, etc.), and a product with no way
+to revoke a compromised link would leave the owner with no remedy short
+of deleting and recreating the guest entirely (which would also destroy
+their real RSVP history). The status-preservation rule specifically
+avoids a bad side effect: without it, regenerating a token for a guest
+who already RSVPed would make the dashboard show "belum mengisi RSVP"
+for someone who very much did, which is a straightforwardly false
+statement about the product's own data.
+
+**Impact:** `resolveInvitationAfterRegeneration()` (pure, unit-tested in
+`service.test.ts`) encodes the rule; `regenerateGuestInvitationToken()`
+applies it in the same update as the new token, EDITOR-and-above,
+re-verifying `{ eventId, guestId }` via the `GuestInvitation` row itself
+(IDOR-safe — a guest belonging to a different event is indistinguishable
+from a nonexistent one). Rate-limited per-user via
+`lib/guests/rate-limit.ts` (10 per 10 minutes) per Phase 7's abuse-review
+requirement. The UI (`RegenerateTokenButton`) requires an explicit
+two-step confirmation with copy warning that old shared links stop
+working, matching `DeleteGuestButton`'s established pattern for
+destructive-ish actions. Covered end-to-end by
+`lib/guests/service.integration.test.ts` (status/timestamp reset vs.
+preservation, IDOR, role gating) and `e2e/guest-invitation.spec.ts`
+(the old link stops personalizing, the new one works).
+
+## D-029 --- Invitation Delivery Abstraction: No Real Provider, `wa.me` Is Not "Delivery"
+
+**Decision:** `lib/invitation-delivery/` defines a provider-agnostic
+interface (`InvitationDeliveryProvider`, `DeliveryRequest`/`DeliveryResult`)
+and a message composer (`composeInvitationMessage()`), but **no real
+WhatsApp Business API or email provider is registered or implemented** —
+`getDeliveryProvider()` returns `null` for every channel, and
+`attemptDelivery()` always resolves to a clear "not configured" failure.
+The dashboard's "Buka WhatsApp" action is a `wa.me` deep link
+(`buildWhatsAppShareUrl()`) that opens the *operator's own* WhatsApp
+client with the message pre-filled — this app never transmits anything;
+the human operating the dashboard does, by tapping "Send" inside their
+own WhatsApp app, exactly as `docs/PRD.md` §32 describes ("Copy message",
+"Open WhatsApp").
+
+**Rationale:** The phase brief was explicit: no real provider
+integration without configured credentials, no fake/simulated successful
+sends, unsupported channels must fail clearly. Building the full
+interface now (rather than skipping it) means a future real provider —
+once credentials exist — implements `InvitationDeliveryProvider` and
+registers itself, with zero change to guest/invitation business logic or
+the dashboard UI's message-composition flow. Critically, copying the
+composed message or opening the `wa.me` link **never** touches
+`GuestInvitation.status`/`sentAt` — per the phase brief, "a copied
+invitation link is NOT the same thing as a provider-delivered
+invitation." Those columns are reserved for a real future provider
+confirming an actual send.
+
+**Impact:** `components/guests/message-preview.tsx` only offers
+client-side actions (clipboard copy, a `wa.me` link) — no Server Action
+in this domain ever marks anything as sent. `attemptDelivery()` is fully
+implemented and unit-tested (including a fake provider proving the
+interface is genuinely implementable) but is not wired to any UI in this
+phase, since there is nothing configured to call it against.
+`docs/STATUS.md` records this explicitly so it's never mistaken for a
+working send feature later.
+
+## D-030 --- Login Rate Limit Raised to Accommodate Growing E2E Test Volume
+
+**Decision:** `lib/auth/rate-limit.ts`'s `login` bucket was raised from
+10 to 30 attempts per 10 minutes.
+
+**Rationale:** D-022 established that every phase needing an
+authenticated E2E flow would reuse the admin-provisioned real-login
+pattern, and phases have done exactly that (editor, guests, RSVP-adjacent
+guest-invitation). By the end of Phase 6 the combined suite already
+submitted exactly 10 real `/login` attempts in a single `npm run
+test:e2e` run — precisely at the limit — because `getRequestIp()` falls
+back to a single shared `"unknown"` key when `x-forwarded-for`/
+`x-real-ip` are absent, which they are for local Playwright runs against
+`next dev`. Phase 7's additional legitimate login-based tests
+(`e2e/guest-invitation.spec.ts`) pushed the combined total to 15,
+tripping the limit and causing unrelated Phase 5/6 specs to fail via this
+shared bucket — a real, reproducible regression, not a flaky test. 30
+still meaningfully throttles credential-stuffing in production (Supabase
+Auth's own server-side abuse protections are the primary defense against
+password-guessing; this app-level limiter is defense-in-depth, not the
+only line of defense) while leaving headroom for the E2E strategy this
+project has already committed to.
+
+**Impact:** `register`/`password-reset` limits are unchanged (not
+exercised at this volume by any current E2E suite). If a future phase's
+E2E growth approaches this ceiling again, the underlying fix is a
+per-test-run-isolated rate-limit store or a test-environment exemption,
+not another arbitrary increase — noted here so that's the next
+escalation, not a repeat of this one.

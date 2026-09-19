@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireAppUser } from "@/lib/auth/session";
-import { getAppUrl } from "@/lib/auth/urls";
 import { getGuestPageData } from "@/lib/guests/service";
+import { buildGuestInvitationUrl } from "@/lib/guests/invitation-url";
 import { EventNotFoundError } from "@/lib/guests/errors";
 import { guestListQuerySchema } from "@/lib/guests/validation";
 import { GUEST_CATEGORY_OPTIONS, GUEST_INVITATION_STATUS_LABELS } from "@/lib/guests/labels";
@@ -50,7 +50,6 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
 
   const canEdit = data.role === "OWNER" || data.role === "EDITOR";
   const totalPages = Math.max(1, Math.ceil(data.total / data.pageSize));
-  const appUrl = getAppUrl();
   const isFiltered = Boolean(query.q) || query.category !== "ALL";
 
   return (
@@ -147,7 +146,13 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
         <div className="overflow-hidden rounded-lg border">
           <ul className="divide-y">
             {data.guests.map((guest) => {
-              const inviteLink = `${appUrl}/invite/${data.event.slug}?to=${guest.invitationToken}`;
+              // `guest.invitationToken` is masked to `null` for a VIEWER
+              // (see lib/guests/service.ts's toListItem) — canEdit is
+              // always true whenever a real token is present here.
+              const inviteLink =
+                canEdit && guest.invitationToken
+                  ? buildGuestInvitationUrl(data.event.slug, guest.invitationToken)
+                  : null;
               return (
                 <li
                   key={guest.id}
@@ -164,8 +169,13 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <Link href={`/dashboard/events/${eventId}/guests/${guest.id}/invitation`}>
+                        Undangan
+                      </Link>
+                    </Button>
                     {/* Invitation tokens are a personalization secret (excluded from CSV export too) — never surfaced to a VIEWER (D-023). */}
-                    {canEdit && <CopyInviteLinkButton link={inviteLink} />}
+                    {inviteLink && <CopyInviteLinkButton link={inviteLink} />}
                     {canEdit && (
                       <>
                         <Button asChild variant="outline" size="sm">

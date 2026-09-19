@@ -12,14 +12,16 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 6 --- RSVP & Guest Response Foundation
+**Current Phase:** Phase 7 --- Guest Personalization & Invitation Delivery
+Foundation
 
-**Status:** Phase 0-5 remain complete and passing. Phase 6's RSVP flow
-(personalized guest submission/update through the real public invitation,
-seat-quota enforcement, invitation-status lifecycle, and a dashboard RSVP
-overview) is implemented and verified against the real Supabase DEV
-Postgres database, including a real browser E2E flow through the actual
-`/invite/[slug]?to=[token]` page.
+**Status:** Phase 0-6 remain complete and passing. Phase 7's invitation
+delivery/personalization workflow (a shared server-side invitation URL
+helper, a per-guest "Invitation" dashboard view with status + RSVP
+summary, hardened token privacy, safe token regeneration, and a
+provider-agnostic delivery abstraction with an honest "no real provider
+configured" foundation) is implemented and verified against the real
+Supabase DEV Postgres database and a real browser E2E flow.
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -29,19 +31,23 @@ rendering foundation end-to-end in one pass rather than strictly
 sequentially. "Phase 4 — Editor Foundation" then corresponded mainly to
 Roadmap Phase 5 (Invitation Editor) plus the data-entry side of Roadmap
 Phase 4. "Phase 5 — Guest Management Foundation" corresponded to Roadmap
-Phase 7 (Guest Management) minus its RSVP/check-in-related fields. This
-phase, "Phase 6 — RSVP & Guest Response Foundation," corresponds to
-Roadmap Phase 9 (RSVP) — the seat-quota-enforcement and
-`GuestInvitation.status` transitions that Phase 5's STATUS notes deferred
-here are now implemented; check-in (Roadmap Phase 14, `CHECKED_IN`) and
-the wishes/guestbook feature (Roadmap Phase 10) remain future work. This
-is a deliberate execution-order adjustment permitted by
-`AGENT_EXECUTION.md` §9 ("adjust the implementation order while
-preserving the product priorities"), not a reinterpretation of the
-roadmap's actual content — `docs/ROADMAP.md` itself is left unchanged
-since it still correctly describes the target feature set for each
-phase; only the *grouping and sequencing* of these implementation passes
-differs from a literal phase-by-phase reading.
+Phase 7 (Guest Management) minus its RSVP/check-in-related fields. "Phase
+6 — RSVP & Guest Response Foundation" corresponded to Roadmap Phase 9
+(RSVP). This phase, "Phase 7 — Guest Personalization & Invitation
+Delivery Foundation," corresponds to Roadmap Phase 8 (Guest
+Personalization — already substantially covered by Phase 3's token
+resolution, so this phase's real new ground is the dashboard-facing
+delivery/status/copy-share workflow) plus the non-sending half of Roadmap
+Phase 12 (WhatsApp Sharing: message generation, copy, the `wa.me` deep
+link — explicitly not real provider sending, since no provider is
+configured). Check-in (Roadmap Phase 14) and wishes/guestbook (Roadmap
+Phase 10) remain future work. This is a deliberate execution-order
+adjustment permitted by `AGENT_EXECUTION.md` §9 ("adjust the
+implementation order while preserving the product priorities"), not a
+reinterpretation of the roadmap's actual content — `docs/ROADMAP.md`
+itself is left unchanged since it still correctly describes the target
+feature set for each phase; only the *grouping and sequencing* of these
+implementation passes differs from a literal phase-by-phase reading.
 
 ## Documentation Baseline
 
@@ -1273,6 +1279,217 @@ public and unauthenticated, so no login is involved on this side at all):
     to the organizer shown only on the dashboard, deliberately distinct
     from the separate, moderated, publicly-displayed `Wish` model.
 
+## Phase 7 --- Guest Personalization & Invitation Delivery Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including a real browser E2E flow. No fake/mocked
+delivery, no simulated provider sends, no schema migration required —
+`GuestInvitation`'s existing `token`/`status`/`sentAt`/`openedAt` columns
+(Phase 0) already fully support this phase's lifecycle needs, and no new
+delivery-state values were invented that nothing can actually verify.
+
+-   [x] Shared invitation URL helper (`lib/guests/invitation-url.ts`) —
+    `buildGuestInvitationUrl(eventSlug, token)` is now the single place
+    that formats `/invite/[slug]?to=[token]`; the dashboard guest list
+    page previously built this string inline and has been switched over.
+    Defense-in-depth against a misconfigured `NEXT_PUBLIC_APP_URL`:
+    rejects (throws) if the constructed URL isn't a safe http(s) URL via
+    the existing `lib/invitations/url-safety.ts`, since the env schema's
+    `.url()` check alone accepts any scheme.
+-   [x] Per-guest "Invitation" dashboard view
+    (`/dashboard/events/[eventId]/guests/[guestId]/invitation`) — shows
+    guest name/category, invitation status badge, RSVP status badge (and
+    the guest's actual answer/message when present), personalized-link
+    availability, and — EDITOR/OWNER only — the real link with copy/
+    regenerate controls plus a message preview. Linked from a new
+    "Undangan" action on every guest-list row, visible to all roles
+    (VIEWER included, since viewing invitation/RSVP metadata is a read
+    permission per D-023's precedent).
+-   [x] Token privacy hardened at the service layer — see D-027.
+    `GuestListItem`/`GuestInvitationDetail` now type `invitationToken` as
+    `string | null`, masked to `null` server-side for a VIEWER-resolved
+    role rather than relying only on the page's rendering choice.
+-   [x] Safe token regeneration — see D-028.
+    `regenerateGuestInvitationToken()` (EDITOR/OWNER, IDOR-scoped,
+    rate-limited) issues a fresh cryptographically random token, the old
+    one stops resolving immediately, and it's never returned/logged
+    again. Delivery-progress status (NOT_SENT/SENT/OPENED) resets to
+    NOT_SENT; guest-action status (RSVPED/CHECKED_IN) is preserved.
+    `RegenerateTokenButton` requires an explicit two-step confirmation
+    with a clear warning that old shared links stop working.
+-   [x] Invitation delivery abstraction (`lib/invitation-delivery/`) —
+    see D-029. `InvitationDeliveryProvider` interface,
+    `composeInvitationMessage()` (the real, working message
+    personalization — guest name, event title, invitation URL, exact
+    copy structure from `docs/PRD.md` §32), `buildWhatsAppShareUrl()` (a
+    `wa.me` deep link, not a provider send), and `attemptDelivery()`
+    (fully wired against the provider registry, always honestly reports
+    "not configured" today since no real provider is registered). No
+    "Send" action exists in the UI — there's nothing configured to send
+    with, and a button whose only possible outcome is "not configured"
+    would be exactly the "dead button" this product avoids.
+-   [x] Message preview/compose (`components/guests/message-preview.tsx`)
+    — a real, personalized message preview with "Salin Pesan" (clipboard
+    copy) and "Buka WhatsApp" (opens the *operator's own* WhatsApp with
+    the message pre-filled; hidden with an explanatory note when the
+    guest has no phone number). Neither action is a Server Action or
+    touches `GuestInvitation.status`/`sentAt` — copying or previewing a
+    message is a client-side convenience, never recorded as a delivery.
+-   [x] Rate limiting — `lib/guests/rate-limit.ts` applies the existing
+    in-memory limiter to token regeneration (10 per 10 minutes, keyed by
+    `userId` since this is an authenticated mutation, unlike RSVP's
+    IP-keyed public limiter). Same documented single-process caveat as
+    every other limiter in this codebase.
+-   [x] Loading/error/empty states — `invitation/loading.tsx` skeleton,
+    the shared not-found page for unauthorized/nonexistent
+    events/guests, inline success/error feedback on the regenerate
+    button, an honest "Nomor telepon belum diisi" note instead of a
+    broken WhatsApp link.
+
+### Security review findings (fixed in this phase)
+
+-   **Guest invitation tokens were only VIEWER-safe by page-rendering
+    convention, not by data-layer guarantee.** `lib/guests/service.ts`'s
+    `getGuestPageData()` always returned the real token in
+    `GuestListItem`; nothing prevented a future page/component from
+    passing that object to a client component without re-checking the
+    role first. Fixed by masking the token to `null` inside the service
+    functions themselves for a VIEWER-resolved role — see D-027. Directly
+    proven via a live-DB integration test (not just a page-level check)
+    and an E2E test asserting the raw token string never appears
+    anywhere in a VIEWER's rendered page.
+-   No other new gaps were found. Existing Phase 3/4/5/6 protections
+    (safe-URL filtering, IDOR-safe nested lookups, generic not-found
+    responses, no `dangerouslySetInnerHTML`, rate limiting on public
+    mutations) were reviewed and confirmed to already cover this phase's
+    new surfaces without modification, except where noted above.
+
+### Notable implementation decisions
+
+-   **RSVP data stays out of `lib/invitations/`, and now so does delivery
+    data** — see D-025 (Phase 6) and this phase's design: the per-guest
+    Invitation page independently calls `lib/guests/service.ts`,
+    `lib/rsvp/service.ts`, and `lib/invitation-delivery/`, composing
+    their results at the page level rather than widening any shared DTO.
+    Phase 3's `lib/invitations/*` files needed zero changes for this
+    phase, same as Phase 6.
+-   **Token regeneration status/timestamp semantics** — see D-028.
+-   **No real delivery provider, `wa.me` is a deep link not a send** —
+    see D-029. Read this before assuming "WhatsApp sharing" means the
+    app can send messages — it cannot, by design, until a real provider
+    is configured.
+-   **Login rate limit raised from 10 to 30 per 10 minutes** — see D-030.
+    Found while running the full E2E suite: the combined authenticated
+    E2E login volume across phases had already reached the previous
+    limit by Phase 6, and this phase's additional legitimate tests
+    tripped it, breaking unrelated Phase 5/6 specs through a shared
+    rate-limit bucket. Not a Phase 7 product feature, but a genuine fix
+    required to keep the full regression suite green.
+
+### Tests Added (Phase 7)
+
+Pure unit tests (no database):
+
+-   `lib/guests/invitation-url.test.ts` (5 tests) — correct URL shape,
+    trailing-slash stripping, token URL-encoding, production https
+    passthrough, throws on a misconfigured non-http(s) app URL
+-   `lib/guests/service.test.ts` (5 tests) — `resolveInvitationAfterRegeneration()`:
+    NOT_SENT/SENT/OPENED all reset to NOT_SENT with timestamps cleared;
+    RSVPED/CHECKED_IN both preserved
+-   `lib/guests/actions.test.ts` (+3 tests) — `regenerateInvitationTokenAction`:
+    rate-limit rejection short-circuits before calling the service layer;
+    the authenticated user's id (never a client-supplied field) reaches
+    the service layer; a thrown domain error never leaks its raw message
+-   `lib/invitation-delivery/message.test.ts` (2 tests) — the composed
+    message includes the personalized guest name, event title, and URL,
+    with no stray `undefined`/`null` artifacts
+-   `lib/invitation-delivery/whatsapp.test.ts` (4 tests) — `wa.me` link
+    construction with Indonesian phone normalization, message
+    URL-encoding, and a `null` result for a missing/too-short phone
+    number
+-   `lib/invitation-delivery/providers.test.ts` (4 tests) — no provider
+    is registered for any channel; `attemptDelivery()` always fails
+    honestly and never throws; a fake provider proves the interface is
+    genuinely implementable by something outside this module
+-   `lib/invitation-delivery/errors.test.ts` (2 tests) — domain error →
+    Indonesian message mapping; confirms unexpected errors never leak
+    raw details
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/guests/service.integration.test.ts` (+12 tests) —
+    `getGuestPageData()` now directly asserts `invitationToken: null` for
+    a VIEWER and the real token for EDITOR/OWNER (not just a page-level
+    check); `getGuestInvitationDetail()`: token masking, cross-event IDOR,
+    stranger rejection; `regenerateGuestInvitationToken()`: issues a new
+    token and the old one stops resolving (row-level proof, not just a
+    return-value check), status/timestamp reset vs. preservation rules,
+    EDITOR-and-above role gating, cross-event IDOR (with a follow-up
+    query proving the original token is untouched by the rejected
+    attempt)
+-   `lib/rsvp/service.integration.test.ts` (+5 tests) — `getRsvpForGuest()`:
+    null before responding, the real answer after responding,
+    VIEWER-and-above read access, stranger rejection, and never returning
+    another event's RSVP for a guestId that happens to exist under a
+    different event too
+
+E2E (real Supabase DEV database and a real authenticated session — see
+D-022):
+
+-   `e2e/guest-invitation.spec.ts` (5 tests) — an owner sees the copy
+    link/regenerate/message-preview controls and a correctly personalized
+    message (guest name + event title) with a working WhatsApp link; an
+    editor sees the identical controls; **a VIEWER sees status/metadata
+    but the raw token string is absent from the entire rendered page**,
+    and the copy-link/regenerate/message-preview controls don't exist in
+    the DOM at all (not just visually hidden); regenerating the token
+    makes the old personalized link stop working and the new one work
+    correctly; a stranger gets the shared not-found page.
+-   `e2e/invitation.spec.ts`'s existing "personalizes the greeting for a
+    valid guest token" test needed a `.first()` selector fix — unrelated
+    to this phase's logic, caused purely by the pre-existing RSVP section
+    (Phase 6) also greeting the guest by name on the same page. Same
+    class of fix already applied once before (Phase 6 for the same
+    reason); not a weakened assertion.
+-   Confirmed via a full `npm run test:e2e` run: all pre-existing Phase
+    0-6 E2E specs continue passing (after the login rate-limit fix,
+    D-030, and the one selector fix above).
+
+### Provider Integrations Actually Implemented
+
+**None.** No real WhatsApp Business API, SMS, or email provider is
+configured or called. The only outbound-facing behavior is a `wa.me` deep
+link that opens the dashboard operator's own WhatsApp client — this app
+never transmits a message itself. See D-029.
+
+### Known Limitations
+
+-   No real automated message sending — by design (see D-029). Adding a
+    real provider is future work requiring actual credentials/config,
+    which this environment does not have.
+-   No invitation open-tracking wiring (`GuestInvitationStatus.OPENED`,
+    `openedAt`) on the public `/invite/[slug]?to=[token]` route — the
+    columns and enum value exist and are fully supported by this phase's
+    dashboard/regeneration logic, but nothing sets them yet. This
+    preserves Phase 3's original reasoning (writing to the database on
+    every public page view has real abuse-surface and load implications)
+    now reinforced by the fact that this phase gives that write an actual
+    consumer (the dashboard) for the first time — a deliberate scope
+    boundary, revisit if/when open-tracking becomes a real product
+    priority rather than expanding it opportunistically here.
+-   `SENT` similarly has no real setter yet — it's reserved for a future
+    real provider confirming an actual send (D-029); nothing in this
+    phase (copy link, copy message, open WhatsApp) is allowed to set it,
+    by design, so in practice most guests will show NOT_SENT or
+    RSVPED/CHECKED_IN today.
+-   The in-memory rate limiter (used for both RSVP submission, Phase 6,
+    and token regeneration, Phase 7) remains a single-process stopgap —
+    see "Rate limiting" above.
+-   The login rate-limit fix (D-030) addresses the *current* combined
+    E2E login volume with headroom, not an unbounded amount — a future
+    phase adding many more authenticated E2E logins could still need a
+    proper per-test-run-isolated fix rather than another bump.
+
 ## Later Phases
 
 Follow `docs/ROADMAP.md`. Do not mark later phases complete here without
@@ -1343,33 +1560,40 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (345/345 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (387/387 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
-                             lib/guests/*, lib/rsvp/*; 106 of these are live-DB integration
-                             tests — 15 events, 14 invitations, 31 editor, 26 guests, 20
-                             rsvp — 0 leftover rows verified after each run)
+                             lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*; 123 of
+                             these are live-DB integration tests — 15 events, 14
+                             invitations, 31 editor, 38 guests, 25 rsvp — 0 leftover rows
+                             verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
-                             /invite/[slug], the editor route, all guest routes, and the
-                             RSVP dashboard route correctly dynamic)
-E2E:                        PASS (29/29 — homepage smoke test, auth foundation suite,
+                             /invite/[slug], the editor route, all guest routes, the
+                             per-guest invitation route, and the RSVP dashboard route
+                             correctly dynamic)
+E2E:                        PASS (34/34 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
-                             suite, guest management suite, and RSVP suite;
-                             auth/invitation/editor/guests/rsvp suites exercise the real
-                             Supabase DEV database directly, no mocks — the editor and
-                             guests suites additionally drive a real authenticated
-                             session (D-022); the RSVP guest flow is public/unauthenticated
-                             by design, so its suite seeds fixtures directly via Prisma
-                             instead, the same pattern e2e/invitation.spec.ts already uses)
+                             suite, guest management suite, RSVP suite, and guest
+                             invitation delivery suite; auth/invitation/editor/guests/rsvp/
+                             guest-invitation suites exercise the real Supabase DEV
+                             database directly, no mocks — the editor, guests, and
+                             guest-invitation suites additionally drive a real
+                             authenticated session (D-022); the RSVP guest flow is
+                             public/unauthenticated by design, so its suite seeds fixtures
+                             directly via Prisma instead, the same pattern
+                             e2e/invitation.spec.ts already uses. Required raising the
+                             login rate limit — D-030 — to keep the combined suite's real
+                             login volume from tripping a shared in-memory bucket)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 6, the existing RSVP schema (with its
-                             eventId+guestId unique constraint) was fully sufficient)
+                             none new in Phase 7, the existing GuestInvitation schema was
+                             fully sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
-                             invitation-token, editor/IDOR, guest/IDOR, AND RSVP token/
-                             seat-quota/IDOR authorization proofs; Auth via a real
-                             authenticated login in e2e/editor.spec.ts and
-                             e2e/guests.spec.ts)
+                             invitation-token, editor/IDOR, guest/IDOR, RSVP token/
+                             seat-quota/IDOR, AND guest-invitation token-masking/
+                             regeneration IDOR authorization proofs; Auth via a real
+                             authenticated login in e2e/editor.spec.ts, e2e/guests.spec.ts,
+                             and e2e/guest-invitation.spec.ts)
 ```
 
 ## Update Rules

@@ -120,6 +120,37 @@ export async function getRsvpGuestView(
 }
 
 /**
+ * VIEWER-and-above — a single guest's RSVP answer for the Phase 7
+ * per-guest "Invitation" dashboard view. Event-scoped by construction:
+ * the query requires both `eventId` and `guestId` to match, so a
+ * `guestId` that belongs to a different event simply matches no row
+ * (returns `null`) rather than ever returning that other event's data —
+ * the same IDOR-safe treatment used everywhere else in this codebase.
+ * Does not separately verify the guest exists (unlike
+ * `lib/guests/service.ts`'s `getGuestInvitationDetail`) — callers that
+ * need a 404 for a nonexistent guest already get that from resolving the
+ * guest first; this function's only job is "does an RSVP exist for this
+ * exact event+guest pair," and `null` is a safe answer either way.
+ */
+export async function getRsvpForGuest(
+  eventId: string,
+  userId: string,
+  guestId: string,
+): Promise<RsvpAnswer | null> {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
+  if (!event) throw new EventNotFoundError();
+
+  const rsvp = await prisma.rSVP.findFirst({
+    where: { eventId, guestId },
+    select: { attendance: true, attendeeCount: true, message: true },
+  });
+
+  return rsvp
+    ? { attendance: rsvp.attendance, attendeeCount: rsvp.attendeeCount, message: rsvp.message }
+    : null;
+}
+
+/**
  * Creates or updates the guest's RSVP (upsert on the `eventId+guestId`
  * unique constraint — docs/DATABASE.md §16) and advances the invitation
  * status, atomically. Throws `InvalidRsvpTokenError` for anything that

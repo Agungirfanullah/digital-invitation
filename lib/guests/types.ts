@@ -1,4 +1,4 @@
-import type { GuestCategory, GuestInvitationStatus } from "@prisma/client";
+import type { EventMemberRole, GuestCategory, GuestInvitationStatus } from "@prisma/client";
 
 /**
  * The authenticated owner/editor/viewer's view of a guest, including the
@@ -16,12 +16,39 @@ export interface GuestListItem {
   seatQuota: number;
   notes: string | null;
   createdAt: Date;
-  invitationToken: string;
+  /**
+   * `null` when the caller's resolved role is VIEWER — masked at the
+   * service layer (`getGuestPageData()`), not merely hidden by the page's
+   * rendering choice, per docs/DECISIONS.md's Phase 7 token-privacy
+   * hardening. Always a real token for an EDITOR/OWNER caller.
+   */
+  invitationToken: string | null;
   invitationStatus: GuestInvitationStatus;
 }
 
 export interface GuestDetail extends GuestListItem {
   eventId: string;
+}
+
+/**
+ * The per-guest "Invitation" view (status + personalized link + RSVP
+ * summary lives alongside it via a separate `lib/rsvp` call). Distinct
+ * from `GuestListItem`/`GuestDetail` because it also carries the caller's
+ * resolved `role` (so the page can decide what to render) and an explicit
+ * `invitationTokenAvailable` flag that stays `true` even when
+ * `invitationToken` itself is masked — a VIEWER can see "a personalized
+ * link exists" without ever receiving the link's value.
+ */
+export interface GuestInvitationDetail {
+  guestId: string;
+  guestName: string;
+  category: GuestCategory;
+  phone: string | null;
+  invitationStatus: GuestInvitationStatus;
+  invitationTokenAvailable: boolean;
+  invitationToken: string | null;
+  role: EventMemberRole;
+  event: { id: string; title: string; slug: string };
 }
 
 export interface GuestListResult {

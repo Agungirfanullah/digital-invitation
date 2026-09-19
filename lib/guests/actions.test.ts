@@ -6,6 +6,8 @@ const updateGuestForUserMock = vi.fn();
 const deleteGuestForUserMock = vi.fn();
 const previewGuestImportMock = vi.fn();
 const confirmGuestImportMock = vi.fn();
+const regenerateGuestInvitationTokenMock = vi.fn();
+const checkGuestInvitationRateLimitMock = vi.fn();
 
 vi.mock("@/lib/auth/session", () => ({
   requireAppUser: (...args: unknown[]) => requireAppUserMock(...args),
@@ -17,6 +19,12 @@ vi.mock("@/lib/guests/service", () => ({
   deleteGuestForUser: (...args: unknown[]) => deleteGuestForUserMock(...args),
   previewGuestImport: (...args: unknown[]) => previewGuestImportMock(...args),
   confirmGuestImport: (...args: unknown[]) => confirmGuestImportMock(...args),
+  regenerateGuestInvitationToken: (...args: unknown[]) =>
+    regenerateGuestInvitationTokenMock(...args),
+}));
+
+vi.mock("@/lib/guests/rate-limit", () => ({
+  checkGuestInvitationRateLimit: (...args: unknown[]) => checkGuestInvitationRateLimitMock(...args),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -36,6 +44,7 @@ import {
   confirmGuestImportAction,
   createGuestAction,
   previewGuestImportAction,
+  regenerateInvitationTokenAction,
   updateGuestAction,
 } from "@/lib/guests/actions";
 
@@ -46,6 +55,8 @@ beforeEach(() => {
   deleteGuestForUserMock.mockReset();
   previewGuestImportMock.mockReset();
   confirmGuestImportMock.mockReset();
+  regenerateGuestInvitationTokenMock.mockReset();
+  checkGuestInvitationRateLimitMock.mockReset().mockResolvedValue(true);
 });
 
 function guestFormData(overrides: Record<string, string> = {}): FormData {
@@ -139,5 +150,52 @@ describe("confirmGuestImportAction", () => {
 
     expect(result.error).toBeDefined();
     expect(confirmGuestImportMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("regenerateInvitationTokenAction", () => {
+  it("returns an error without calling the service layer when rate-limited", async () => {
+    checkGuestInvitationRateLimitMock.mockResolvedValue(false);
+
+    const result = await regenerateInvitationTokenAction(
+      "event-1",
+      "guest-1",
+      { status: "idle" },
+      new FormData(),
+    );
+
+    expect(result.status).toBe("error");
+    expect(regenerateGuestInvitationTokenMock).not.toHaveBeenCalled();
+  });
+
+  it("derives the current user from the session and passes eventId/guestId through, never a client-supplied field", async () => {
+    regenerateGuestInvitationTokenMock.mockResolvedValue({
+      invitationToken: "new-token",
+      invitationStatus: "NOT_SENT",
+    });
+
+    const result = await regenerateInvitationTokenAction(
+      "event-1",
+      "guest-1",
+      { status: "idle" },
+      new FormData(),
+    );
+
+    expect(result.status).toBe("success");
+    expect(regenerateGuestInvitationTokenMock).toHaveBeenCalledWith("event-1", "user-1", "guest-1");
+  });
+
+  it("maps a thrown domain error to a safe message", async () => {
+    regenerateGuestInvitationTokenMock.mockRejectedValue(new Error("some internal detail"));
+
+    const result = await regenerateInvitationTokenAction(
+      "event-1",
+      "guest-1",
+      { status: "idle" },
+      new FormData(),
+    );
+
+    expect(result.status).toBe("error");
+    if (result.status === "error") expect(result.error).not.toMatch(/internal detail/);
   });
 });

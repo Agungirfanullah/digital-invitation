@@ -10,7 +10,7 @@
  */
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { EventMemberRole, GuestCategory } from "@prisma/client";
+import { EventMemberRole, GuestCategory, GuestInvitationStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { EventNotFoundError, GuestNotFoundError } from "@/lib/guests/errors";
@@ -20,8 +20,10 @@ import {
   deleteGuestForUser,
   exportGuestsToCsv,
   getGuestForEditor,
+  getGuestInvitationDetail,
   getGuestPageData,
   previewGuestImport,
+  regenerateGuestInvitationToken,
   updateGuestForUser,
 } from "@/lib/guests/service";
 import { guestListQuerySchema, type GuestInput } from "@/lib/guests/validation";
@@ -89,11 +91,13 @@ describe("createGuestForUser (integration — live Supabase DEV database)", () =
     const guest = await createGuestForUser(event.id, owner.id, validGuest);
 
     expect(guest.name).toBe("Budi Santoso");
-    expect(guest.invitationToken.length).toBeGreaterThanOrEqual(10);
+    expect(guest.invitationToken).not.toBeNull();
+    const token = guest.invitationToken as string;
+    expect(token.length).toBeGreaterThanOrEqual(10);
     expect(guest.invitationStatus).toBe("NOT_SENT");
 
     const invitation = await prisma.guestInvitation.findUnique({
-      where: { token: guest.invitationToken },
+      where: { token },
     });
     expect(invitation?.eventId).toBe(event.id);
     expect(invitation?.guestId).toBe(guest.id);
@@ -241,6 +245,29 @@ describe("getGuestPageData — read access and search/filter/sort/pagination (in
     const page = await getGuestPageData(event.id, viewer.id, defaultQuery);
     expect(page.guests).toHaveLength(1);
     expect(page.role).toBe("VIEWER");
+    // The bearer invitation token must never reach a VIEWER — masked at
+    // the service layer, not merely hidden by the page's rendering choice.
+    expect(page.guests[0].invitationToken).toBeNull();
+  });
+
+  it("includes the real invitation token for an EDITOR-role member", async () => {
+    const owner = await createTestUser("owner");
+    const editorUser = await createTestUser("editor");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, editorUser.id, EventMemberRole.EDITOR);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    const page = await getGuestPageData(event.id, editorUser.id, defaultQuery);
+    expect(page.guests[0].invitationToken).toBe(guest.invitationToken);
+  });
+
+  it("includes the real invitation token for the owner", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    const page = await getGuestPageData(event.id, owner.id, defaultQuery);
+    expect(page.guests[0].invitationToken).toBe(guest.invitationToken);
   });
 
   it("rejects a stranger reading the guest list", async () => {
@@ -416,5 +443,143 @@ describe("exportGuestsToCsv (integration)", () => {
     const event = await createTestEvent(owner.id);
 
     await expect(exportGuestsToCsv(event.id, stranger.id)).rejects.toThrow(EventNotFoundError);
+  });
+});
+
+describe("getGuestInvitationDetail (integration)", () => {
+  it("includes the real token for the owner", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    const detail = await getGuestInvitationDetail(event.id, owner.id, guest.id);
+    expect(detail.invitationToken).toBe(guest.invitationToken);
+    expect(detail.invitationTokenAvailable).toBe(true);
+    expect(detail.role).toBe("OWNER");
+  });
+
+  it("masks the token for a VIEWER-role member but still reports it as available", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    const detail = await getGuestInvitationDetail(event.id, viewer.id, guest.id);
+    expect(detail.invitationToken).toBeNull();
+    expect(detail.invitationTokenAvailable).toBe(true);
+    expect(detail.role).toBe("VIEWER");
+  });
+
+  it("rejects a stranger", async () => {
+    const owner = await createTestUser("owner");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    await expect(getGuestInvitationDetail(event.id, stranger.id, guest.id)).rejects.toThrow(
+      EventNotFoundError,
+    );
+  });
+
+  it("rejects a guest that belongs to a different event, even for that event's rightful owner", async () => {
+    const owner = await createTestUser("owner");
+    const eventA = await createTestEvent(owner.id);
+    const eventB = await createTestEvent(owner.id);
+    const guestInA = await createGuestForUser(eventA.id, owner.id, validGuest);
+
+    await expect(getGuestInvitationDetail(eventB.id, owner.id, guestInA.id)).rejects.toThrow(
+      GuestNotFoundError,
+    );
+  });
+});
+
+describe("regenerateGuestInvitationToken (integration)", () => {
+  it("issues a new token and the old one immediately stops resolving", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+    const oldToken = guest.invitationToken as string;
+
+    const result = await regenerateGuestInvitationToken(event.id, owner.id, guest.id);
+
+    expect(result.invitationToken).not.toBe(oldToken);
+    expect(await prisma.guestInvitation.findUnique({ where: { token: oldToken } })).toBeNull();
+    expect(
+      await prisma.guestInvitation.findUnique({ where: { token: result.invitationToken } }),
+    ).not.toBeNull();
+  });
+
+  it("resets NOT_SENT/SENT/OPENED status back to NOT_SENT and clears timestamps", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+    await prisma.guestInvitation.update({
+      where: { token: guest.invitationToken as string },
+      data: { status: GuestInvitationStatus.OPENED, sentAt: new Date(), openedAt: new Date() },
+    });
+
+    const result = await regenerateGuestInvitationToken(event.id, owner.id, guest.id);
+    expect(result.invitationStatus).toBe(GuestInvitationStatus.NOT_SENT);
+
+    const row = await prisma.guestInvitation.findUnique({
+      where: { token: result.invitationToken },
+    });
+    expect(row?.sentAt).toBeNull();
+    expect(row?.openedAt).toBeNull();
+  });
+
+  it("preserves RSVPED status — regenerating the token doesn't undo the guest's own action", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+    await prisma.guestInvitation.update({
+      where: { token: guest.invitationToken as string },
+      data: { status: GuestInvitationStatus.RSVPED },
+    });
+
+    const result = await regenerateGuestInvitationToken(event.id, owner.id, guest.id);
+    expect(result.invitationStatus).toBe(GuestInvitationStatus.RSVPED);
+  });
+
+  it("lets an EDITOR-role member regenerate", async () => {
+    const owner = await createTestUser("owner");
+    const editorUser = await createTestUser("editor");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, editorUser.id, EventMemberRole.EDITOR);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    await expect(
+      regenerateGuestInvitationToken(event.id, editorUser.id, guest.id),
+    ).resolves.toBeDefined();
+  });
+
+  it("rejects a VIEWER-role member", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    await expect(regenerateGuestInvitationToken(event.id, viewer.id, guest.id)).rejects.toThrow(
+      EventNotFoundError,
+    );
+  });
+
+  it("rejects a guest that belongs to a different event, even for that event's rightful owner (IDOR)", async () => {
+    const owner = await createTestUser("owner");
+    const eventA = await createTestEvent(owner.id);
+    const eventB = await createTestEvent(owner.id);
+    const guestInA = await createGuestForUser(eventA.id, owner.id, validGuest);
+
+    await expect(regenerateGuestInvitationToken(eventB.id, owner.id, guestInA.id)).rejects.toThrow(
+      GuestNotFoundError,
+    );
+
+    // The original token must still work — the cross-event attempt must not have mutated it.
+    const stillIntact = await prisma.guestInvitation.findUnique({
+      where: { token: guestInA.invitationToken as string },
+    });
+    expect(stillIntact).not.toBeNull();
   });
 });
