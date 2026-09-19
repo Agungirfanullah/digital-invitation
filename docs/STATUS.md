@@ -12,16 +12,15 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 7 --- Guest Personalization & Invitation Delivery
-Foundation
+**Current Phase:** Phase 8 --- RSVP Dashboard & Guest Response Management
 
-**Status:** Phase 0-6 remain complete and passing. Phase 7's invitation
-delivery/personalization workflow (a shared server-side invitation URL
-helper, a per-guest "Invitation" dashboard view with status + RSVP
-summary, hardened token privacy, safe token regeneration, and a
-provider-agnostic delivery abstraction with an honest "no real provider
-configured" foundation) is implemented and verified against the real
-Supabase DEV Postgres database and a real browser E2E flow.
+**Status:** Phase 0-7 remain complete and passing. Phase 8 turns Phase
+6's RSVP foundation into a usable event-management workflow: the
+dashboard now supports server-side search/filter/sort/pagination, a
+response-rate metric, per-guest invitation status alongside RSVP status,
+an authenticated CSV export, and RSVP status is now surfaced directly on
+the guest management list — all implemented and verified against the
+real Supabase DEV Postgres database and a real browser E2E flow.
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -33,21 +32,28 @@ Roadmap Phase 5 (Invitation Editor) plus the data-entry side of Roadmap
 Phase 4. "Phase 5 — Guest Management Foundation" corresponded to Roadmap
 Phase 7 (Guest Management) minus its RSVP/check-in-related fields. "Phase
 6 — RSVP & Guest Response Foundation" corresponded to Roadmap Phase 9
-(RSVP). This phase, "Phase 7 — Guest Personalization & Invitation
-Delivery Foundation," corresponds to Roadmap Phase 8 (Guest
-Personalization — already substantially covered by Phase 3's token
-resolution, so this phase's real new ground is the dashboard-facing
-delivery/status/copy-share workflow) plus the non-sending half of Roadmap
-Phase 12 (WhatsApp Sharing: message generation, copy, the `wa.me` deep
-link — explicitly not real provider sending, since no provider is
-configured). Check-in (Roadmap Phase 14) and wishes/guestbook (Roadmap
-Phase 10) remain future work. This is a deliberate execution-order
-adjustment permitted by `AGENT_EXECUTION.md` §9 ("adjust the
-implementation order while preserving the product priorities"), not a
-reinterpretation of the roadmap's actual content — `docs/ROADMAP.md`
-itself is left unchanged since it still correctly describes the target
-feature set for each phase; only the *grouping and sequencing* of these
-implementation passes differs from a literal phase-by-phase reading.
+(RSVP). "Phase 7 — Guest Personalization & Invitation Delivery
+Foundation" corresponded to Roadmap Phase 8 (Guest Personalization —
+already substantially covered by Phase 3's token resolution) plus the
+non-sending half of Roadmap Phase 12 (WhatsApp Sharing). This phase,
+"Phase 8 — RSVP Dashboard & Guest Response Management," was requested
+under the label "Roadmap Phase 8," but its actual scope (RSVP dashboard
+depth: filtering, response rate, CSV export, guest-list RSVP surfacing)
+matches `docs/ROADMAP.md`'s Phase 9 (RSVP) acceptance criteria and
+`docs/PRD.md` §22 ("RSVP Dashboard") — it deepens Phase 6's RSVP
+foundation, not Roadmap's own Phase 8 (Guest Personalization), which
+remains where Phase 3/7 left it. This mismatch is noted here rather than
+silently resolved, per this engagement's own rule to reconcile requested
+scope against the actual repository instead of assuming the brief's phase
+label is authoritative over its literal content. Check-in (Roadmap Phase
+14) and wishes/guestbook (Roadmap Phase 10) remain future work. This is a
+deliberate execution-order adjustment permitted by `AGENT_EXECUTION.md`
+§9 ("adjust the implementation order while preserving the product
+priorities"), not a reinterpretation of the roadmap's actual content —
+`docs/ROADMAP.md` itself is left unchanged since it still correctly
+describes the target feature set for each phase; only the *grouping and
+sequencing* of these implementation passes differs from a literal
+phase-by-phase reading.
 
 ## Documentation Baseline
 
@@ -1490,7 +1496,202 @@ never transmits a message itself. See D-029.
     phase adding many more authenticated E2E logins could still need a
     proper per-test-run-isolated fix rather than another bump.
 
-## Later Phases
+## Phase 8 --- RSVP Dashboard & Guest Response Management
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including a real browser E2E flow that submits a real
+RSVP through the actual public invitation and confirms it appears on the
+dashboard. No fake/mocked dashboard numbers, no schema migration required
+— `RSVP` and `Guest` already had every field this phase needed (Phase 0),
+and no new RSVP status/state machine was introduced (see "RSVP status
+model" below).
+
+-   [x] RSVP dashboard depth
+    (`/dashboard/events/[eventId]/rsvp`) — now shows, in addition to
+    Phase 6's existing counts: **response rate** (`Tingkat Respons`,
+    a new rounded 0-100% metric), each guest's **invitation status**
+    alongside their RSVP status, and each guest's **response timestamp**
+    when they've answered. Server-side **search** (name/phone/email),
+    **status filter** (Akan hadir / Tidak hadir / Belum pasti / Belum
+    merespons / Semua — "Belum merespons" is a dashboard-only filter
+    concept, not a new `RSVPAttendance` value, see "RSVP status model"
+    below), **category filter**, and **name sort** were added, mirroring
+    `lib/guests/`'s already-established query pattern. All event-scoped,
+    all server-side (no client-side filtering of an unbounded fetch).
+-   [x] Summary counts stay whole-event, the table is what filters — see
+    D-031. A search/filter/sort that narrows the table to zero rows still
+    correctly reports the real event-wide guest count in the summary
+    cards, and is visually distinguished from "no guests at all" (see
+    "Empty states" below).
+-   [x] RSVP CSV export
+    (`/dashboard/events/[eventId]/rsvp/export`) — a new authenticated,
+    VIEWER-and-above, event-scoped Route Handler. Columns: name,
+    category, RSVP status, attendee count, response timestamp (ISO 8601),
+    guest message. Reuses `lib/guests/csv.ts`'s `toCsv()` (the same
+    formula-injection-safe serializer Phase 5 already built and
+    unit-tested) rather than a second CSV implementation. Never includes
+    invitation tokens — same principle as `lib/guests/service.ts`'s
+    `exportGuestsToCsv`.
+-   [x] RSVP status surfaced on the guest management list
+    (`/dashboard/events/[eventId]/guests`) — each guest row now shows an
+    `RsvpStatusBadge` alongside their category and invitation-status
+    badges, so an owner/editor/viewer doesn't need to open the RSVP
+    dashboard just to see whether a specific guest has responded.
+    Fetched in the same query as the rest of the guest list (`GUEST_SELECT`
+    gained a `rsvps: { select: { attendance: true } } }` relation select)
+    — no extra round trip, no N+1.
+-   [x] Per-guest RSVP detail — extended the existing Phase 7 invitation
+    page rather than adding a new route; see D-033. Now shows the
+    response's submitted timestamp and an explicit "Tamu ini belum
+    mengisi RSVP." message when there's no response yet, in addition to
+    the attendance/attendee-count/message it already showed.
+-   [x] One authoritative normalization path — `calculateResponseRate()`
+    and `normalizeConfirmedSeats()` (`lib/rsvp/service.ts`, both pure and
+    unit-tested) are the only places the dashboard computes a response
+    rate or a confirmed-seats total; nothing duplicates this logic
+    elsewhere. `resolveAttendeeCount()` (Phase 6) remains the sole
+    attendee-count normalization path — the dashboard reads its already-
+    normalized output, it doesn't re-derive attendee counts itself.
+-   [x] Defensive floor on confirmed seats for "malformed/impossible
+    persisted values" — see D-032.
+-   [x] Empty states distinguish three cases, per the phase brief: (1) no
+    guests at all → the existing "Belum ada tamu" empty state with a
+    "Tambah Tamu" call to action; (2) guests exist but nobody has
+    responded yet → the guest list still renders (every row correctly
+    shows "Belum Mengisi RSVP"), with a contextual banner above the
+    filter form explaining why the counts are all zero, rather than
+    presenting bare zeroes with no explanation; (3) a search/filter
+    matches nothing → "Tidak ada tamu yang cocok dengan pencarian/filter
+    ini.", distinct from case 1's copy.
+-   [x] Loading/error states — `rsvp/loading.tsx` skeleton (already
+    existed from Phase 6, unchanged), the shared not-found page for
+    unauthorized/nonexistent events, no new error states needed since
+    this phase added no new mutation surface.
+
+### Security review findings
+
+No new gaps were found — this phase is read-side only (dashboard queries
+and a CSV export), and the review below confirms it doesn't reopen
+anything Phase 5-7 already closed:
+
+-   **IDOR** — every new/changed query (`getRsvpDashboardData`,
+    `exportRsvpToCsv`, the extended `getRsvpForGuest`) still requires
+    `getAuthorizedEvent(eventId, userId, minRole)` before touching any
+    data, and the guest-list `rsvps` relation select can only ever return
+    rows for that guest's own event (a `Guest` belongs to exactly one
+    event; see the comment on `GUEST_SELECT`). Proven directly: an
+    integration test creates two events for the same owner and confirms
+    a search/filter/sort call against event B never returns or counts
+    event A's guests.
+-   **Token leakage** — grepped: no new or changed file in
+    `lib/rsvp/`, the RSVP dashboard page, or the RSVP export route
+    references `invitationToken`/`.token` at all. The CSV export
+    integration tests assert the exported text never contains the raw
+    token string.
+-   **Client-controlled identity** — `getRsvpDashboardData`/
+    `exportRsvpToCsv` derive `userId` from `requireAppUser()` exclusively
+    (never a client-supplied value); `eventId` always comes from the
+    route segment and is re-validated by `getAuthorizedEvent()` on every
+    call, never trusted from a query string.
+-   **CSV formula injection** — inherited for free by reusing
+    `lib/guests/csv.ts`'s `toCsv()`, which already neutralizes a leading
+    `=`/`+`/`-`/`@` in any cell (Phase 5's existing, already-unit-tested
+    defense). No new CSV serialization logic was written for this phase.
+-   **No fake/hardcoded dashboard numbers** — every number on the
+    dashboard is a real Prisma aggregate/count against the live database;
+    nothing is computed from a placeholder or a client-supplied value.
+
+### RSVP status model (unchanged, not reinterpreted)
+
+Phase 8 introduces **no new RSVP state machine**. `RSVPAttendance`
+(`ATTENDING`/`NOT_ATTENDING`/`MAYBE`) and `GuestInvitationStatus`
+(`NOT_SENT`/`SENT`/`OPENED`/`RSVPED`/`CHECKED_IN`) remain exactly as
+Phase 0 defined them and Phase 6/7 already used them. The dashboard's
+`"PENDING"`/`"ALL"` status-filter values (`rsvpStatusFilterSchema` in
+`lib/rsvp/validation.ts`) are explicitly **not** additional
+`RSVPAttendance` values — they're query-parameter-only concepts meaning
+"no RSVP row exists yet" and "no filter applied," respectively, and are
+never written to the database. `RsvpGuestRow.invitationStatus` (new this
+phase) reads the existing `GuestInvitationStatus` column as-is; nothing
+about its meaning was changed.
+
+### Tests Added (Phase 8)
+
+Pure unit tests (no database):
+
+-   `lib/rsvp/service.test.ts` (+10 tests) — `calculateResponseRate()`:
+    no-guests-yet returns 0 (never divides by zero), 0%/100%/rounded
+    fractional cases; `normalizeConfirmedSeats()`: normal sum, `null` →
+    0, a defensively-floored negative sum → 0
+-   `lib/rsvp/validation.test.ts` (+14 tests) — `rsvpDashboardQuerySchema`:
+    every real status/category value accepted, the dashboard-only
+    `PENDING` filter accepted, safe fallback to `ALL`/`name_asc` for
+    garbage status/category/sort values, search-term trimming and
+    empty-to-undefined handling
+-   `lib/invitations/format.test.ts` (+3 tests) — `formatIndonesianDateTime()`:
+    correct short-month formatting, zero-padded hours/minutes, no
+    timezone-shift artifacts (explicit UTC, matching
+    `formatIndonesianDate()`'s existing convention)
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/rsvp/service.integration.test.ts` (+11 tests) — dashboard search/
+    status(including PENDING)/category filtering and name sort, each
+    proven to leave the whole-event summary counts unchanged (D-031); a
+    combined filter that matches nothing returns an empty table with the
+    real guest count still shown; invitation status correctly joined
+    alongside RSVP status; a full new `exportRsvpToCsv` suite (VIEWER
+    access, stranger rejection, token exclusion, a not-yet-responded
+    guest exported as "Belum merespons", cross-event isolation)
+-   `lib/guests/service.integration.test.ts` (+2 tests) — `getGuestPageData()`
+    correctly surfaces `null` for a guest with no RSVP and the real
+    `RSVPAttendance` value once one exists, proven against live data (not
+    just the page's rendering choice)
+
+E2E (real Supabase DEV database and a real authenticated session — see
+D-022):
+
+-   `e2e/rsvp-dashboard.spec.ts` (5 tests) — a **real public RSVP
+    submission** through the actual `/invite/[slug]?to=[token]` flow
+    (proving Phase 6 hasn't regressed) appears correctly on the
+    authenticated dashboard; search filtering narrows the table while the
+    "Total Tamu" summary card stays at the true event-wide count; CSV
+    export is authenticated (fetched via the same browser session,
+    `page.request`), event-scoped, and excludes the invitation token; a
+    VIEWER-role member can open the dashboard read-only; a stranger gets
+    the shared not-found page.
+-   `e2e/guest-invitation.spec.ts` — two pre-existing assertions needed a
+    `.first()` fix after this phase added a second, legitimate occurrence
+    of "belum mengisi RSVP" text (the new explicit no-response message)
+    to the same page the existing "Belum Mengisi RSVP" status badge was
+    already on — the same class of strict-mode selector fix Phase 6/7
+    already applied twice for the same underlying reason (new, correct
+    UI content legitimately repeating text an older test's selector
+    wasn't written to expect twice). Not a weakened assertion.
+-   Confirmed via a full `npm run test:e2e` run: all pre-existing Phase
+    0-7 E2E specs continue passing.
+
+### Known Limitations
+
+-   No RSVP charts/timeline (`docs/PRD.md` §22 also mentions "RSVP
+    distribution," "RSVP timeline," "RSVP by category" charts) — same
+    scope trim Phase 6 already documented; the counts/table cover the
+    same numbers without a charting library, and the phase brief warned
+    against "excessive dashboard complexity."
+-   Sorting is name-only (A-Z / Z-A) — sorting by response timestamp was
+    considered and deliberately not implemented: `submittedAt` lives on
+    the `RSVP` relation, and Prisma doesn't support ordering a
+    `Guest.findMany()` by an arbitrary field of a to-many relation
+    without either excluding guests with no RSVP row (breaking
+    completeness) or fetching the entire unpaginated guest set to sort in
+    memory (defeating server-side pagination for large guest lists).
+    Name sort was already the existing guest-list convention.
+-   No event-capacity handling — `docs/DATABASE.md`'s `Event` model has
+    no capacity/venue-limit field, so "event capacity where applicable"
+    genuinely does not apply yet; nothing was invented to simulate one.
+-   No owner-initiated RSVP mutation (recording/editing a response on a
+    guest's behalf) — the phase brief was explicit that this is a
+    read-side phase; no such control was added.
 
 Follow `docs/ROADMAP.md`. Do not mark later phases complete here without
 implementation and verification evidence.
@@ -1560,40 +1761,42 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (387/387 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (419/419 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
-                             lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*; 123 of
+                             lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*; 136 of
                              these are live-DB integration tests — 15 events, 14
-                             invitations, 31 editor, 38 guests, 25 rsvp — 0 leftover rows
+                             invitations, 31 editor, 40 guests, 36 rsvp — 0 leftover rows
                              verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
                              /invite/[slug], the editor route, all guest routes, the
-                             per-guest invitation route, and the RSVP dashboard route
-                             correctly dynamic)
-E2E:                        PASS (34/34 — homepage smoke test, auth foundation suite,
+                             per-guest invitation route, the RSVP dashboard route, and the
+                             RSVP export route correctly dynamic)
+E2E:                        PASS (39/39 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
-                             suite, guest management suite, RSVP suite, and guest
-                             invitation delivery suite; auth/invitation/editor/guests/rsvp/
-                             guest-invitation suites exercise the real Supabase DEV
-                             database directly, no mocks — the editor, guests, and
-                             guest-invitation suites additionally drive a real
-                             authenticated session (D-022); the RSVP guest flow is
-                             public/unauthenticated by design, so its suite seeds fixtures
-                             directly via Prisma instead, the same pattern
-                             e2e/invitation.spec.ts already uses. Required raising the
-                             login rate limit — D-030 — to keep the combined suite's real
-                             login volume from tripping a shared in-memory bucket)
+                             suite, guest management suite, RSVP suite, guest invitation
+                             delivery suite, and RSVP dashboard suite; auth/invitation/
+                             editor/guests/rsvp/guest-invitation/rsvp-dashboard suites
+                             exercise the real Supabase DEV database directly, no mocks —
+                             the editor, guests, guest-invitation, and rsvp-dashboard
+                             suites additionally drive a real authenticated session
+                             (D-022); the RSVP guest flow is public/unauthenticated by
+                             design, so its suite seeds fixtures directly via Prisma
+                             instead, the same pattern e2e/invitation.spec.ts already
+                             uses. The rsvp-dashboard suite additionally drives one real
+                             public RSVP submission through the actual invitation flow to
+                             prove Phase 6 hasn't regressed)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 7, the existing GuestInvitation schema was
-                             fully sufficient)
+                             none new in Phase 8, the existing RSVP/Guest schema was fully
+                             sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
-                             seat-quota/IDOR, AND guest-invitation token-masking/
-                             regeneration IDOR authorization proofs; Auth via a real
-                             authenticated login in e2e/editor.spec.ts, e2e/guests.spec.ts,
-                             and e2e/guest-invitation.spec.ts)
+                             seat-quota/IDOR, guest-invitation token-masking/regeneration
+                             IDOR, AND RSVP dashboard filter/export/cross-event
+                             authorization proofs; Auth via a real authenticated login in
+                             e2e/editor.spec.ts, e2e/guests.spec.ts,
+                             e2e/guest-invitation.spec.ts, and e2e/rsvp-dashboard.spec.ts)
 ```
 
 ## Update Rules

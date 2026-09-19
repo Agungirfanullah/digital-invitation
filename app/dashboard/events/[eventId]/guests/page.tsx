@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { GuestCategoryBadge } from "@/components/guests/guest-category-badge";
 import { DeleteGuestButton } from "@/components/guests/delete-guest-button";
 import { CopyInviteLinkButton } from "@/components/guests/copy-invite-link-button";
+import { RsvpStatusBadge } from "@/components/rsvp/rsvp-status-badge";
 
 export const metadata: Metadata = {
   title: "Tamu — Digital Invitation",
@@ -162,6 +163,7 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-medium">{guest.name}</p>
                       <GuestCategoryBadge category={guest.category} />
+                      <RsvpStatusBadge attendance={guest.rsvpAttendance} />
                     </div>
                     <p className="text-muted-foreground mt-0.5 text-xs">
                       {guest.phone ?? "Tanpa nomor telepon"} · Kuota {guest.seatQuota} ·{" "}

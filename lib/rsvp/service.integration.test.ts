@@ -20,12 +20,13 @@ import {
   SeatQuotaExceededError,
 } from "@/lib/rsvp/errors";
 import {
+  exportRsvpToCsv,
   getRsvpDashboardData,
   getRsvpForGuest,
   getRsvpGuestView,
   submitRsvpForGuest,
 } from "@/lib/rsvp/service";
-import type { RsvpFormInput } from "@/lib/rsvp/validation";
+import { rsvpDashboardQuerySchema, type RsvpFormInput } from "@/lib/rsvp/validation";
 
 const createdUserIds: string[] = [];
 const createdEventIds: string[] = [];
@@ -85,6 +86,8 @@ async function createTestGuest(eventId: string, seatQuota = 4) {
   });
   return { guest, invitation };
 }
+
+const defaultDashboardQuery = rsvpDashboardQuerySchema.parse({});
 
 const attending: RsvpFormInput = {
   attendance: "ATTENDING",
@@ -276,7 +279,7 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
     const event = await createTestEvent(owner.id);
     await createTestGuest(event.id);
 
-    const data = await getRsvpDashboardData(event.id, owner.id, 1);
+    const data = await getRsvpDashboardData(event.id, owner.id, defaultDashboardQuery);
     expect(data.counts.totalGuests).toBe(1);
     expect(data.role).toBe("OWNER");
   });
@@ -288,7 +291,7 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
     await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
     await createTestGuest(event.id);
 
-    const data = await getRsvpDashboardData(event.id, viewer.id, 1);
+    const data = await getRsvpDashboardData(event.id, viewer.id, defaultDashboardQuery);
     expect(data.counts.totalGuests).toBe(1);
     expect(data.role).toBe("VIEWER");
   });
@@ -298,16 +301,16 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
     const stranger = await createTestUser("stranger");
     const event = await createTestEvent(owner.id);
 
-    await expect(getRsvpDashboardData(event.id, stranger.id, 1)).rejects.toThrow(
-      EventNotFoundError,
-    );
+    await expect(
+      getRsvpDashboardData(event.id, stranger.id, defaultDashboardQuery),
+    ).rejects.toThrow(EventNotFoundError);
   });
 
   it("rejects a nonexistent event id", async () => {
     const owner = await createTestUser("owner");
-    await expect(getRsvpDashboardData(`missing-${randomUUID()}`, owner.id, 1)).rejects.toThrow(
-      EventNotFoundError,
-    );
+    await expect(
+      getRsvpDashboardData(`missing-${randomUUID()}`, owner.id, defaultDashboardQuery),
+    ).rejects.toThrow(EventNotFoundError);
   });
 
   it("never counts a guest/RSVP from a different event", async () => {
@@ -317,7 +320,7 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
     const { invitation } = await createTestGuest(eventA.id);
     await submitRsvpForGuest(eventA.id, invitation.token, attending);
 
-    const dataB = await getRsvpDashboardData(eventB.id, owner.id, 1);
+    const dataB = await getRsvpDashboardData(eventB.id, owner.id, defaultDashboardQuery);
     expect(dataB.counts.totalGuests).toBe(0);
     expect(dataB.counts.attending).toBe(0);
   });
@@ -341,7 +344,7 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
       message: null,
     });
 
-    const data = await getRsvpDashboardData(event.id, owner.id, 1);
+    const data = await getRsvpDashboardData(event.id, owner.id, defaultDashboardQuery);
     expect(data.counts.totalGuests).toBe(3);
     expect(data.counts.totalResponded).toBe(2);
     expect(data.counts.totalPending).toBe(1);
@@ -349,6 +352,187 @@ describe("getRsvpDashboardData — authorization and event scoping (integration)
     expect(data.counts.notAttending).toBe(1);
     expect(data.counts.confirmedSeats).toBe(2);
     expect(data.counts.totalSeatsInvited).toBe(6);
+    expect(data.counts.responseRate).toBe(67);
+  });
+
+  it("filters the guest list by search query, scoped to this event", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.guest.create({
+      data: { eventId: event.id, name: "Ayu Lestari", normalizedName: "ayu lestari" },
+    });
+    await prisma.guest.create({
+      data: { eventId: event.id, name: "Budi Santoso", normalizedName: "budi santoso" },
+    });
+
+    const data = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      q: "ayu",
+    });
+    expect(data.guests).toHaveLength(1);
+    expect(data.guests[0].name).toBe("Ayu Lestari");
+    // Filtering the table must never skew the event-wide summary counts.
+    expect(data.counts.totalGuests).toBe(2);
+  });
+
+  it("filters the guest list by RSVP status, including PENDING (no response yet)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const responded = await createTestGuest(event.id);
+    await createTestGuest(event.id); // never responds
+
+    await submitRsvpForGuest(event.id, responded.invitation.token, attending);
+
+    const attendingOnly = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      status: "ATTENDING",
+    });
+    expect(attendingOnly.guests).toHaveLength(1);
+    expect(attendingOnly.guests[0].guestId).toBe(responded.guest.id);
+
+    const pendingOnly = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      status: "PENDING",
+    });
+    expect(pendingOnly.guests).toHaveLength(1);
+    expect(pendingOnly.guests[0].guestId).not.toBe(responded.guest.id);
+
+    // Neither filter changes the whole-event summary counts.
+    expect(attendingOnly.counts.totalGuests).toBe(2);
+    expect(pendingOnly.counts.totalGuests).toBe(2);
+  });
+
+  it("filters the guest list by category", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.guest.create({
+      data: {
+        eventId: event.id,
+        name: "Tamu VIP",
+        normalizedName: "tamu vip",
+        category: "VIP",
+      },
+    });
+    await prisma.guest.create({
+      data: {
+        eventId: event.id,
+        name: "Tamu Biasa",
+        normalizedName: "tamu biasa",
+        category: "FRIEND",
+      },
+    });
+
+    const data = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      category: "VIP",
+    });
+    expect(data.guests).toHaveLength(1);
+    expect(data.guests[0].name).toBe("Tamu VIP");
+  });
+
+  it("sorts the guest list by name", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.guest.create({
+      data: { eventId: event.id, name: "Zainal", normalizedName: "zainal" },
+    });
+    await prisma.guest.create({
+      data: { eventId: event.id, name: "Ayu", normalizedName: "ayu" },
+    });
+
+    const ascending = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      sort: "name_asc",
+    });
+    expect(ascending.guests.map((g) => g.name)).toEqual(["Ayu", "Zainal"]);
+
+    const descending = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      sort: "name_desc",
+    });
+    expect(descending.guests.map((g) => g.name)).toEqual(["Zainal", "Ayu"]);
+  });
+
+  it("includes each guest's invitation status alongside their RSVP status", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const { guest, invitation } = await createTestGuest(event.id);
+    await submitRsvpForGuest(event.id, invitation.token, attending);
+
+    const data = await getRsvpDashboardData(event.id, owner.id, defaultDashboardQuery);
+    const row = data.guests.find((g) => g.guestId === guest.id);
+    expect(row?.invitationStatus).toBe(GuestInvitationStatus.RSVPED);
+    expect(row?.submittedAt).toBeInstanceOf(Date);
+  });
+
+  it("a search/filter combination that matches nothing returns an empty (not erroring) result", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await createTestGuest(event.id);
+
+    const data = await getRsvpDashboardData(event.id, owner.id, {
+      ...defaultDashboardQuery,
+      q: "tidak-ada-yang-cocok",
+    });
+    expect(data.guests).toHaveLength(0);
+    expect(data.total).toBe(0);
+    // The event still genuinely has a guest — the summary must say so.
+    expect(data.counts.totalGuests).toBe(1);
+  });
+});
+
+describe("exportRsvpToCsv (integration)", () => {
+  it("exports RSVP data as CSV without including invitation tokens", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const { guest, invitation } = await createTestGuest(event.id);
+    await submitRsvpForGuest(event.id, invitation.token, attending);
+
+    const { csv, filename } = await exportRsvpToCsv(event.id, owner.id);
+
+    expect(csv).toContain(guest.name);
+    expect(csv).toContain("Hadir");
+    expect(csv).not.toContain(invitation.token);
+    expect(filename).toContain(event.slug);
+  });
+
+  it("includes a guest who hasn't responded as 'Belum merespons'", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const { guest } = await createTestGuest(event.id);
+
+    const { csv } = await exportRsvpToCsv(event.id, owner.id);
+    expect(csv).toContain(guest.name);
+    expect(csv).toContain("Belum merespons");
+  });
+
+  it("allows a VIEWER-role member to export", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
+    await createTestGuest(event.id);
+
+    const { csv } = await exportRsvpToCsv(event.id, viewer.id);
+    expect(csv).toBeTruthy();
+  });
+
+  it("rejects a stranger exporting", async () => {
+    const owner = await createTestUser("owner");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id);
+
+    await expect(exportRsvpToCsv(event.id, stranger.id)).rejects.toThrow(EventNotFoundError);
+  });
+
+  it("never leaks a different event's guests", async () => {
+    const owner = await createTestUser("owner");
+    const eventA = await createTestEvent(owner.id);
+    const eventB = await createTestEvent(owner.id);
+    const { guest } = await createTestGuest(eventA.id);
+
+    const { csv } = await exportRsvpToCsv(eventB.id, owner.id);
+    expect(csv).not.toContain(guest.name);
   });
 });
 
@@ -368,7 +552,12 @@ describe("getRsvpForGuest — event scoping for the Phase 7 per-guest invitation
     await submitRsvpForGuest(event.id, invitation.token, attending);
 
     const rsvp = await getRsvpForGuest(event.id, owner.id, guest.id);
-    expect(rsvp).toEqual({ attendance: "ATTENDING", attendeeCount: 2, message: "Sampai jumpa!" });
+    expect(rsvp).toMatchObject({
+      attendance: "ATTENDING",
+      attendeeCount: 2,
+      message: "Sampai jumpa!",
+    });
+    expect(rsvp?.submittedAt).toBeInstanceOf(Date);
   });
 
   it("lets a VIEWER-role member read it", async () => {

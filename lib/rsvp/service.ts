@@ -1,18 +1,27 @@
 import "server-only";
-import { EventMemberRole, GuestInvitationStatus, type RSVPAttendance } from "@prisma/client";
+import {
+  EventMemberRole,
+  GuestInvitationStatus,
+  Prisma,
+  type RSVPAttendance,
+} from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
+import { GUEST_CATEGORY_LABELS } from "@/lib/guests/labels";
+import { toCsv } from "@/lib/guests/csv";
 import {
   EventNotFoundError,
   InvalidRsvpTokenError,
   SeatQuotaExceededError,
 } from "@/lib/rsvp/errors";
+import { RSVP_ATTENDANCE_LABELS } from "@/lib/rsvp/labels";
 import { rsvpTokenSchema } from "@/lib/rsvp/validation";
-import type { RsvpFormInput } from "@/lib/rsvp/validation";
+import type { RsvpDashboardQueryInput, RsvpFormInput } from "@/lib/rsvp/validation";
 import type {
   RsvpAnswer,
   RsvpDashboardData,
+  RsvpDetail,
   RsvpGuestRow,
   RsvpGuestView,
   RsvpOverviewCounts,
@@ -45,6 +54,32 @@ export function resolveNextInvitationStatus(
   return currentStatus === GuestInvitationStatus.CHECKED_IN
     ? currentStatus
     : GuestInvitationStatus.RSVPED;
+}
+
+/**
+ * The one authoritative response-rate calculation — 0-100, rounded, and
+ * never divides by zero (an event with no guests yet shows 0%, not NaN).
+ * Used by the dashboard summary; nothing else in this codebase computes
+ * a response rate independently.
+ */
+export function calculateResponseRate(totalResponded: number, totalGuests: number): number {
+  if (totalGuests <= 0) return 0;
+  return Math.round((totalResponded / totalGuests) * 100);
+}
+
+/**
+ * Defensive floor on the confirmed-seats aggregate: `attendeeCount` is
+ * already validated non-negative at submission time
+ * (`rsvpFormSchema`/`resolveAttendeeCount`), so a negative sum should
+ * never occur in practice — this only guards the dashboard's own display
+ * against ever showing a misleading negative "orang hadir" total if a
+ * row were ever persisted outside that validated path (e.g. a manual DB
+ * edit or a future bug), per the instruction to handle "malformed/
+ * impossible persisted values defensively." Never mutates the underlying
+ * data — this is a read-side display guard only.
+ */
+export function normalizeConfirmedSeats(rawSum: number | null): number {
+  return Math.max(0, rawSum ?? 0);
 }
 
 interface RsvpGuestContext {
@@ -136,17 +171,22 @@ export async function getRsvpForGuest(
   eventId: string,
   userId: string,
   guestId: string,
-): Promise<RsvpAnswer | null> {
+): Promise<RsvpDetail | null> {
   const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
   if (!event) throw new EventNotFoundError();
 
   const rsvp = await prisma.rSVP.findFirst({
     where: { eventId, guestId },
-    select: { attendance: true, attendeeCount: true, message: true },
+    select: { attendance: true, attendeeCount: true, message: true, submittedAt: true },
   });
 
   return rsvp
-    ? { attendance: rsvp.attendance, attendeeCount: rsvp.attendeeCount, message: rsvp.message }
+    ? {
+        attendance: rsvp.attendance,
+        attendeeCount: rsvp.attendeeCount,
+        message: rsvp.message,
+        submittedAt: rsvp.submittedAt,
+      }
     : null;
 }
 
@@ -203,21 +243,64 @@ export async function submitRsvpForGuest(
 }
 
 /**
+ * Builds the `Guest` filter for the dashboard's search/status/category
+ * filters. Deliberately separate from the summary `counts` query, which
+ * always scans the full, unfiltered event — see `getRsvpDashboardData()`'s
+ * doc comment and `docs/DECISIONS.md` on why filtering is table-scoped
+ * only, never applied to the summary numbers.
+ */
+function buildRsvpGuestFilter(
+  eventId: string,
+  query: Pick<RsvpDashboardQueryInput, "q" | "status" | "category">,
+): Prisma.GuestWhereInput {
+  const where: Prisma.GuestWhereInput = { eventId };
+
+  if (query.category !== "ALL") where.category = query.category;
+
+  if (query.q) {
+    where.OR = [
+      { name: { contains: query.q, mode: "insensitive" } },
+      { phone: { contains: query.q, mode: "insensitive" } },
+      { email: { contains: query.q, mode: "insensitive" } },
+    ];
+  }
+
+  if (query.status === "PENDING") {
+    where.rsvps = { none: { eventId } };
+  } else if (query.status !== "ALL") {
+    where.rsvps = { some: { eventId, attendance: query.status } };
+  }
+
+  return where;
+}
+
+/**
  * Event-scoped RSVP overview for the dashboard — VIEWER-and-above, same
  * read boundary already established for the guest list (D-023): browsing
  * RSVP results carries the same low mutation risk as browsing the guest
- * list itself. Counts are computed from the full guest/RSVP set (not just
- * the current page), so pagination never skews the summary numbers.
+ * list itself.
+ *
+ * `counts` is always computed from the full, unfiltered guest/RSVP set —
+ * applying the current search/status/category filter to the summary
+ * numbers too would make "Total Tamu: 3" appear whenever a filter is
+ * active, which is confusing and redundant with the (already filtered)
+ * table below it. `guests`/`total`/`page` are the filtered, paginated
+ * view; `counts.totalGuests` is the true event-wide guest count. See
+ * docs/DECISIONS.md.
  */
 export async function getRsvpDashboardData(
   eventId: string,
   userId: string,
-  page: number,
+  query: RsvpDashboardQueryInput,
 ): Promise<RsvpDashboardData> {
   const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
   if (!event) throw new EventNotFoundError();
 
-  const [totalGuests, seatAggregate, attendanceGroups, guests] = await Promise.all([
+  const guestFilter = buildRsvpGuestFilter(eventId, query);
+  const orderBy: Prisma.GuestOrderByWithRelationInput =
+    query.sort === "name_desc" ? { name: "desc" } : { name: "asc" };
+
+  const [totalGuests, seatAggregate, attendanceGroups, filteredTotal, guests] = await Promise.all([
     prisma.guest.count({ where: { eventId } }),
     prisma.guest.aggregate({ where: { eventId }, _sum: { seatQuota: true } }),
     prisma.rSVP.groupBy({
@@ -226,10 +309,11 @@ export async function getRsvpDashboardData(
       _count: { _all: true },
       _sum: { attendeeCount: true },
     }),
+    prisma.guest.count({ where: guestFilter }),
     prisma.guest.findMany({
-      where: { eventId },
-      orderBy: { name: "asc" },
-      skip: (page - 1) * RSVP_PAGE_SIZE,
+      where: guestFilter,
+      orderBy,
+      skip: (query.page - 1) * RSVP_PAGE_SIZE,
       take: RSVP_PAGE_SIZE,
       select: {
         id: true,
@@ -240,6 +324,7 @@ export async function getRsvpDashboardData(
           where: { eventId },
           select: { attendance: true, attendeeCount: true, message: true, submittedAt: true },
         },
+        invitations: { select: { status: true } },
       },
     }),
   ]);
@@ -257,11 +342,13 @@ export async function getRsvpDashboardData(
     notAttending: notAttending?._count._all ?? 0,
     maybe: maybe?._count._all ?? 0,
     totalSeatsInvited: seatAggregate._sum.seatQuota ?? 0,
-    confirmedSeats: attending?._sum.attendeeCount ?? 0,
+    confirmedSeats: normalizeConfirmedSeats(attending?._sum.attendeeCount ?? null),
+    responseRate: calculateResponseRate(totalResponded, totalGuests),
   };
 
   const rows: RsvpGuestRow[] = guests.map((guest) => {
     const rsvp = guest.rsvps[0] ?? null;
+    const invitation = guest.invitations[0];
     return {
       guestId: guest.id,
       name: guest.name,
@@ -271,6 +358,7 @@ export async function getRsvpDashboardData(
       attendeeCount: rsvp?.attendeeCount ?? 0,
       message: rsvp?.message ?? null,
       submittedAt: rsvp?.submittedAt ?? null,
+      invitationStatus: invitation?.status ?? GuestInvitationStatus.NOT_SENT,
     };
   });
 
@@ -282,8 +370,62 @@ export async function getRsvpDashboardData(
         : (event.members[0]?.role ?? EventMemberRole.VIEWER),
     counts,
     guests: rows,
-    total: totalGuests,
-    page,
+    total: filteredTotal,
+    page: query.page,
     pageSize: RSVP_PAGE_SIZE,
   };
+}
+
+const RSVP_CSV_HEADER = [
+  "nama",
+  "kategori",
+  "status_rsvp",
+  "jumlah_tamu",
+  "waktu_respons",
+  "catatan",
+];
+
+/**
+ * VIEWER-and-above, same read boundary as the dashboard itself and as
+ * `lib/guests/service.ts`'s `exportGuestsToCsv` (D-023's precedent).
+ * Deliberately excludes invitation tokens — they're a personalization
+ * secret, not RSVP-management data, same principle as the guest export.
+ * Always exports the full, unfiltered event guest/RSVP set (matching
+ * `exportGuestsToCsv`'s existing behavior) rather than honoring the
+ * dashboard's current search/filter state — "export everything, filter
+ * in your own spreadsheet" is the simpler, already-established contract.
+ */
+export async function exportRsvpToCsv(
+  eventId: string,
+  userId: string,
+): Promise<{ filename: string; csv: string }> {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
+  if (!event) throw new EventNotFoundError();
+
+  const guests = await prisma.guest.findMany({
+    where: { eventId },
+    orderBy: { name: "asc" },
+    select: {
+      name: true,
+      category: true,
+      rsvps: {
+        where: { eventId },
+        select: { attendance: true, attendeeCount: true, message: true, submittedAt: true },
+      },
+    },
+  });
+
+  const rows = guests.map((guest) => {
+    const rsvp = guest.rsvps[0] ?? null;
+    return [
+      guest.name,
+      GUEST_CATEGORY_LABELS[guest.category],
+      rsvp ? RSVP_ATTENDANCE_LABELS[rsvp.attendance] : "Belum merespons",
+      rsvp ? String(rsvp.attendeeCount) : "",
+      rsvp?.submittedAt ? rsvp.submittedAt.toISOString() : "",
+      rsvp?.message ?? "",
+    ];
+  });
+
+  return { filename: `rsvp-${event.slug}.csv`, csv: toCsv([RSVP_CSV_HEADER, ...rows]) };
 }

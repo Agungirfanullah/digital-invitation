@@ -7,6 +7,7 @@ import { getGuestInvitationDetail } from "@/lib/guests/service";
 import { buildGuestInvitationUrl } from "@/lib/guests/invitation-url";
 import { EventNotFoundError, GuestNotFoundError } from "@/lib/guests/errors";
 import { GUEST_CATEGORY_LABELS } from "@/lib/guests/labels";
+import { formatIndonesianDateTime } from "@/lib/invitations/format";
 import { getRsvpForGuest } from "@/lib/rsvp/service";
 import { composeInvitationMessage } from "@/lib/invitation-delivery/message";
 import { buildWhatsAppShareUrl } from "@/lib/invitation-delivery/whatsapp";
@@ -75,13 +76,23 @@ export default async function GuestInvitationPage({ params }: GuestInvitationPag
         <RsvpStatusBadge attendance={rsvp?.attendance ?? null} />
       </div>
 
-      {rsvp && (
+      {rsvp ? (
         <div className="rounded-lg border p-4 text-sm">
           <p className="font-medium">Jawaban RSVP</p>
           {rsvp.attendance === "ATTENDING" && (
             <p className="mt-1">{rsvp.attendeeCount} orang akan hadir.</p>
           )}
           {rsvp.message && <p className="mt-1 italic opacity-80">&ldquo;{rsvp.message}&rdquo;</p>}
+          {rsvp.submittedAt && (
+            <p className="text-muted-foreground mt-2 text-xs">
+              Merespons pada {formatIndonesianDateTime(rsvp.submittedAt)}
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-lg border p-4 text-sm">
+          <p className="font-medium">Jawaban RSVP</p>
+          <p className="text-muted-foreground mt-1">Tamu ini belum mengisi RSVP.</p>
         </div>
       )}
 

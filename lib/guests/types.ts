@@ -1,4 +1,9 @@
-import type { EventMemberRole, GuestCategory, GuestInvitationStatus } from "@prisma/client";
+import type {
+  EventMemberRole,
+  GuestCategory,
+  GuestInvitationStatus,
+  RSVPAttendance,
+} from "@prisma/client";
 
 /**
  * The authenticated owner/editor/viewer's view of a guest, including the
@@ -24,6 +29,8 @@ export interface GuestListItem {
    */
   invitationToken: string | null;
   invitationStatus: GuestInvitationStatus;
+  /** `null` means no RSVP submitted yet — not a fourth attendance value, just "no row" (see `lib/rsvp/`'s "PENDING" filter concept). Phase 8: surfaced here so the guest list doesn't need a second query to show it. */
+  rsvpAttendance: RSVPAttendance | null;
 }
 
 export interface GuestDetail extends GuestListItem {

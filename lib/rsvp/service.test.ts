@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { GuestInvitationStatus } from "@prisma/client";
 
-import { resolveAttendeeCount, resolveNextInvitationStatus } from "@/lib/rsvp/service";
+import {
+  calculateResponseRate,
+  normalizeConfirmedSeats,
+  resolveAttendeeCount,
+  resolveNextInvitationStatus,
+} from "@/lib/rsvp/service";
 
 describe("resolveAttendeeCount", () => {
   it("keeps the submitted count when attending", () => {
@@ -46,5 +51,38 @@ describe("resolveNextInvitationStatus", () => {
     expect(resolveNextInvitationStatus(GuestInvitationStatus.CHECKED_IN)).toBe(
       GuestInvitationStatus.CHECKED_IN,
     );
+  });
+});
+
+describe("calculateResponseRate", () => {
+  it("returns 0 when there are no guests yet, rather than dividing by zero", () => {
+    expect(calculateResponseRate(0, 0)).toBe(0);
+  });
+
+  it("returns 0 when nobody has responded", () => {
+    expect(calculateResponseRate(0, 10)).toBe(0);
+  });
+
+  it("returns 100 when everyone has responded", () => {
+    expect(calculateResponseRate(10, 10)).toBe(100);
+  });
+
+  it("rounds to the nearest whole percent", () => {
+    expect(calculateResponseRate(1, 3)).toBe(33);
+    expect(calculateResponseRate(2, 3)).toBe(67);
+  });
+});
+
+describe("normalizeConfirmedSeats", () => {
+  it("passes through a normal non-negative sum", () => {
+    expect(normalizeConfirmedSeats(5)).toBe(5);
+  });
+
+  it("treats null (no ATTENDING rows yet) as 0", () => {
+    expect(normalizeConfirmedSeats(null)).toBe(0);
+  });
+
+  it("floors an impossible negative sum at 0 rather than displaying it", () => {
+    expect(normalizeConfirmedSeats(-3)).toBe(0);
   });
 });

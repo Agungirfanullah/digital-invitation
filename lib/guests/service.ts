@@ -37,6 +37,11 @@ const GUEST_SELECT = {
   notes: true,
   createdAt: true,
   invitations: { select: { token: true, status: true } },
+  // A guest's `rsvps` can only ever contain rows for that guest's own
+  // event (a Guest belongs to exactly one event, and RSVP requires
+  // eventId+guestId — see docs/DATABASE.md §16), so no extra `where`
+  // scoping is needed here, same as `invitations` above.
+  rsvps: { select: { attendance: true } },
 } satisfies Prisma.GuestSelect;
 
 type GuestRow = Prisma.GuestGetPayload<{ select: typeof GUEST_SELECT }>;
@@ -66,6 +71,7 @@ function toListItem(guest: GuestRow, includeToken = true): GuestListItem {
     createdAt: guest.createdAt,
     invitationToken: includeToken ? invitation.token : null,
     invitationStatus: invitation.status,
+    rsvpAttendance: guest.rsvps[0]?.attendance ?? null,
   };
 }
 
@@ -136,7 +142,7 @@ async function createGuestWithInvitation(
         return { guest, invitation };
       });
 
-      return toListItem({ ...result.guest, invitations: [result.invitation] });
+      return toListItem({ ...result.guest, invitations: [result.invitation], rsvps: [] });
     } catch (error) {
       if (isUniqueConstraintError(error, "token") && attempt < MAX_TOKEN_ATTEMPTS) continue;
       throw error;

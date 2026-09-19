@@ -270,6 +270,27 @@ describe("getGuestPageData — read access and search/filter/sort/pagination (in
     expect(page.guests[0].invitationToken).toBe(guest.invitationToken);
   });
 
+  it("surfaces null rsvpAttendance for a guest who hasn't responded yet (Phase 8)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await createGuestForUser(event.id, owner.id, validGuest);
+
+    const page = await getGuestPageData(event.id, owner.id, defaultQuery);
+    expect(page.guests[0].rsvpAttendance).toBeNull();
+  });
+
+  it("surfaces the real rsvpAttendance once the guest has responded (Phase 8)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+    await prisma.rSVP.create({
+      data: { eventId: event.id, guestId: guest.id, attendance: "ATTENDING", attendeeCount: 2 },
+    });
+
+    const page = await getGuestPageData(event.id, owner.id, defaultQuery);
+    expect(page.guests[0].rsvpAttendance).toBe("ATTENDING");
+  });
+
   it("rejects a stranger reading the guest list", async () => {
     const owner = await createTestUser("owner");
     const stranger = await createTestUser("stranger");

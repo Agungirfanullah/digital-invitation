@@ -102,8 +102,13 @@ describe("rsvpTokenSchema", () => {
 });
 
 describe("rsvpDashboardQuerySchema", () => {
-  it("defaults page to 1", () => {
-    expect(rsvpDashboardQuerySchema.parse({}).page).toBe(1);
+  it("defaults page to 1, status/category to ALL, sort to name_asc", () => {
+    const result = rsvpDashboardQuerySchema.parse({});
+    expect(result.page).toBe(1);
+    expect(result.status).toBe("ALL");
+    expect(result.category).toBe("ALL");
+    expect(result.sort).toBe("name_asc");
+    expect(result.q).toBeUndefined();
   });
 
   it("falls back to page 1 for a garbage value rather than erroring", () => {
@@ -112,5 +117,45 @@ describe("rsvpDashboardQuerySchema", () => {
 
   it("accepts a valid page number", () => {
     expect(rsvpDashboardQuerySchema.parse({ page: "3" }).page).toBe(3);
+  });
+
+  it("accepts every real RSVP attendance value as a status filter", () => {
+    expect(rsvpDashboardQuerySchema.parse({ status: "ATTENDING" }).status).toBe("ATTENDING");
+    expect(rsvpDashboardQuerySchema.parse({ status: "NOT_ATTENDING" }).status).toBe(
+      "NOT_ATTENDING",
+    );
+    expect(rsvpDashboardQuerySchema.parse({ status: "MAYBE" }).status).toBe("MAYBE");
+  });
+
+  it("accepts the PENDING (no response yet) status filter", () => {
+    expect(rsvpDashboardQuerySchema.parse({ status: "PENDING" }).status).toBe("PENDING");
+  });
+
+  it("falls back to ALL for an unknown status value rather than erroring", () => {
+    expect(rsvpDashboardQuerySchema.parse({ status: "SOMETHING_ELSE" }).status).toBe("ALL");
+  });
+
+  it("falls back to ALL for an unknown category value rather than erroring", () => {
+    expect(rsvpDashboardQuerySchema.parse({ category: "NOT_A_CATEGORY" }).category).toBe("ALL");
+  });
+
+  it("accepts a valid category filter", () => {
+    expect(rsvpDashboardQuerySchema.parse({ category: "VIP" }).category).toBe("VIP");
+  });
+
+  it("accepts a search term and trims it", () => {
+    expect(rsvpDashboardQuerySchema.parse({ q: "  Ayu  " }).q).toBe("Ayu");
+  });
+
+  it("treats an empty search term as no filter", () => {
+    expect(rsvpDashboardQuerySchema.parse({ q: "" }).q).toBeUndefined();
+  });
+
+  it("falls back to name_asc for an unknown sort value rather than erroring", () => {
+    expect(rsvpDashboardQuerySchema.parse({ sort: "submitted_desc" }).sort).toBe("name_asc");
+  });
+
+  it("accepts name_desc", () => {
+    expect(rsvpDashboardQuerySchema.parse({ sort: "name_desc" }).sort).toBe("name_desc");
   });
 });

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RSVPAttendance } from "@prisma/client";
+import { GuestCategory, RSVPAttendance } from "@prisma/client";
 
 import { guestTokenSchema } from "@/lib/invitations/token";
 
@@ -38,7 +38,31 @@ export const rsvpFormSchema = z
 
 export type RsvpFormInput = z.infer<typeof rsvpFormSchema>;
 
+/** `PENDING` means "no RSVP row yet" — not a value of `RSVPAttendance` itself, so it's a dashboard-only filter concept, not a second RSVP state machine. */
+export const rsvpStatusFilterSchema = z.union([
+  rsvpAttendanceSchema,
+  z.literal("PENDING"),
+  z.literal("ALL"),
+]);
+
+export type RsvpStatusFilter = z.infer<typeof rsvpStatusFilterSchema>;
+
+const guestCategoryFilterSchema = z.union([z.enum(GuestCategory), z.literal("ALL")]);
+
+/**
+ * Never errors on a malformed query string — every field falls back to a
+ * safe default via `.catch()`, matching `lib/guests/validation.ts`'s
+ * `guestListQuerySchema` convention, since these values come directly
+ * from the URL and must never be trusted at face value.
+ */
 export const rsvpDashboardQuerySchema = z.object({
+  q: z.preprocess(
+    (value) => (value === "" || value === null || value === undefined ? undefined : value),
+    z.string().trim().max(100).optional(),
+  ),
+  status: rsvpStatusFilterSchema.catch("ALL").default("ALL"),
+  category: guestCategoryFilterSchema.catch("ALL").default("ALL"),
+  sort: z.enum(["name_asc", "name_desc"]).catch("name_asc").default("name_asc"),
   page: z.coerce.number().int().min(1).catch(1).default(1),
 });
 

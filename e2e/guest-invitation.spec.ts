@@ -113,7 +113,10 @@ test.describe("guest invitation delivery", () => {
     await page.goto(`/dashboard/events/${event.id}/guests/${guest.id}/invitation`);
 
     await expect(page.getByRole("heading", { name: "Sinta Wulandari" })).toBeVisible();
-    await expect(page.getByText("Belum Mengisi RSVP")).toBeVisible();
+    // Since Phase 8, the page also shows "Tamu ini belum mengisi RSVP."
+    // as its own sentence when there's no answer yet — .first() keeps
+    // this assertion about the status badge specifically.
+    await expect(page.getByText("Belum Mengisi RSVP").first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Salin Tautan" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Buat Ulang Tautan" })).toBeVisible();
 
@@ -156,7 +159,10 @@ test.describe("guest invitation delivery", () => {
     await page.goto(`/dashboard/events/${event.id}/guests/${guest.id}/invitation`);
 
     await expect(page.getByRole("heading", { name: "Sinta Wulandari" })).toBeVisible();
-    await expect(page.getByText("Belum Mengisi RSVP")).toBeVisible();
+    // Since Phase 8, the page also shows "Tamu ini belum mengisi RSVP."
+    // as its own sentence when there's no answer yet — .first() keeps
+    // this assertion about the status badge specifically.
+    await expect(page.getByText("Belum Mengisi RSVP").first()).toBeVisible();
     await expect(page.getByText("Tautan pribadi tersedia untuk tamu ini")).toBeVisible();
 
     // The bearer token itself must never reach a VIEWER's page.

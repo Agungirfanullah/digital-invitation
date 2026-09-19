@@ -511,3 +511,84 @@ E2E growth approaches this ceiling again, the underlying fix is a
 per-test-run-isolated rate-limit store or a test-environment exemption,
 not another arbitrary increase — noted here so that's the next
 escalation, not a repeat of this one.
+
+## D-031 --- RSVP Dashboard Filtering Is Table-Scoped; Summary Counts Always Reflect the Whole Event
+
+**Decision:** `lib/rsvp/service.ts`'s `getRsvpDashboardData()` applies the
+dashboard's search/status/category filters only to the paginated guest
+list (`guests`/`total`/`page`). The summary numbers (`counts` —
+total/attending/not attending/maybe/pending/seats/response rate) are
+always computed from the full, unfiltered event guest/RSVP set,
+regardless of what the table below is currently showing.
+
+**Rationale:** Phase 8's brief explicitly warns against "misleading
+zeroes without context." Applying an active filter (e.g. "status =
+ATTENDING") to the summary cards too would make "Total Tamu" read as the
+filtered subset count, which is both confusing (a card literally labeled
+"Total Tamu" showing a partial number) and redundant with the table
+itself, which already shows exactly those rows. Keeping the two concerns
+separate — "how is the whole event doing" vs. "show me this subset" — is
+also how the pre-existing guest list (`lib/guests/service.ts`) already
+behaves, since its filters only ever affected its own paginated result,
+never a separate summary block (it doesn't have one).
+
+**Impact:** `getRsvpDashboardData()` runs two independent guest counts —
+one unfiltered (`totalGuests`, feeding `counts`) and one filtered
+(`filteredTotal`, feeding pagination) — plus the existing unfiltered
+`groupBy`/`aggregate` calls for the attendance breakdown and seat sums.
+Proven directly: an integration test creates a search that matches one of
+two guests and asserts the table narrows to one row while
+`counts.totalGuests` still reports 2; an E2E test does the same with a
+real browser filter interaction.
+
+## D-032 --- Defensive Floor on the Confirmed-Seats Aggregate
+
+**Decision:** `lib/rsvp/service.ts`'s `normalizeConfirmedSeats()` clamps
+the summed `attendeeCount` across ATTENDING responses to a minimum of 0
+before it's shown on the dashboard.
+
+**Rationale:** `attendeeCount` is already validated non-negative at
+submission time (`rsvpFormSchema`, `resolveAttendeeCount()` in
+`lib/rsvp/service.ts`), so a negative aggregate should never occur through
+the application's own write path. Phase 8's brief explicitly asks the
+dashboard to "correctly handle... malformed/impossible persisted values
+defensively," and a read-side floor costs nothing to add now, guarding
+purely against ever displaying a nonsensical negative "orang hadir" total
+if a row were ever written outside the validated path (a manual database
+edit, a future migration bug, etc.). This is a display guard only — it
+never mutates the underlying `RSVP` rows.
+
+**Impact:** `getRsvpDashboardData()`'s `confirmedSeats` field is computed
+through `normalizeConfirmedSeats()` rather than reading Prisma's `_sum`
+aggregate directly. Unit-tested in isolation (`service.test.ts`) for the
+normal, `null` (no ATTENDING rows yet), and defensively-floored negative
+cases.
+
+## D-033 --- Per-Guest RSVP Detail Lives on the Existing Invitation Page, Not a New Route
+
+**Decision:** Phase 8's per-guest RSVP detail requirement (show the
+response, submitted timestamp, attendee count, and message, or a clear
+"belum mengisi RSVP" state) was implemented by extending the existing
+Phase 7 page at `/dashboard/events/[eventId]/guests/[guestId]/invitation`
+— adding the response's `submittedAt` and an explicit no-response message
+— rather than creating a new, separate
+`/dashboard/events/[eventId]/guests/[guestId]/rsvp` route.
+
+**Rationale:** The Phase 7 page already showed the guest's RSVP status
+badge, attendee count, and message right alongside their invitation
+status and personalized link — a second route for "RSVP detail"
+specifically would duplicate most of that page's content and split one
+guest's information across two dashboard pages for no product benefit.
+The Phase 8 brief itself offered this as the preferred alternative ("or
+integrate into the existing guest detail/invitation page if
+architecturally cleaner"). The RSVP dashboard's guest rows already link
+to this same page (`/guests/[guestId]/invitation`) as their "detail" —
+new dashboard summary card, one destination.
+
+**Impact:** No new route was created for this requirement.
+`getRsvpForGuest()` (`lib/rsvp/service.ts`) now returns `RsvpDetail`
+(adds `submittedAt` on top of the existing `RsvpAnswer` shape) instead of
+`RsvpAnswer`, and the invitation page renders it. Read access remains
+VIEWER-and-above, matching the brief's explicit instruction that Viewer/
+Editor/Owner all may view RSVP information with no mutation controls
+added.
