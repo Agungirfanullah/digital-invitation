@@ -126,7 +126,10 @@ test.describe("public invitation", () => {
 
   test("personalizes the greeting for a valid guest token", async ({ page }) => {
     await page.goto(`/invite/${fixtures.publishedEvent.slug}?to=${fixtures.guestInvitation.token}`);
-    await expect(page.getByText("Citra Dewi")).toBeVisible();
+    // Since Phase 6, a personalized guest's name legitimately appears twice
+    // on the page (the greeting and the RSVP section's own "Halo ..."
+    // prompt) — .first() keeps this assertion about the greeting specifically.
+    await expect(page.getByText("Citra Dewi").first()).toBeVisible();
   });
 
   test("falls back to a generic greeting for a token belonging to a different event", async ({

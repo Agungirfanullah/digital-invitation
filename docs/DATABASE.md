@@ -382,6 +382,12 @@ eventId + guestId UNIQUE
 
 Never use guest database ID as public invitation token.
 
+`status` advances to `RSVPED` automatically whenever the guest submits or
+updates their RSVP (see §16), regardless of attendance value — RSVPED
+means "the guest responded," not "the guest is attending" (that's
+`RSVP.attendance`). It is never downgraded back to RSVPED from
+`CHECKED_IN` once check-in ships. See `docs/DECISIONS.md` D-026.
+
 ---
 
 # 10. EventSchedule

@@ -1,5 +1,6 @@
 import { resolveTemplateComponent } from "@/lib/invitations/templates/registry";
 import type { PublicInvitation } from "@/lib/invitations/types";
+import type { RsvpGuestView } from "@/lib/rsvp/types";
 
 /**
  * The single entry point from the public route into the template system.
@@ -13,8 +14,14 @@ import type { PublicInvitation } from "@/lib/invitations/types";
 // react-hooks/static-components guards against doesn't apply here. This
 // dynamic resolution is the Phase 3 template-registry requirement.
 /* eslint-disable react-hooks/static-components */
-export function InvitationRenderer({ invitation }: { invitation: PublicInvitation }) {
+export function InvitationRenderer({
+  invitation,
+  rsvp,
+}: {
+  invitation: PublicInvitation;
+  rsvp?: { token: string; view: RsvpGuestView } | null;
+}) {
   const Template = resolveTemplateComponent(invitation.templateKey);
-  return <Template invitation={invitation} />;
+  return <Template invitation={invitation} rsvp={rsvp} />;
 }
 /* eslint-enable react-hooks/static-components */

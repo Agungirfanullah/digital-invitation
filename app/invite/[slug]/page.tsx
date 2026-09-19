@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getPublicInvitationBySlug } from "@/lib/invitations/service";
 import { InvitationNotFoundError } from "@/lib/invitations/errors";
+import { getRsvpGuestView } from "@/lib/rsvp/service";
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
 
 interface InvitePageProps {
@@ -55,5 +56,12 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
     throw error;
   }
 
-  return <InvitationRenderer invitation={invitation} />;
+  // A malformed/foreign token already resolves to no guest context above
+  // (`invitation.guest === null`), so the RSVP lookup only ever runs for
+  // a request that's already personalized — no separate validation
+  // needed here to decide whether to attempt it.
+  const rsvpView = to && invitation.guest ? await getRsvpGuestView(invitation.eventId, to) : null;
+  const rsvp = rsvpView && to ? { token: to, view: rsvpView } : null;
+
+  return <InvitationRenderer invitation={invitation} rsvp={rsvp} />;
 }

@@ -12,13 +12,14 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 5 --- Guest Management Foundation
+**Current Phase:** Phase 6 --- RSVP & Guest Response Foundation
 
-**Status:** Phase 0-4 remain complete and passing. Phase 5's guest
-management (CRUD, search/filter/sort, pagination, per-guest personalized
-invitation tokens, CSV import/export) is implemented and verified against
-the real Supabase DEV Postgres database, including a genuinely
-authenticated E2E browser flow (see D-022).
+**Status:** Phase 0-5 remain complete and passing. Phase 6's RSVP flow
+(personalized guest submission/update through the real public invitation,
+seat-quota enforcement, invitation-status lifecycle, and a dashboard RSVP
+overview) is implemented and verified against the real Supabase DEV
+Postgres database, including a real browser E2E flow through the actual
+`/invite/[slug]?to=[token]` page.
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -27,18 +28,20 @@ Theme specifically), and Phase 6 (Public Invitation), building the
 rendering foundation end-to-end in one pass rather than strictly
 sequentially. "Phase 4 — Editor Foundation" then corresponded mainly to
 Roadmap Phase 5 (Invitation Editor) plus the data-entry side of Roadmap
-Phase 4. This phase, "Phase 5 — Guest Management Foundation," corresponds
-to Roadmap Phase 7 (Guest Management) — RSVP/check-in-related fields
-described there (`GuestInvitation.status` transitions past `NOT_SENT`,
-seat-quota enforcement) belong to Roadmap Phase 9 (RSVP) and Phase 14
-(Check-in), which remain future work; only the guest-record and
-invitation-token half of Phase 7 is in scope here. This is a deliberate
-execution-order adjustment permitted by `AGENT_EXECUTION.md` §9 ("adjust
-the implementation order while preserving the product priorities"), not a
-reinterpretation of the roadmap's actual content — `docs/ROADMAP.md`
-itself is left unchanged since it still correctly describes the target
-feature set for each phase; only the *grouping and sequencing* of these
-implementation passes differs from a literal phase-by-phase reading.
+Phase 4. "Phase 5 — Guest Management Foundation" corresponded to Roadmap
+Phase 7 (Guest Management) minus its RSVP/check-in-related fields. This
+phase, "Phase 6 — RSVP & Guest Response Foundation," corresponds to
+Roadmap Phase 9 (RSVP) — the seat-quota-enforcement and
+`GuestInvitation.status` transitions that Phase 5's STATUS notes deferred
+here are now implemented; check-in (Roadmap Phase 14, `CHECKED_IN`) and
+the wishes/guestbook feature (Roadmap Phase 10) remain future work. This
+is a deliberate execution-order adjustment permitted by
+`AGENT_EXECUTION.md` §9 ("adjust the implementation order while
+preserving the product priorities"), not a reinterpretation of the
+roadmap's actual content — `docs/ROADMAP.md` itself is left unchanged
+since it still correctly describes the target feature set for each
+phase; only the *grouping and sequencing* of these implementation passes
+differs from a literal phase-by-phase reading.
 
 ## Documentation Baseline
 
@@ -1040,6 +1043,236 @@ D-022):
 -   Manual single-guest duplicate detection is intentionally not enforced
     — see "Scope decisions" above.
 
+## Phase 6 --- RSVP & Guest Response Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including a real browser E2E flow through the actual
+`/invite/[slug]?to=[token]` page. No fake/mocked RSVP persistence,
+authorization, or seat-quota logic. No schema migration was required —
+the Phase 0 `RSVP` model (`docs/DATABASE.md` §16) already had every field
+and the `eventId+guestId` unique constraint this phase needs.
+
+-   [x] RSVP domain layer (`lib/rsvp/`) — `service.ts` (token resolution,
+    submit/upsert, dashboard read), `validation.ts` (Zod, reuses the
+    existing `guestTokenSchema` from `lib/invitations/token.ts` rather
+    than duplicating the token format check), `errors.ts`
+    (`InvalidRsvpTokenError`, `SeatQuotaExceededError`, re-exports
+    `EventNotFoundError`), `rate-limit.ts`, `labels.ts`, `types.ts`,
+    `actions.ts` (the public `submitRsvpAction` Server Action).
+-   [x] Personalized guest RSVP — integrated directly into the existing
+    `InvitationRenderer` → template → sections pipeline (see D-025), not
+    a parallel page. `components/rsvp/rsvp-section.tsx` (Server
+    Component) renders either the real form or a plain "use your
+    personal link" message; `components/rsvp/rsvp-form.tsx` (Client
+    Component) is the actual interactive form (`useActionState`,
+    pending/error/success states, always editable — see "Notable
+    implementation decisions" below for why there's no separate
+    read-only confirmation view).
+-   [x] Server-side identity resolution — every read and write resolves
+    the guest strictly from the `?to=` token via
+    `resolveGuestForRsvp()` (internal, never exported), cross-checked
+    against the caller's own `eventId`. No function in this domain
+    accepts or trusts a client-supplied `guestId`; `submitRsvpAction`'s
+    signature has no `guestId` parameter at all.
+-   [x] Seat-quota enforcement — `attendeeCount <= guest.seatQuota` is
+    checked server-side in `submitRsvpForGuest()` (`SeatQuotaExceededError`
+    on violation), never trusting the form's own `max` attribute (a UI
+    nicety only). A non-ATTENDING answer's attendee count is always
+    forced to `0` regardless of what was submitted
+    (`resolveAttendeeCount()`, unit-tested) — matches `docs/PRD.md` §21
+    ("if attending, ask number of attendees").
+-   [x] Upsert semantics, one RSVP per guest — `submitRsvpForGuest()`
+    upserts on the existing `eventId+guestId` unique constraint inside a
+    `$transaction` alongside the `GuestInvitation.status` update, so a
+    repeat submission updates the same row rather than creating a second
+    one. Directly proven at the database level (a raw second `create`
+    for the same pair throws Prisma's `P2002`), not just asserted at the
+    application layer.
+-   [x] `GuestInvitation.status` lifecycle — every submission advances
+    the invitation to `RSVPED` (never downgrading an already
+    `CHECKED_IN` one) — see D-026.
+-   [x] Dashboard RSVP overview
+    (`/dashboard/events/[eventId]/rsvp`) — VIEWER-and-above (same read
+    boundary as the Phase 5 guest list, D-023): total/attending/not
+    attending/maybe/pending counts, total seats invited vs. confirmed
+    seats, and a paginated per-guest list with attendance badge and
+    private message. Counts are computed from the full guest/RSVP set via
+    `groupBy`/`aggregate`, not from the current page, so pagination never
+    skews the summary numbers.
+-   [x] Rate limiting — `lib/rsvp/rate-limit.ts` applies the existing
+    `lib/rate-limit/` in-memory limiter (20 submissions / 10 minutes per
+    IP) to `submitRsvpAction`, per `docs/ARCHITECTURE.md` §28 explicitly
+    listing RSVP as a rate-limited surface. Same documented caveat as
+    `lib/auth/rate-limit.ts`: in-memory, single-process only — a
+    temporary stopgap, not a substitute for a shared store (e.g. Redis)
+    under multi-instance/serverless concurrency. The real defense against
+    token-guessing is the token's own 192-bit entropy
+    (`lib/guests/token.ts`), not this limiter.
+-   [x] Loading/error/empty states — `rsvp/loading.tsx` skeleton, the
+    shared not-found page for unauthorized/nonexistent events, inline
+    field errors on the RSVP form, a real empty state on the dashboard
+    when an event has no guests yet, clear Indonesian success/error/
+    pending copy throughout (`belum mengisi RSVP`, `hadir`, `tidak
+    hadir`, `belum pasti`).
+
+### Security review findings
+
+No new gaps were found in existing Phase 0-5 code during this phase. RSVP-
+specific review points, all satisfied by the design above:
+
+-   **IDOR / cross-event access** — a token whose guest belongs to a
+    different event resolves to `null` identically to an unknown token
+    (`InvalidRsvpTokenError`'s doc comment), proven directly: a guest
+    created under Event A cannot have their RSVP read or written by
+    passing Event B's id, even attempted by that same guest's rightful
+    event owner.
+-   **Client-controlled identity** — `submitRsvpAction(eventId, token,
+    prevState, formData)` has no `guestId` parameter; `actions.test.ts`
+    proves a malicious extra `guestId` form field is ignored and never
+    reaches the service layer.
+-   **Token leakage** — the raw token is never introduced as new public
+    surface; it's the same value already visible in the page's own `?to=`
+    query string, threaded through as an ordinary prop the same way
+    `eventId`/`guestId` already are for `DeleteGuestButton` et al.
+    (Phase 5). Dashboard reads never return a guest's token at all — the
+    RSVP overview shows name/category/seats/attendance/message only.
+-   **Guest enumeration** — a malformed token, an unknown token, and a
+    foreign-event token all produce the exact same UI ("gunakan tautan
+    undangan pribadi Anda") and the exact same server error
+    (`InvalidRsvpTokenError`), so no response distinguishes "no such
+    token" from "token for another event."
+-   **Raw error leakage** — `mapRsvpErrorMessage()` logs server-side only
+    and returns a generic Indonesian message for anything unexpected;
+    covered in `errors.test.ts`.
+-   **XSS** — no `dangerouslySetInnerHTML` anywhere in
+    `components/rsvp/`; the guest's own message is rendered as ordinary
+    JSX text (auto-escaped) both in the RSVP form's own success banner
+    context and on the dashboard.
+-   **Missing validation** — every field is Zod-validated
+    (`rsvpFormSchema`), with the seat-quota bound enforced separately in
+    the service layer since it's guest-specific data the static schema
+    can't know.
+-   **Non-personalized submission** — a public visitor without a token
+    never sees a form at all (`RsvpSection` renders the static message
+    instead), and even if the action were called directly with an
+    empty/garbage token, `resolveGuestForRsvp()` still independently
+    rejects it — the UI gate is a convenience, not the actual boundary.
+
+### Notable implementation decisions
+
+-   **The RSVP form is always shown editable — there is no separate
+    read-only "confirmation" view.** An early draft toggled between an
+    edit form and a read-only summary card after a successful submit, but
+    collapsing to the summary automatically required a `setState` call
+    inside a `useEffect` reacting to the action's result, which this
+    project's lint rule (`react-hooks/set-state-in-effect`) correctly
+    flags as an anti-pattern. Redesigned instead: the form stays visible
+    and editable at all times, with a green confirmation banner shown
+    above it after a successful submission — simpler, avoids the
+    effect entirely, and more directly satisfies "existing RSVP is
+    editable by the same guest" than a view that has to be un-collapsed
+    first.
+-   **RSVP resolution is fully separate from `lib/invitations/`** rather
+    than extending the Phase 3 guest-context type — see D-025. Phase 3's
+    files and tests needed zero changes for this phase.
+-   **`GuestInvitation.status` transitions to RSVPED on every
+    submission** — see D-026.
+
+### Tests Added (Phase 6)
+
+Pure unit tests (no database):
+
+-   `lib/rsvp/validation.test.ts` (15 tests) — `rsvpFormSchema`: valid
+    ATTENDING/NOT_ATTENDING/MAYBE answers, rejects ATTENDING with 0
+    attendees, rejects an unknown attendance value, message length limit
+    and empty-to-null handling, attendeeCount string coercion and upper
+    sanity bound; `rsvpTokenSchema` format checks; `rsvpDashboardQuerySchema`
+    safe fallback for a garbage page value
+-   `lib/rsvp/errors.test.ts` (4 tests) — domain error → Indonesian
+    message mapping (including the seat-quota number appearing in the
+    message), confirms unexpected errors never leak raw details
+-   `lib/rsvp/service.test.ts` (8 tests) — the two pure business-rule
+    functions in isolation: `resolveAttendeeCount()` (forces 0 for
+    non-ATTENDING regardless of submitted value) and
+    `resolveNextInvitationStatus()` (advances every pre-RSVPED status to
+    RSVPED, never downgrades CHECKED_IN)
+-   `lib/rsvp/actions.test.ts` (5 tests) — rate-limit rejection
+    short-circuits before validation/service; invalid input rejected
+    without calling the service layer; a client-supplied `guestId` form
+    field is proven ignored; a thrown domain error never leaks its raw
+    message through the action
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/rsvp/service.integration.test.ts` (20 tests) — the authoritative
+    security/persistence proof: token resolution (valid, malformed,
+    unknown, cross-event — all four cases directly tested for both the
+    read path and the write path); creates a new RSVP and advances
+    invitation status to RSVPED; upserts rather than duplicates on a
+    second submission (row-count assertion); forces attendeeCount to 0
+    for non-ATTENDING; rejects an attendee count above that specific
+    guest's seat quota; **cross-event guest manipulation is impossible**
+    even via a technically-valid token, confirmed by asserting zero rows
+    were written; never downgrades CHECKED_IN back to RSVPED; **the
+    database itself** (not just application logic) rejects a second RSVP
+    row for the same event+guest pair (P2002); dashboard authorization
+    (owner/VIEWER-role member allowed, stranger and nonexistent event
+    rejected) and event-scoped counts (a guest/RSVP from a different
+    event is never counted), including a multi-guest/multi-attendance
+    count-accuracy test. Every row created is deleted in `afterEach`
+    regardless of outcome — verified with a follow-up query showing zero
+    leftover rows.
+
+E2E (real Supabase DEV database, fixtures seeded directly via Prisma —
+same rationale as `e2e/invitation.spec.ts`: the guest-facing RSVP flow is
+public and unauthenticated, so no login is involved on this side at all):
+
+-   `e2e/rsvp.spec.ts` (3 tests) — a non-personalized invitation (no
+    token) shows the "use your personal link" message, never a form; a
+    token belonging to a different event produces the identical message
+    (not the form, not an error page); and one comprehensive scenario
+    covering personalized guest opens the invitation → sees the RSVP
+    form with their real name and seat quota → submits ATTENDING with an
+    attendee count → sees the success banner → **reloads the page and
+    confirms the answer persisted server-side** → changes their answer to
+    NOT_ATTENDING → submits again → sees the updated confirmation →
+    reloads again and confirms the update persisted. (Deliberately one
+    test rather than several separate ones, since each step depends on
+    the previous step's mutation and this project's Playwright config
+    runs with `fullyParallel: true`.)
+-   `e2e/invitation.spec.ts`'s existing "personalizes the greeting for a
+    valid guest token" test was adjusted to `.first()` — a personalized
+    guest's name now legitimately appears twice on the page (the
+    existing greeting section, and the new RSVP section's own "Halo
+    ..." prompt), the same class of strict-mode selector fix Phase 4
+    already applied once for its own new markup. This is a selector
+    disambiguation, not a weakened assertion — the test still requires
+    the guest's real name to be visible on the page.
+-   Confirmed via a full `npm run test:e2e` run: all pre-existing Phase
+    0-5 E2E specs (auth, events, editor, guests, invitation, homepage)
+    continue passing unmodified except for that one selector fix.
+
+### Known Limitations
+
+-   The in-memory rate limiter is a single-process stopgap (see "Rate
+    limiting" above) — acceptable for the current single-instance
+    deployment target, but would need a shared store (Redis or similar)
+    before running multiple server instances in production.
+-   No owner-initiated RSVP override (recording a guest's response on
+    their behalf from the dashboard) — the brief scoped this phase to the
+    guest-facing submission flow plus a read-only dashboard overview;
+    "manage RSVP on behalf of a guest" would be new mutation surface
+    beyond what was requested.
+-   No RSVP charts/timeline (`docs/PRD.md` §22 mentions "RSVP
+    distribution," "RSVP timeline," "RSVP by category" charts) — the
+    phase brief explicitly said not to build a large analytics system
+    yet; the counts table covers the same numbers without a charting
+    library.
+-   Wishes/guestbook (Roadmap Phase 10) and check-in (Roadmap Phase 14,
+    `CHECKED_IN`) remain unimplemented — `RSVP.message` is a private note
+    to the organizer shown only on the dashboard, deliberately distinct
+    from the separate, moderated, publicly-displayed `Wish` model.
+
 ## Later Phases
 
 Follow `docs/ROADMAP.md`. Do not mark later phases complete here without
@@ -1110,29 +1343,33 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (293/293 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (345/345 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
-                             lib/guests/*; 86 of these are live-DB integration tests — 15
-                             events, 14 invitations, 31 editor, 26 guests — 0 leftover rows
-                             verified after each run)
+                             lib/guests/*, lib/rsvp/*; 106 of these are live-DB integration
+                             tests — 15 events, 14 invitations, 31 editor, 26 guests, 20
+                             rsvp — 0 leftover rows verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
-                             /invite/[slug], the editor route, and all guest routes
-                             correctly dynamic)
-E2E:                        PASS (26/26 — homepage smoke test, auth foundation suite,
+                             /invite/[slug], the editor route, all guest routes, and the
+                             RSVP dashboard route correctly dynamic)
+E2E:                        PASS (29/29 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
-                             suite, and guest management suite; auth/invitation/editor/
-                             guests suites exercise the real Supabase DEV database directly,
-                             no mocks — the editor and guests suites additionally drive a
-                             real authenticated session, see D-022)
+                             suite, guest management suite, and RSVP suite;
+                             auth/invitation/editor/guests/rsvp suites exercise the real
+                             Supabase DEV database directly, no mocks — the editor and
+                             guests suites additionally drive a real authenticated
+                             session (D-022); the RSVP guest flow is public/unauthenticated
+                             by design, so its suite seeds fixtures directly via Prisma
+                             instead, the same pattern e2e/invitation.spec.ts already uses)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 5, the existing Guest/GuestInvitation schema
-                             was fully sufficient)
+                             none new in Phase 6, the existing RSVP schema (with its
+                             eventId+guestId unique constraint) was fully sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
-                             invitation-token, editor/IDOR, AND guest/IDOR authorization
-                             proofs; Auth via a real authenticated login in
-                             e2e/editor.spec.ts and e2e/guests.spec.ts)
+                             invitation-token, editor/IDOR, guest/IDOR, AND RSVP token/
+                             seat-quota/IDOR authorization proofs; Auth via a real
+                             authenticated login in e2e/editor.spec.ts and
+                             e2e/guests.spec.ts)
 ```
 
 ## Update Rules

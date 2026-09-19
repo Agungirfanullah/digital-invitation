@@ -303,3 +303,68 @@ astronomically unlikely event of a token collision, the transaction is
 retried with a freshly generated token (up to 5 attempts) rather than
 failing the guest creation outright. CSV import reuses the same function
 per row, so every imported guest also gets its own token atomically.
+
+## D-025 --- RSVP Data Is Resolved Separately From `PublicInvitation`, Not Merged Into It
+
+**Decision:** The RSVP section's guest-specific data (seat quota, existing
+answer) is resolved by `lib/rsvp/service.ts`'s own `getRsvpGuestView()` —
+a completely separate function and query from `lib/invitations/token.ts`'s
+`resolveGuestContext()` — rather than extending `PublicGuestContext` or
+`PublicInvitation` (`lib/invitations/types.ts`) with RSVP fields. The
+result is threaded through the render tree as a new, separate `rsvp` prop
+on `InvitationTemplateProps` (`lib/invitations/templates/registry.ts` →
+`InvitationRenderer` → the template → `components/rsvp/rsvp-section.tsx`),
+not as part of the `invitation` object itself.
+
+**Rationale:** `PublicInvitation` is Phase 3's deliberately narrow,
+heavily-tested public projection — its tests specifically assert what it
+does *not* contain, and every existing consumer (metadata generation,
+templates, other tests) assumes its current shape. Folding RSVP state
+into it would mean either widening an already carefully-scoped type for
+a single new feature, or accepting an extra field that most call sites
+(anything not rendering the RSVP section) never use. Keeping RSVP
+resolution in its own module, called separately by the page, means:
+Phase 3's files, types, and tests needed zero changes for Phase 6 to
+ship, and the RSVP domain owns its own read/write logic end-to-end
+(matching `lib/guests/`'s and `lib/editor/`'s existing self-contained
+module shape). The tradeoff is one extra lightweight, indexed lookup on a
+personalized page load (never on an anonymous visit, since it's skipped
+entirely when `invitation.guest` is already null) — an acceptable,
+bounded cost against the alternative of coupling two domains' data models
+together.
+
+**Impact:** `lib/invitations/*` (types, token resolution, projection) has
+no RSVP-awareness at all. `app/invite/[slug]/page.tsx` calls
+`getPublicInvitationBySlug()` (unchanged) and, only when a token
+resolved a real guest, separately calls `getRsvpGuestView()` and passes
+`{ token, view }` down as `InvitationRenderer`'s `rsvp` prop. A future
+second template only needs to render `<RsvpSection eventId={...}
+rsvp={rsvp} />` the same way `MinimalElegantTemplate` does — no change to
+the data-fetching layer.
+
+## D-026 --- RSVP Submission Always Advances `GuestInvitation.status` to RSVPED
+
+**Decision:** Every successful RSVP submission (regardless of
+ATTENDING/NOT_ATTENDING/MAYBE) updates the guest's `GuestInvitation.status`
+to `RSVPED`, atomically with the `RSVP` upsert — except when the
+invitation is already `CHECKED_IN`, which is never downgraded back to
+RSVPED.
+
+**Rationale:** `docs/DATABASE.md` §9 already defines
+`GuestInvitationStatus` as a lifecycle (`NOT_SENT → SENT → OPENED →
+RSVPED → CHECKED_IN`), and RSVPED clearly means "the guest responded,"
+not "the guest is attending" (that distinction lives in `RSVP.attendance`
+instead). Leaving this column stuck at `NOT_SENT`/`SENT`/`OPENED` forever
+even after a real response would make the column meaningless and would
+under-report "who has responded" anywhere the invitation status is used
+instead of a `RSVP` join (e.g. a future guest-list "invitation status"
+column). No check-in feature exists yet to produce `CHECKED_IN`, but the
+never-downgrade rule costs nothing to implement now and avoids a future
+regression when it does.
+
+**Impact:** `lib/rsvp/service.ts`'s `resolveNextInvitationStatus()` (a
+pure, unit-tested function) implements the rule; `submitRsvpForGuest()`
+applies it inside the same `$transaction` as the RSVP upsert. Covered by
+both the unit test (`service.test.ts`) and an integration test that
+manually sets `CHECKED_IN` first and confirms a subsequent RSVP
+submission doesn't revert it (`service.integration.test.ts`).

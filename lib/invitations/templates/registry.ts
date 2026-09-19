@@ -2,9 +2,18 @@ import type { ComponentType } from "react";
 
 import { MinimalElegantTemplate } from "@/components/invitation/templates/minimal-elegant-template";
 import type { PublicInvitation } from "@/lib/invitations/types";
+import type { RsvpGuestView } from "@/lib/rsvp/types";
 
 export interface InvitationTemplateProps {
   invitation: PublicInvitation;
+  /**
+   * Deliberately separate from `PublicInvitation` rather than a field on
+   * it — see docs/DECISIONS.md D-025. Present only when `?to=` resolved to
+   * a valid, same-event guest; `null`/`undefined` otherwise (anonymous
+   * visitor or an invalid/foreign token), in which case a template must
+   * not render a submittable RSVP form.
+   */
+  rsvp?: { token: string; view: RsvpGuestView } | null;
 }
 
 /**
