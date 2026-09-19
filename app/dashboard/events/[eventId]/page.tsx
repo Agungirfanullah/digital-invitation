@@ -39,9 +39,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             {EVENT_TYPE_LABELS[event.type]} · {EVENT_STATUS_LABELS[event.status]}
           </p>
         </div>
-        <Button asChild variant="outline">
-          <Link href={`/dashboard/events/${event.id}/edit`}>Edit Acara</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link href={`/dashboard/events/${event.id}/editor`}>Editor Undangan</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/dashboard/events/${event.id}/edit`}>Edit Acara</Link>
+          </Button>
+        </div>
       </div>
 
       <dl className="grid grid-cols-1 gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
@@ -94,8 +99,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <h2 className="text-sm font-medium">Segera hadir</h2>
         <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
           <li>Tamu &amp; RSVP</li>
-          <li>Editor undangan &amp; tema</li>
-          <li>Galeri &amp; cerita cinta</li>
           <li>Analitik</li>
         </ul>
       </div>

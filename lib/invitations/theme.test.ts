@@ -53,6 +53,11 @@ describe("parseTheme", () => {
     expect(theme.backgroundImageUrl).toBeNull();
   });
 
+  it("rejects a javascript: background image URL rather than passing it through", () => {
+    const theme = parseTheme(fakeTheme({ backgroundImageUrl: "javascript:alert(1)" }));
+    expect(theme.backgroundImageUrl).toBeNull();
+  });
+
   it("never throws regardless of field combination", () => {
     expect(() =>
       parseTheme(

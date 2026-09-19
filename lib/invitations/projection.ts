@@ -2,6 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 
 import { parseTheme } from "@/lib/invitations/theme";
+import { toSafeHttpUrl } from "@/lib/invitations/url-safety";
 import type { PublicGuestContext, PublicInvitation } from "@/lib/invitations/types";
 
 /**
@@ -72,7 +73,7 @@ export function toPublicInvitation(
         ? {
             name: schedule.venue.name,
             address: schedule.venue.address,
-            mapUrl: schedule.venue.mapUrl,
+            mapUrl: toSafeHttpUrl(schedule.venue.mapUrl),
             latitude: schedule.venue.latitude,
             longitude: schedule.venue.longitude,
           }
@@ -86,19 +87,21 @@ export function toPublicInvitation(
             dateLabel: item.dateLabel,
             title: item.title,
             description: item.description,
-            imageUrl: item.imageUrl,
+            imageUrl: toSafeHttpUrl(item.imageUrl),
           })),
         }
       : null,
     galleries: event.galleries.map((gallery) => ({
       title: gallery.title,
-      items: gallery.items.map((item) => ({
-        id: item.id,
-        type: item.type,
-        url: item.url,
-        thumbnailUrl: item.thumbnailUrl,
-        caption: item.caption,
-      })),
+      items: gallery.items
+        .filter((item) => toSafeHttpUrl(item.url) !== null)
+        .map((item) => ({
+          id: item.id,
+          type: item.type,
+          url: item.url,
+          thumbnailUrl: toSafeHttpUrl(item.thumbnailUrl),
+          caption: item.caption,
+        })),
     })),
     guest,
   };

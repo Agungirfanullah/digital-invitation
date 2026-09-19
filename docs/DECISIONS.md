@@ -172,3 +172,58 @@ derives the event from the FK-enforced `GuestInvitation → Guest → Event`
 chain and cross-checks it against the event resolved from the URL slug
 (see `lib/invitations/token.ts`), so correctness doesn't depend on this
 column alone even though it's now constrained.
+
+## D-021 --- Editor Access Requires EDITOR Role; No Read-Only Viewer Mode Yet
+
+**Decision:** `/dashboard/events/[eventId]/editor` is gated at
+`EventMemberRole.EDITOR` for both viewing and mutating — a `VIEWER`-role
+`EventMember` cannot open the editor at all (gets the same not-found
+behavior as a nonexistent event), not a read-only version of it.
+
+**Rationale:** There is no product surface yet that grants VIEWER
+membership (team collaboration/invites don't exist), so this only affects
+a hypothetical future case. Building a genuinely read-only editor mode now
+(disabling every input, hiding every mutation control) would be
+speculative work for a role nothing can currently assign. Gating the
+whole route at EDITOR keeps the authorization surface simple and correct
+today; a read-only mode can be added when VIEWER membership becomes
+reachable, without changing the authorization boundary itself
+(`getAuthorizedEvent` already supports arbitrary role thresholds).
+
+**Impact:** `lib/editor/service.ts`'s `requireEditorAccess()` always
+checks `EventMemberRole.EDITOR`. Covered by an integration test
+(`lib/editor/service.integration.test.ts`) and an E2E test
+(`e2e/editor.spec.ts`) proving a VIEWER member is rejected.
+
+## D-022 --- Supabase Admin `createUser` Unblocks Authenticated E2E Testing
+
+**Decision:** Use `supabase.auth.admin.createUser({ email_confirm: true })`
+(service-role only, test code only) to provision confirmed auth accounts
+for E2E fixtures that need a real authenticated session, instead of the
+public `auth.signUp()` flow.
+
+**Rationale:** Phase 2 and Phase 3 documented a "known limitation": the
+Supabase DEV project's Auth configuration rejects `auth.signUp()` from
+synthetic email domains (verified directly against the Auth API), so no
+fully-authenticated browser E2E flow could be automated — E2E coverage
+for authenticated routes was limited to unauthenticated-redirect checks
+plus DB-level integration tests. While building Phase 4's editor E2E
+tests, the same restriction was hit again and re-investigated: the
+*admin* `createUser` endpoint (available via the service-role key, which
+test code already uses for direct Prisma fixture setup) is not subject to
+that signup-time restriction and produces an account that authenticates
+through the real `/login` page exactly like any other user. This means
+the Phase 2/3 limitation was narrower than it was framed — it blocks
+scripting the public *registration* flow specifically, not authenticated
+E2E testing in general.
+
+**Impact:** `e2e/editor.spec.ts` uses this to drive real login → editor →
+persistence → public-page-reflects-the-change flows with no cookie
+injection or mocking. This pattern is available to any future phase
+needing an authenticated E2E flow (guest management, RSVP, check-in,
+etc.) — the Phase 2/3 STATUS.md limitation notes have been updated to
+point here rather than reasserting the narrower framing. Phase 2/3's
+existing tests were left as-is (not reworked retroactively — out of scope
+for Phase 4, and they already pass); this decision only governs new work
+going forward. The service role key must never leave test/server code —
+this pattern is not, and must never become, something client code touches.

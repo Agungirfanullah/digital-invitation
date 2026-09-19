@@ -105,6 +105,65 @@ describe("toPublicInvitation", () => {
     expect(dto.schedules[0].venue?.name).toBe("Gedung A");
   });
 
+  it("strips an unsafe (javascript:) venue map URL rather than passing it through", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        schedules: [
+          {
+            id: "sch-1",
+            title: "Akad Nikah",
+            description: null,
+            date: new Date("2026-12-12T00:00:00Z"),
+            startTime: new Date("1970-01-01T08:00:00Z"),
+            endTime: new Date("1970-01-01T10:00:00Z"),
+            venue: {
+              name: "Gedung A",
+              address: "Jl. Uji Coba No. 1",
+              mapUrl: "javascript:alert(1)",
+              latitude: null,
+              longitude: null,
+            },
+          },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.schedules[0].venue?.mapUrl).toBeNull();
+  });
+
+  it("filters out a gallery item whose URL is unsafe (javascript:)", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        galleries: [
+          {
+            title: null,
+            items: [
+              {
+                id: "safe",
+                type: "IMAGE",
+                url: "https://example.com/a.jpg",
+                thumbnailUrl: null,
+                caption: null,
+              },
+              {
+                id: "unsafe",
+                type: "IMAGE",
+                url: "javascript:alert(1)",
+                thumbnailUrl: null,
+                caption: null,
+              },
+            ],
+          },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.galleries[0].items).toHaveLength(1);
+    expect(dto.galleries[0].items[0].id).toBe("safe");
+  });
+
   it("gracefully handles a schedule with no venue", () => {
     const dto = toPublicInvitation(
       fakeEvent({

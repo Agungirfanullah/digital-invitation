@@ -12,28 +12,31 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 3 --- Invitation Foundation
+**Current Phase:** Phase 4 --- Editor Foundation
 
-**Status:** Phase 0, 1, and 2 remain complete and passing. Phase 3's public
-invitation rendering pipeline (`/invite/[slug]`, projection, template
-registry, theme validation, personalization) is implemented and verified
-against the real Supabase DEV Postgres database.
+**Status:** Phase 0-3 remain complete and passing. Phase 4's invitation
+editor (couple/theme/template/schedule/love-story/gallery editing, live
+preview via the real `InvitationRenderer`, debounced autosave) is
+implemented and verified against the real Supabase DEV Postgres database
+— including, for the first time, a genuinely authenticated E2E browser
+flow (see D-022 in `docs/DECISIONS.md`).
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
 `docs/ROADMAP.md`'s Phase 3 (Template System), Phase 4 (Invitation Data —
 Theme specifically), and Phase 6 (Public Invitation), building the
 rendering foundation end-to-end in one pass rather than strictly
-sequentially. This is a deliberate execution-order adjustment permitted by
-`AGENT_EXECUTION.md` §9 ("adjust the implementation order while preserving
-the product priorities"), not a reinterpretation of the roadmap's actual
-content — `docs/ROADMAP.md` itself is left unchanged since it still
-correctly describes the target feature set for each of those phases; only
-the *grouping and sequencing* of this implementation pass differs from a
-literal phase-by-phase reading. Guest management (Roadmap Phase 7) and the
-invitation editor (Roadmap Phase 5) are explicitly **not** part of this
-phase and remain unimplemented — see "What Phase 3 deliberately does not
-include" below.
+sequentially. "Phase 4 — Editor Foundation" (this phase) then corresponds
+mainly to Roadmap Phase 5 (Invitation Editor) plus the data-entry side of
+Roadmap Phase 4. This is a deliberate execution-order adjustment permitted
+by `AGENT_EXECUTION.md` §9 ("adjust the implementation order while
+preserving the product priorities"), not a reinterpretation of the
+roadmap's actual content — `docs/ROADMAP.md` itself is left unchanged
+since it still correctly describes the target feature set for each phase;
+only the *grouping and sequencing* of these implementation passes differs
+from a literal phase-by-phase reading. Guest management (Roadmap Phase 7)
+remains unimplemented — see "What Phase 3 deliberately does not include"
+and Phase 4's own scope notes below.
 
 ## Documentation Baseline
 
@@ -113,13 +116,13 @@ connectivity.
 -   [x] `npm run typecheck` — **PASS**
 -   [x] `npm run lint` — **PASS**
 -   [x] `npm run format:check` — **PASS**
--   [x] `npm run test` (Vitest) — **PASS** (135/135 as of Phase 3; 79/79 at
-    the end of Phase 2; 43/43 at the end of Phase 1; 10/10 at the end of
-    Phase 0)
+-   [x] `npm run test` (Vitest) — **PASS** (220/220 as of Phase 4;
+    135/135 at the end of Phase 3; 79/79 at the end of Phase 2; 43/43 at
+    the end of Phase 1; 10/10 at the end of Phase 0)
 -   [x] `npm run build` (Next.js production build) — **PASS**
--   [x] `npm run test:e2e` (Playwright) — **PASS** (15/15 as of Phase 3;
-    8/8 at the end of Phase 2; 5/5 at the end of Phase 1; 1/1 at the end
-    of Phase 0)
+-   [x] `npm run test:e2e` (Playwright) — **PASS** (19/19 as of Phase 4;
+    15/15 at the end of Phase 3; 8/8 at the end of Phase 2; 5/5 at the
+    end of Phase 1; 1/1 at the end of Phase 0)
 -   [x] `npx prisma validate` — **PASS**
 -   [x] `npx prisma generate` — **PASS**
 -   [x] `npx prisma migrate status` against Supabase DEV — **PASS**
@@ -308,6 +311,16 @@ phase needs.
     env-loading step for `npm run test`.
 
 ### Remaining Limitation (not a blocker on this phase's completion)
+
+**Update from Phase 4:** the limitation below is narrower than originally
+framed — see D-022 in `docs/DECISIONS.md`. The Supabase Auth restriction
+is specific to the *public* `auth.signUp()` flow; the admin API's
+`createUser({ email_confirm: true })` bypasses it and produces an account
+that logs in through the real `/login` page like any other user.
+`e2e/editor.spec.ts` uses this for genuine authenticated E2E coverage.
+This section is left as originally written below for historical accuracy
+about what Phase 2 itself covered — it was correct at the time, just not
+the full picture of what's possible.
 
 Full authenticated browser E2E for event create/edit/delete (register →
 login → create event → edit → delete, all through the UI) could not be
@@ -578,6 +591,16 @@ see "Known Limitation" below for why):
 
 ### Known Limitation
 
+**Update from Phase 4:** this is narrower than framed below — see D-022 in
+`docs/DECISIONS.md`. `e2e/editor.spec.ts` drives a real authenticated
+register-equivalent (admin-provisioned, confirmed) → login → edit →
+publish-reflects flow using `supabase.auth.admin.createUser({
+email_confirm: true })`, which the public signup restriction described
+here doesn't apply to. A public-invitation E2E rewritten to log in first
+would be a reasonable follow-up, though the Prisma-seeded approach below
+remains a valid, arguably more precise test of the rendering pipeline on
+its own.
+
 Same underlying constraint as Phase 2: the Supabase DEV project's Auth
 configuration rejects signups from synthetic email domains, so a fully
 authenticated **register → create event → publish → view public
@@ -593,6 +616,220 @@ deliverability entirely.
 event from the dashboard, open `/invite/<slug>` in an incognito window,
 confirm it renders and that unpublishing it makes the same URL 404
 immediately.
+
+## Phase 4 --- Editor Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including a genuine authenticated browser E2E flow
+(see D-022). No fake/mocked authorization, persistence, or preview logic.
+No schema migration was required — every model this phase edits
+(`WeddingProfile`, `Theme`, `EventSchedule`, `Venue`, `LoveStory`/
+`LoveStoryItem`, `Gallery`/`GalleryItem`, `Event.templateId`) already
+existed from Phase 0/3.
+
+-   [x] Editor route `/dashboard/events/[eventId]/editor` — authorized at
+    `EventMemberRole.EDITOR` (owner or EDITOR member); a VIEWER member or
+    an unrelated user gets the same not-found behavior as a nonexistent
+    event (see D-021). Reuses `lib/events/authorization.ts`'s
+    `getAuthorizedEvent()` — no parallel authorization helper was written.
+-   [x] Editor domain layer (`lib/editor/`) — `service.ts` (load +
+    mutate, all authorization-checked), `validation.ts` (Zod),
+    `errors.ts` (re-exports the existing `EventNotFoundError` rather than
+    duplicating it, per instruction to reuse existing error taxonomy),
+    `types.ts`, `actions.ts` (Server Actions), `preview.ts` (pure
+    editor-state → `PublicInvitation` assembly for the live preview).
+-   [x] Couple/wedding profile editing — all 10 `WeddingProfile` fields,
+    autosaved.
+-   [x] Theme editing — all 9 `Theme` columns, autosaved, applied to the
+    live preview through the same `parseTheme()` fallback logic
+    production uses (see "Theme parameter type relaxed" below) — never a
+    second theme representation.
+-   [x] Template selection — reuses the existing registry
+    (`lib/invitations/templates/registry.ts`) as the single source of
+    truth for what's actually implemented. All 6 seeded `Template` rows
+    are listed; only `minimal-elegant` is selectable, the other 5 render
+    as visibly disabled "Segera hadir" cards — the UI does not claim more
+    templates work than actually do. The server independently re-validates
+    the selection (active + registry-known), not just the UI's disabled
+    state.
+-   [x] Schedule (+ embedded venue) CRUD — create/update/delete, each
+    schedule optionally carrying one venue (name/address/map URL/lat/lng)
+    created/updated in the same Prisma transaction. Removing a venue from
+    a schedule detaches it (`venueId → null`) without deleting the
+    `Venue` row — see "Persistence strategy" below.
+-   [x] Love story CRUD — title (autosaved) + items (add/edit/delete);
+    the `LoveStory` row is created on first item add (find-or-create),
+    matching the public renderer's assumption of at most one per event.
+-   [x] Gallery CRUD — items (add/edit/delete: type, URL, caption); same
+    find-or-create pattern as love story. Gallery title editing was
+    deliberately **not** included — a single field with limited rendering
+    impact; scope trim, not an oversight.
+-   [x] Live preview reuses the real pipeline — `EditorShell` builds a
+    `PublicInvitation` from current (possibly-unsaved) local state via
+    `lib/editor/preview.ts`'s `buildPreviewInvitation()`, then renders it
+    through the exact same `<InvitationRenderer>` the public
+    `/invite/[slug]` route uses. No separate/duplicated preview template
+    exists.
+-   [x] Autosave (`components/editor/use-autosave.ts`) — debounced
+    (800ms default), not per-keystroke. Tracks the last-saved value
+    against the latest value so a stale in-flight response can't
+    overwrite a newer edit's outcome. Explicitly single-editor-oriented
+    (documented in the hook's own comment) — this does not attempt
+    multi-tab/multi-user conflict resolution, and doesn't claim to.
+-   [x] Truthful save states — "Tersimpan" (idle) / "Menyimpan..." /
+    "Perubahan tersimpan" / "Gagal menyimpan", shown once, in the header
+    (lifted up from whichever autosaved section is active via an
+    `onStatusChange` callback) — not claimed until the mutation actually
+    succeeds. Originally rendered per-section *and* in the header; that
+    duplication was caught and removed after `e2e/editor.spec.ts` itself
+    exposed it as a strict-mode ambiguity (two elements with identical
+    text) — a good example of E2E tests catching a real UX defect, not
+    just a testing inconvenience.
+-   [x] Server-side Zod validation on every mutation — string length
+    limits, date/time format, enum values (gallery item type), theme
+    color format (character-class restricted — see "CSS injection"
+    below), and safe-URL checks whereever a value can reach an
+    `href`/`src`.
+-   [x] IDOR defense on every nested mutation — updating/deleting a
+    `EventSchedule`, `LoveStoryItem`, or `GalleryItem` re-derives
+    ownership by querying `{ id, eventId }` (or the relation-scoped
+    equivalent for items) rather than trusting the id alone; a caller who
+    owns Event B cannot mutate a schedule/item that belongs to Event A
+    merely by knowing its id. Directly tested (see below).
+-   [x] Loading/error/empty states — `editor/loading.tsx` skeleton,
+    unauthorized/missing event reuses the existing
+    `/dashboard/events/[eventId]/not-found.tsx`, empty states for
+    schedule/love-story/gallery lists, inline field errors on every form.
+
+### Security review findings (fixed in this phase)
+
+Two real gaps were found and closed while implementing the editor's write
+paths — both affect the *existing* Phase 3 rendering pipeline too, not
+just new Phase 4 code:
+
+-   **`javascript:`/`data:` URLs were not rejected.** `lib/invitations/
+    theme.ts`'s `backgroundImageUrl` check (and the render path for
+    `Venue.mapUrl`, `LoveStoryItem.imageUrl`, `GalleryItem.url`/
+    `thumbnailUrl` in `lib/invitations/projection.ts`) previously relied
+    on plain `z.string().url()` / the WHATWG `URL` constructor, which
+    parses `javascript:alert(1)` as a syntactically valid URL — the check
+    never actually restricted the *scheme*. Values reaching an `<a href>`
+    (map links, gallery items) would execute on click. Fixed with a new
+    shared `lib/invitations/url-safety.ts` (`toSafeHttpUrl`/
+    `isSafeHttpUrl`, http/https only), applied at both the write boundary
+    (`lib/editor/validation.ts`) and the existing public read boundary
+    (`theme.ts`, `projection.ts` — gallery items with an unsafe URL are
+    now filtered out rather than passed through). Covered by
+    `lib/invitations/url-safety.test.ts` plus new cases added to the
+    existing `theme.test.ts`/`projection.test.ts`.
+-   **Theme color fields had no character restriction.** Colors reach the
+    DOM only via the `style` attribute/CSS custom properties (never a
+    string-built `<style>` tag or `dangerouslySetInnerHTML`), so this was
+    not an exploitable injection in the current architecture — but
+    `lib/editor/validation.ts`'s `colorField` now restricts the
+    character set anyway (`[a-zA-Z0-9#(),.%\-\s]`) as defense in depth
+    against that architecture ever changing without the validation
+    being revisited. Covered in `validation.test.ts` and
+    `actions.test.ts`.
+
+### Notable implementation decisions
+
+-   **`parseTheme()`'s parameter type was relaxed** from the full Prisma
+    `Theme` type to a structural `ThemeColumns` interface (the 9 columns
+    it actually reads). This lets the editor's in-memory `EditorTheme`
+    state (which has no `id`/`eventId`/timestamps) reuse the exact same
+    default-fallback function the public renderer uses for the live
+    preview, instead of duplicating that logic. Purely a type-signature
+    widening — behavior for real `Theme` rows is unchanged (confirmed by
+    the existing `theme.test.ts` suite still passing unmodified).
+-   **Schedule validation is flat, not nested**, even though
+    `lib/editor/service.ts`'s `ScheduleInput` type nests `venue`.
+    `ZodError.flatten()` only reports field errors one level deep (keyed
+    by `issue.path[0]`), so a nested `venue: venueSchema.nullable()`
+    schema would collapse every venue-field error under one opaque
+    `venue` key the form can't map back to the right input. `lib/editor/
+    validation.ts`'s `scheduleFormSchema` validates flat fields
+    (`venueName`, `venueAddress`, ...) and `toScheduleInput()`
+    reconstructs the nested shape after validation, so `service.ts` (and
+    its Prisma calls) never needed to change.
+-   **Persistence strategy for a schedule's venue**: create+update run in
+    one `$transaction`; updating an existing venue mutates that same row
+    (never creates a second one); removing a venue from a schedule sets
+    `venueId → null` without deleting the `Venue` row — per the explicit
+    instruction not to delete nested records the UI merely omitted. All
+    three behaviors are directly asserted in
+    `lib/editor/service.integration.test.ts` (row-count checks, id
+    stability checks).
+-   **Discovered `admin.auth.admin.createUser({ email_confirm: true })`
+    bypasses the Phase 2/3 "can't automate authenticated E2E" limitation**
+    — see D-022. Used for `e2e/editor.spec.ts`'s real login → edit →
+    persist → public-page-reflects-it flow. Phase 2/3 tests were left
+    unmodified (not retroactively reworked — out of scope here, and they
+    already pass); the STATUS.md sections above got a short pointer note
+    to this discovery rather than a rewrite.
+
+### Tests Added (Phase 4)
+
+Pure unit tests (no database):
+
+-   `lib/invitations/url-safety.test.ts` (new module) — http(s) accepted,
+    `javascript:`/`data:`/`vbscript:`/malformed rejected
+-   `lib/invitations/theme.test.ts` (+1) — `javascript:` background image
+    URL now rejected
+-   `lib/invitations/projection.test.ts` (+2) — unsafe venue map URL
+    stripped; gallery item with an unsafe URL filtered out entirely
+-   `lib/editor/validation.test.ts` (24 tests) — every schema: wedding
+    profile, theme (including the color character-class and unsafe-URL
+    rejections), template selection, schedule (including the
+    start<end-time refinement, the "venue name+address together" rule,
+    and `toScheduleInput`'s flat→nested transform), love story item,
+    gallery item
+-   `lib/editor/errors.test.ts` — domain error → Indonesian message
+    mapping, confirms unexpected errors never leak raw details
+-   `lib/editor/preview.test.ts` (9 tests) — `buildPreviewInvitation()`:
+    core field mapping, guest always null, theme default-fallback reuse,
+    raw theme passthrough, wedding profile/schedule passthrough, single
+    gallery wrapped into the renderer's array shape, no crash on
+    all-empty input
+-   `lib/editor/actions.test.ts` (7 tests) — every action rejects invalid
+    input **without calling the service layer or checking auth**
+    (Prisma/service/auth mocked here specifically to prove the
+    short-circuit ordering); confirms the authenticated user's id (never
+    a client-supplied value) is what reaches the service layer; confirms
+    the flat→nested schedule transform runs before the service call
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/editor/service.integration.test.ts` (31 tests) — the
+    authoritative authorization/persistence proof: owner and EDITOR-role
+    member can load/mutate; VIEWER-role member and an unrelated user
+    cannot (for `getEditorEvent`, `updateWeddingProfile`, `updateTheme`,
+    `selectTemplate`, schedule/love-story/gallery mutations); a
+    seeded-but-unimplemented template slug and a nonexistent slug are
+    both rejected; a schedule's venue is created once and updated in
+    place (row-count assertion); removing a venue detaches rather than
+    deletes it (row-existence assertion after the mutation); **a
+    schedule/love-story-item/gallery-item belonging to a different event
+    cannot be mutated even by that other event's rightful owner, by
+    passing the wrong `eventId`** — the core IDOR defense this phase
+    depends on; love story and gallery auto-create their parent row on
+    first item add. Every row created is deleted in `afterEach`
+    regardless of outcome — verified with a follow-up query showing zero
+    leftover rows.
+
+E2E (real Supabase DEV database and a real authenticated session — see
+D-022):
+
+-   `e2e/editor.spec.ts` (4 tests) — unauthenticated access redirects to
+    `/login`; an owner logs in for real, opens the editor, sees real
+    persisted `WeddingProfile` data pre-filled, edits a field, watches
+    the save-status indicator move through "Menyimpan..." →
+    "Perubahan tersimpan", reloads the page and confirms the change
+    persisted server-side (not just local state), and confirms the live
+    preview reflects it; a second test confirms an edited field is
+    reflected on the actual public `/invite/[slug]` page once saved; a
+    VIEWER-role member is rejected with the same not-found page an
+    unrelated user would see.
 
 ## Later Phases
 
@@ -664,22 +901,24 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (135/135 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
-                             lib/supabase, lib/events/*, lib/invitations/*; 25 of these are
-                             live-DB integration tests, 0 leftover rows verified after each run)
+Unit tests:                 PASS (220/220 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+                             lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*;
+                             60 of these are live-DB integration tests — 15 events, 14
+                             invitations, 31 editor — 0 leftover rows verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
-                             /invite/[slug] correctly dynamic, not statically prerendered)
-E2E:                        PASS (15/15 — homepage smoke test, auth foundation suite,
-                             event-route protection suite, and public invitation suite;
-                             auth + invitation suites exercise the real Supabase DEV
-                             database directly, no mocks)
+                             /invite/[slug] and the editor route correctly dynamic)
+E2E:                        PASS (19/19 — homepage smoke test, auth foundation suite,
+                             event-route protection suite, public invitation suite, and
+                             editor suite; auth/invitation/editor suites exercise the real
+                             Supabase DEV database directly, no mocks — the editor suite
+                             additionally drives a real authenticated session, see D-022)
 Prisma validate:            PASS
-Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total,
-                             1 new in Phase 3: add_guest_invitation_event_relation)
+Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
+                             none new in Phase 4, the existing schema was fully sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
-Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event
-                             AND invitation-token authorization proofs; Auth via live
-                             sign-in-rejection e2e test)
+Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
+                             invitation-token, AND editor/IDOR authorization proofs; Auth
+                             via a real authenticated login in e2e/editor.spec.ts)
 ```
 
 ## Update Rules
