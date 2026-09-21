@@ -16,6 +16,7 @@ import { RsvpStatusBadge } from "@/components/rsvp/rsvp-status-badge";
 import { CopyInviteLinkButton } from "@/components/guests/copy-invite-link-button";
 import { RegenerateTokenButton } from "@/components/guests/regenerate-token-button";
 import { MessagePreview } from "@/components/guests/message-preview";
+import { GuestQrCode } from "@/components/guests/guest-qr-code";
 
 export const metadata: Metadata = {
   title: "Undangan Tamu — Digital Invitation",
@@ -114,6 +115,8 @@ export default async function GuestInvitationPage({ params }: GuestInvitationPag
           </p>
         )}
       </div>
+
+      {inviteLink && <GuestQrCode link={inviteLink} guestName={detail.guestName} />}
 
       {message && <MessagePreview messageText={message.text} whatsappUrl={whatsappUrl} />}
     </div>

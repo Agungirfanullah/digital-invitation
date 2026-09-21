@@ -479,6 +479,19 @@ describe("getGuestInvitationDetail (integration)", () => {
     expect(detail.role).toBe("OWNER");
   });
 
+  it("includes the real token for an EDITOR-role member — the QR-code feature depends on this exact boundary (Roadmap Phase 13)", async () => {
+    const owner = await createTestUser("owner");
+    const editor = await createTestUser("editor");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, editor.id, EventMemberRole.EDITOR);
+    const guest = await createGuestForUser(event.id, owner.id, validGuest);
+
+    const detail = await getGuestInvitationDetail(event.id, editor.id, guest.id);
+    expect(detail.invitationToken).toBe(guest.invitationToken);
+    expect(detail.invitationTokenAvailable).toBe(true);
+    expect(detail.role).toBe("EDITOR");
+  });
+
   it("masks the token for a VIEWER-role member but still reports it as available", async () => {
     const owner = await createTestUser("owner");
     const viewer = await createTestUser("viewer");

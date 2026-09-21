@@ -12,34 +12,38 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 11 --- Gallery Foundation
+**Current Phase:** Phase 13 --- QR Invitation
 
-**Status:** Phase 0-10 remain complete and passing. Phase 11 implements
-`docs/ROADMAP.md`'s Phase 11 ("Gallery") — real image upload replaces the
-previous URL-paste-only flow: event owners/editors upload real image files
-(JPEG/PNG/WebP/GIF, 5MB max) through a new `lib/storage/` provider
-abstraction backed by Supabase Storage, with server-side magic-byte format
-validation (never trusting the client's claimed MIME type alone), a
-per-event-scoped, non-guessable object path, and honest upload
-progress/error states. Gallery items can now be reordered (persisted via
-`GalleryItem.sortOrder`, which already existed but was previously
-write-once) and deleted (which also removes the real Storage object,
-storage-first and fail-closed — see D-040). The public invitation's
-gallery grid now opens an accessible in-page lightbox instead of the raw
-image URL in a new tab, and `VIDEO` items (still URL-based, not uploaded —
-see the "VIDEO" note below) render through a real `<video>` element
-instead of the previous `<img>` bug. No schema migration was required —
-`Gallery`/`GalleryItem`'s existing columns (including `sortOrder` on both)
-already covered everything this phase needs; the object path is instead
-recovered from the stored public URL (D-041), a deliberate, verified
-decision, not an unexamined assumption. This phase does not touch RSVP,
-Wishes, check-in, or any other domain.
+**Status:** Phase 0-11 remain complete and passing. Phase 13 implements
+`docs/ROADMAP.md`'s Phase 13 ("QR Invitation") — OWNER and EDITOR users can
+view and download a QR code for any guest's personalized invitation from
+the existing per-guest invitation page
+(`/dashboard/events/[eventId]/guests/[guestId]/invitation`). The QR
+encodes the exact same URL `buildGuestInvitationUrl()` already produces
+for the copy-link and WhatsApp-share features — no second token, no
+QR-specific identifier, and no persisted QR image. Rendering and download
+are entirely client-side (`qrcode.react`'s `QRCodeSVG`, downloaded as a
+real `.svg` file). No schema migration was required and none was
+introduced — the QR is purely a different visual encoding of data that
+already exists and is already correctly authorized; VIEWER-role masking
+is inherited for free from the existing token-masking behavior
+(D-027), not reimplemented. See D-044 for the full library-selection and
+architecture rationale. This phase does not touch Roadmap Phase 14
+(Check-in), Phase 15 (Analytics), or WhatsApp Business API sending, all of
+which remain explicitly out of scope.
 
-**VIDEO note:** `docs/PRD.md` §24 and the existing `GalleryItemType` enum
-only ever specified "Video URLs," never uploaded video files — this phase
-preserves that distinction exactly as it already existed (video items are
-still added via a pasted URL, unchanged from Phase 4) and does not invent
-a video hosting/upload system, per the phase brief's explicit scope limit.
+**Note on Phase 12 (WhatsApp Sharing):** remains at the state described
+under "Phase 7" below — message composition, `wa.me` deep link, and
+copy-to-clipboard are implemented and verified; real automated sending via
+a WhatsApp Business API remains deliberately deferred (D-029) pending
+provider credentials nobody has configured. Nothing in this phase changed
+that.
+
+**Gallery/Phase 11 VIDEO note (carried forward, unchanged by this
+phase):** `docs/PRD.md` §24 and the existing `GalleryItemType` enum only
+ever specified "Video URLs," never uploaded video files — Phase 11
+preserved that distinction and did not invent a video hosting/upload
+system; this phase doesn't touch Gallery at all.
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -94,6 +98,14 @@ Phase 14) remains future work. This phase, "Phase 11 — Gallery
 Foundation," likewise matches `docs/ROADMAP.md`'s own Phase 11 ("Gallery")
 exactly — no reconciliation needed here either, chosen as the direct next
 lowest-numbered unimplemented P1 phase per the same prior inspection task.
+This phase, "Phase 13 — QR Invitation," also matches `docs/ROADMAP.md`'s
+own Phase 13 exactly. Phase 12 (WhatsApp Sharing) was deliberately not
+revisited as its own pass — a dedicated inspection task determined it was
+already actionable-complete (message composition + `wa.me` deep link,
+D-029) via the existing Phase 7 work, so Phase 13 — the next phase with
+zero code written and all dependencies satisfied — was chosen instead,
+consistent with this engagement's established "verify before assuming a
+phase needs (re)work" practice.
 
 ## Documentation Baseline
 
@@ -2447,6 +2459,164 @@ operational note for future work in this repository, not a bug fix.
     only `loading="lazy"`/`decoding="async"` and structural
     (CSS-aspect-ratio) layout-shift prevention are.
 
+## Phase 13 --- QR Invitation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including full authenticated browser E2E coverage
+(D-022) with a genuine downloaded-file assertion. No fake/mocked
+authorization, token, or QR logic. No schema migration was required —
+confirmed by inspection, not assumed: the QR feature adds no new
+persisted state at all, reusing `GuestInvitation.token` and the existing
+`buildGuestInvitationUrl()` output exactly as-is.
+
+-   [x] QR display (`components/guests/guest-qr-code.tsx`, new) — renders
+    on the existing per-guest invitation page
+    (`/dashboard/events/[eventId]/guests/[guestId]/invitation`), receiving
+    only the already-server-authorized `inviteLink` string the page
+    already computes for the "Tautan Undangan Pribadi"/copy-link feature
+    — `{inviteLink && <GuestQrCode ... />}`. No new data-fetching path, no
+    new authorization check: this component structurally cannot render
+    for a VIEWER, since `inviteLink` is already `null` for that role (the
+    same `getGuestInvitationDetail()` token-masking behavior D-027
+    established, unchanged by this phase).
+-   [x] QR download ("Unduh QR") — entirely client-side. The `QRCodeSVG`
+    component forwards a ref to the real rendered `<svg>` DOM node;
+    download serializes it (`XMLSerializer`) into a `Blob`
+    (`image/svg+xml`) and triggers a save via a temporary anchor element.
+    No Route Handler, no Server Action, no network round trip for the
+    download itself.
+-   [x] Safe filename (`lib/guests/qr-filename.ts`, new, pure) — derives
+    the downloaded file's name only from the guest's own display name via
+    the existing `lib/events/slug.ts` `slugify()` (e.g.
+    `qr-undangan-ayu-lestari.svg`); the function's signature makes it
+    structurally impossible to include the token, since it never receives
+    one as input.
+-   [x] Token-regeneration consequence — no new logic needed or added.
+    Regenerating a guest's token (D-028, unchanged) makes the *URL* the
+    QR encodes stop personalizing, exactly the same way it already
+    invalidates a copied link; a freshly-rendered QR (the page reloads
+    with the new `inviteLink` after regeneration) automatically encodes
+    the new URL. The QR section's own copy states this plainly in one
+    sentence, matching the existing `RegenerateTokenButton` warning's
+    tone without duplicating its full explanation.
+-   [x] Honest states — no QR renders at all when there's no invitation
+    token or the caller can't edit (same truthy-check the existing invite
+    link block already uses); a VIEWER sees neither a QR nor a download
+    control, matching every other OWNER/EDITOR-only affordance on this
+    page.
+
+### Dependency added
+
+`qrcode.react` (`^4.2.0`) — see D-044 for the full selection rationale.
+Zero runtime dependencies of its own (`npm view qrcode.react dependencies`
+returns empty), declares `react@^19.0.0` as a peer, no native binary
+compilation. `npm install` reported "added 1 package," confirming no new
+transitive dependencies were pulled in.
+
+### Security review findings
+
+No new gaps were found in existing code during this phase — QR reuses the
+per-guest invitation page's already-reviewed authorization/masking
+boundary (D-027) without modification. Review points specific to this
+phase's own new code:
+
+-   **eventId/guestId scoping** — N/A to the new code itself: `GuestQrCode`
+    never queries anything; it only renders a string it's given. The
+    scoping guarantee lives entirely in the unchanged
+    `getGuestInvitationDetail()` call the page already made.
+-   **IDOR** — no new risk surface; no new id-bearing lookup was
+    introduced.
+-   **VIEWER token privacy** — proven directly in
+    `e2e/guest-invitation.spec.ts`: a VIEWER's rendered page contains
+    neither the "QR Undangan" heading, an `svg[role="img"]` element, nor
+    an "Unduh QR" button, in addition to the pre-existing "raw token never
+    appears" assertion (unchanged).
+-   **Cross-event isolation** — inherited from the unchanged
+    `getGuestInvitationDetail()`/`getAuthorizedEvent()` IDOR checks; no
+    new test was needed here since no new query was added (the one gap
+    found — EDITOR role was never explicitly asserted for this function
+    — was closed as a small, targeted addition; see "Tests Added" below).
+-   **XSS** — the QR component renders no guest-controlled HTML; `title`
+    is passed as a React prop (auto-escaped), not `dangerouslySetInnerHTML`.
+-   **Unsafe URL handling** — the encoded value is always
+    `buildGuestInvitationUrl()`'s own output, which already independently
+    validates itself as a safe http(s) URL before returning (throws
+    otherwise) — `GuestQrCode` cannot be reached with an unsafe/arbitrary
+    URL because it never accepts one from the browser or any external
+    input.
+-   **Accidental token logging/exposure** — grepped: no file under
+    `components/guests/guest-qr-code.tsx` or `lib/guests/qr-filename.ts`
+    references `.token`/`invitationToken` at all; the token never reaches
+    either module, only the already-built URL string does. The downloaded
+    filename, verified directly in `e2e/guest-invitation.spec.ts`, is
+    guest-name-derived only.
+-   **Client/server boundary** — `GuestQrCode` is a `"use client"`
+    component importing only `qrcode.react` and the pure
+    `lib/guests/qr-filename.ts` (no `server-only` import anywhere in that
+    chain) — confirmed by a clean production build (the exact class of
+    boundary violation Phase 11 hit and fixed did not recur here).
+-   **Dependency security** — `qrcode.react` has no dependencies of its
+    own, so it introduces no new transitive-dependency surface; `npm
+    audit`'s existing devDependency-only advisories (documented under
+    "Known Issues" below) are unaffected.
+
+### Tests Added (Phase 13)
+
+Pure unit tests (no database):
+
+-   `lib/guests/qr-filename.test.ts` (4 tests, new file) —
+    `buildGuestQrFileName()`: correct slugified `.svg` filename from a
+    guest name, diacritics/punctuation stripped (reusing `slugify()`'s
+    existing, already-tested behavior rather than duplicating its test
+    coverage), a safe fallback for a name with no valid characters, and
+    the fixed `qr-undangan-`/`.svg` prefix/suffix shape.
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/guests/service.integration.test.ts` (+1 test) — closes a small,
+    genuinely pre-existing gap directly relevant to this phase:
+    `getGuestInvitationDetail()` had OWNER and VIEWER role cases tested
+    but never an explicit EDITOR case, even though the service's own
+    `includeToken = role === OWNER || role === EDITOR` logic (unchanged)
+    already covered it. Since the QR feature's entire authorization
+    boundary *is* this function, this one addition was worth closing
+    rather than leaving implicit. No other new integration tests were
+    added — the full OWNER/VIEWER/stranger/cross-event matrix for this
+    function was already covered before this phase, and duplicating it
+    would contradict the instruction to reuse existing coverage rather
+    than re-testing the entire suite.
+
+E2E (real Supabase DEV database, real authenticated sessions — D-022):
+
+-   `e2e/guest-invitation.spec.ts` (extended, +1 new test, 3 existing
+    tests extended with QR assertions) — the owner and editor tests now
+    also assert the "QR Undangan" heading, a real `svg[role="img"]`
+    element, and the "Unduh QR" button are visible; the viewer test now
+    also asserts all three are entirely absent (`toHaveCount(0)`). A new
+    dedicated test drives a real download via Playwright's
+    `page.waitForEvent("download")`, asserts the suggested filename
+    matches the guest-name-derived pattern exactly, reads the downloaded
+    file from disk and confirms it's well-formed, non-trivial SVG content
+    (`<svg`...`</svg>`, over 200 characters), and — without relying on any
+    `qrcode.react`-internal SVG path structure — confirms two different
+    guests' rendered QR `innerHTML` differ, proving the QR is genuinely
+    derived from each guest's own link rather than a static placeholder.
+
+### Known Limitations
+
+-   **No QR scanning, check-in, or check-in dashboard** — explicitly out
+    of scope for this phase (Roadmap Phase 14); the QR encodes a URL a
+    phone camera can already open today (the existing `/invite/[slug]`
+    route), but nothing in this codebase yet consumes a scanned QR for a
+    check-in workflow.
+-   **No WhatsApp Business API sending, no analytics** — both explicitly
+    out of scope for this phase, unchanged from their existing states
+    (D-029; Roadmap Phase 15 not started).
+-   **QR is not embedded in the composed WhatsApp message or exported
+    anywhere beyond the per-guest invitation page** — matches the phase
+    brief's explicit scope (this page only); a "send the QR image itself"
+    flow was not requested and was not built.
+
 ## Known Blockers
 
 None currently. The Supabase DEV database credential blocker recorded here
@@ -2512,73 +2682,59 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (591/591 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (596/596 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
                              lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
-                             lib/gifts/*, lib/wishes/*, lib/storage/*; 192 of these are
+                             lib/gifts/*, lib/wishes/*, lib/storage/*; 193 of these are
                              live-DB integration tests — 15 events, 22 invitations, 43
-                             editor (26 of which are the new/extended gallery block,
-                             including real Supabase Storage upload/delete round trips),
-                             40 guests, 36 rsvp, 18 gifts, 18 wishes — 0 leftover DB rows
-                             and 0 leftover Storage objects verified after each run)
-Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
-                             /invite/[slug], the editor route, all guest routes, the
-                             per-guest invitation route, the RSVP dashboard/export routes,
-                             the gift-method dashboard routes, and the wishes dashboard
-                             route all correctly dynamic; this build is also what caught
-                             the real lib/storage/limits.ts server/client boundary issue
-                             — see Phase 11's "Notable implementation decision")
-E2E:                        PASS (56/56 on a clean run — homepage smoke test, auth
-                             foundation suite, event-route protection suite, public
-                             invitation suite, editor suite, guest management suite, RSVP
-                             suite, guest invitation delivery suite, RSVP dashboard suite,
-                             gift method dashboard suite, wishes suite, and the new
-                             gallery suite; auth/invitation/editor/guests/rsvp/
-                             guest-invitation/rsvp-dashboard/gifts-dashboard/wishes/gallery
-                             suites exercise the real Supabase DEV database directly, no
-                             mocks — the editor, guests, guest-invitation, rsvp-dashboard,
-                             gifts-dashboard, wishes (dashboard half), and gallery suites
-                             additionally drive a real authenticated session (D-022); the
-                             gallery suite's uploads hit the real, connected Supabase
-                             Storage bucket, not a mock. Across repeated full-suite runs
-                             during this phase's verification, a small, variable subset of
-                             unrelated pre-existing tests (e2e/gifts-dashboard.spec.ts's
-                             and e2e/guests.spec.ts's heaviest combined tests, occasionally
-                             e2e/editor.spec.ts/e2e/wishes.spec.ts) intermittently failed
-                             under 6-worker parallel load with the generic "stuck on
-                             /login" symptom — confirmed via repeated isolated re-runs to
-                             be the already-documented shared in-memory login-rate-limit/
-                             cold-Turbopack-compile characteristic (D-030), not a Phase 11
-                             regression: none of these files' code was touched in this
-                             phase, and every one of them passes reliably alone. The
-                             figure reported above (56/56) is from one full, uninterrupted
-                             run on a freshly-cleared `.next` with no other process having
-                             touched the dev server beforehand — see Phase 11's "Known
-                             dev-server caveat" for the specific operational trap
-                             (mixing `next build` and `next dev` on the same `.next`) that
-                             had to be identified and avoided to get a trustworthy result)
+                             editor, 41 guests (+1 in this phase: an explicit EDITOR-role
+                             case for getGuestInvitationDetail(), the function the QR
+                             feature's authorization depends on), 36 rsvp, 18 gifts, 18
+                             wishes — 0 leftover DB rows and 0 leftover Storage objects
+                             verified after each run)
+Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware; all
+                             existing dynamic routes unchanged and correctly dynamic; no
+                             server/client boundary issue from the new qrcode.react/
+                             lib/guests/qr-filename.ts import chain)
+E2E:                        PASS (57/57 on a clean, uninterrupted run on a freshly-cleared
+                             `.next` — homepage smoke test, auth foundation suite,
+                             event-route protection suite, public invitation suite, editor
+                             suite, guest management suite, RSVP suite, guest invitation
+                             delivery suite (extended with QR assertions + 1 new download
+                             test), RSVP dashboard suite, gift method dashboard suite,
+                             wishes suite, and gallery suite; all database-backed suites
+                             exercise the real Supabase DEV database directly, no mocks —
+                             the guest-invitation suite's new download test drives a real
+                             file download via Playwright and reads it from disk. Across
+                             repeated full-suite runs during this phase's verification, a
+                             small, variable subset of unrelated pre-existing tests
+                             (e2e/gifts-dashboard.spec.ts's and e2e/wishes.spec.ts's
+                             heaviest tests) intermittently failed under 6-worker parallel
+                             load with the generic "stuck on /login" symptom — confirmed,
+                             again, via isolated re-runs on a fresh server to pass
+                             reliably alone; the already-documented D-030 characteristic,
+                             not a Phase 13 regression, since neither file's code was
+                             touched in this phase)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 11, the existing Gallery/GalleryItem schema
-                             (including sortOrder on both) was fully sufficient — see
-                             D-041 for why a storage-object-path column specifically was
-                             verified unnecessary rather than assumed so)
+                             none new in Phase 13 — confirmed by inspection that the QR
+                             feature adds no persisted state at all, reusing
+                             GuestInvitation.token and buildGuestInvitationUrl() as-is)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
                              seat-quota/IDOR, guest-invitation token-masking/regeneration
-                             IDOR, RSVP dashboard filter/export/cross-event authorization,
+                             IDOR (including the new explicit EDITOR-role case), RSVP
+                             dashboard filter/export/cross-event authorization,
                              gift-method CRUD/cross-event/public-projection authorization,
                              wish submission/moderation/cross-event/public-projection
                              authorization, AND gallery upload/reorder/delete/cross-event
                              authorization proofs; Storage via the real, connected
-                             Supabase project's `invitation-assets` bucket — real
-                             upload-then-download-fails-after-delete round trips, not
-                             mocked; Auth via a real authenticated login in
-                             e2e/editor.spec.ts, e2e/guests.spec.ts,
-                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
-                             e2e/gifts-dashboard.spec.ts, e2e/wishes.spec.ts, and
-                             e2e/gallery.spec.ts)
+                             Supabase project's `invitation-assets` bucket; Auth via a
+                             real authenticated login in e2e/editor.spec.ts,
+                             e2e/guests.spec.ts, e2e/guest-invitation.spec.ts,
+                             e2e/rsvp-dashboard.spec.ts, e2e/gifts-dashboard.spec.ts,
+                             e2e/wishes.spec.ts, and e2e/gallery.spec.ts)
 ```
 
 ## Update Rules

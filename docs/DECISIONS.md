@@ -956,3 +956,61 @@ Covered by `lib/storage/image-format.test.ts` (real/hand-built fixtures
 per format, including a genuine PNG and a rejected Windows PE/executable
 signature) and `lib/storage/validation.test.ts` (the full validation
 pipeline, including a mismatched-content-vs-claimed-MIME rejection).
+
+## D-044 --- QR Codes Use `qrcode.react` (Client-Side SVG), No New Token, No Persistence
+
+**Decision:** Roadmap Phase 13 ("QR Invitation") adds `qrcode.react`
+(`QRCodeSVG`) as the only new dependency, rendered entirely client-side.
+The QR encodes the exact same personalized invitation URL
+`buildGuestInvitationUrl(eventSlug, token)` already produces for the
+existing copy-link/WhatsApp-share features — no second token, no QR-
+specific identifier, and no persisted QR image (file or database row).
+"Unduh QR" downloads a client-generated `.svg` Blob via a temporary
+anchor element; there is no Route Handler or Server Action for either
+generating or downloading the QR.
+
+**Rationale:** `qrcode.react` was selected after checking `package.json`
+(no existing QR capability) and evaluating the smallest viable option per
+AGENT_EXECUTION.md §18's dependency discipline: it has **zero runtime
+dependencies of its own** (`npm view qrcode.react dependencies` returns
+empty), declares `react@^19.0.0` as a peer (matching this project's React
+19), is a long-established, widely-used package purpose-built for exactly
+this need, and requires no native binary compilation — unlike server-side
+QR-image libraries that typically shell out to or bind against a native
+rasterizer. Rendering client-side (rather than a server-generated image)
+keeps the feature fully static/stateless: the browser already has the
+authorized `inviteLink` string (passed down from the Server Component
+page, per the existing pattern `CopyInviteLinkButton`/`MessagePreview`
+already use), so encoding it into a QR needs no additional server round
+trip, no new authorization check, and no new data-fetching path — the
+existing OWNER/EDITOR-only, VIEWER-masked `inviteLink` computation in
+`app/dashboard/events/[eventId]/guests/[guestId]/invitation/page.tsx`
+(unchanged) is the entire authorization boundary this feature relies on.
+SVG (over PNG/canvas) was chosen because a real personalized-invitation
+QR only needs to be crisp and printable, `qrcode.react`'s `QRCodeSVG`
+forwards a ref directly to the rendered `<svg>` DOM node (making a
+client-side download trivial via `XMLSerializer`), and it avoids the
+extra `<canvas>`-to-Blob conversion step a PNG download would need. No
+new token/model/migration was introduced because none is needed: the QR
+is a different visual encoding of data that already exists and is already
+correctly authorized — inventing a parallel "QR token" would duplicate
+`GuestInvitation.token` for no security or product benefit, and would
+also mean a QR could outlive a token regeneration, defeating the point of
+D-028's revocation guarantee.
+
+**Impact:** `components/guests/guest-qr-code.tsx` (new, client-only,
+receives only the already-authorized `link`/`guestName` strings — never a
+token, never independent data access) and `lib/guests/qr-filename.ts`
+(pure, reuses the existing `lib/events/slug.ts` `slugify()` rather than
+duplicating slug logic — the download filename is derived only from the
+guest's own display name, never the token). Regenerating a guest's
+invitation token (D-028, unchanged) automatically invalidates any
+previously-downloaded/printed QR the same way it already invalidates a
+copied link, since both encode the same now-superseded URL — no QR-
+specific invalidation logic was needed. Covered by
+`lib/guests/qr-filename.test.ts` (pure filename logic) and
+`e2e/guest-invitation.spec.ts` (OWNER/EDITOR see the QR and download
+control, VIEWER sees neither, a real downloaded file is valid SVG, and
+two different guests produce visibly different QR content — proving the
+QR is genuinely link-derived without depending on `qrcode.react`'s
+internal SVG structure).

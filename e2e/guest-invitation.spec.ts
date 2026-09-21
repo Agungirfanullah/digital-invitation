@@ -125,6 +125,11 @@ test.describe("guest invitation delivery", () => {
     await expect(page.locator("pre")).toContainText("Pernikahan Undangan E2E");
     await expect(page.getByRole("button", { name: "Salin Pesan" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Buka WhatsApp" })).toBeVisible();
+
+    // Roadmap Phase 13 — QR Invitation.
+    await expect(page.getByText("QR Undangan", { exact: true })).toBeVisible();
+    await expect(page.locator("svg[role='img']")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Unduh QR" })).toBeVisible();
   });
 
   test("an editor sees the same personalized invitation controls", async ({ page }) => {
@@ -142,6 +147,10 @@ test.describe("guest invitation delivery", () => {
     await expect(page.getByRole("button", { name: "Salin Tautan" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Buat Ulang Tautan" })).toBeVisible();
     await expect(page.getByText("Pratinjau Pesan")).toBeVisible();
+
+    // Roadmap Phase 13 — QR Invitation: EDITOR gets the same QR access as OWNER.
+    await expect(page.getByText("QR Undangan", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Unduh QR" })).toBeVisible();
   });
 
   test("a viewer sees invitation status/metadata but never the token, copy link, regenerate, or message preview", async ({
@@ -170,6 +179,64 @@ test.describe("guest invitation delivery", () => {
     await expect(page.getByRole("button", { name: "Salin Tautan" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Buat Ulang Tautan" })).toHaveCount(0);
     await expect(page.getByText("Pratinjau Pesan")).toHaveCount(0);
+
+    // Roadmap Phase 13 — QR Invitation: a VIEWER must not receive the QR
+    // (which itself encodes the token) or a download control for it.
+    await expect(page.getByText("QR Undangan", { exact: true })).toHaveCount(0);
+    await expect(page.locator("svg[role='img']")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Unduh QR" })).toHaveCount(0);
+  });
+
+  test("downloading the QR produces a real SVG file, and two different guests get visibly different QR content", async ({
+    page,
+  }) => {
+    const owner = await createAuthenticatedTestUser("owner6");
+    const event = await createTestEvent(owner.userId);
+    const { guest: guestOne } = await createTestGuest(event.id);
+    const guestTwo = await prisma.guest.create({
+      data: {
+        eventId: event.id,
+        name: "Rian Pratama",
+        normalizedName: "rian pratama",
+        seatQuota: 1,
+      },
+    });
+    await prisma.guestInvitation.create({
+      data: {
+        eventId: event.id,
+        guestId: guestTwo.id,
+        token: `e2e-guest-invite-token-${randomUUID()}`,
+      },
+    });
+
+    await login(page, owner.email);
+
+    await page.goto(`/dashboard/events/${event.id}/guests/${guestOne.id}/invitation`);
+    const svgOneContent = await page.locator("svg[role='img']").innerHTML();
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Unduh QR" }).click();
+    const download = await downloadPromise;
+
+    // Filename is derived from the guest's own display name — see
+    // lib/guests/qr-filename.ts — never from the raw token.
+    expect(download.suggestedFilename()).toBe("qr-undangan-sinta-wulandari.svg");
+
+    const downloadedPath = await download.path();
+    expect(downloadedPath).toBeTruthy();
+    const fs = await import("node:fs/promises");
+    const fileContent = await fs.readFile(downloadedPath!, "utf-8");
+    expect(fileContent).toContain("<svg");
+    expect(fileContent).toContain("</svg>");
+    expect(fileContent.length).toBeGreaterThan(200); // a real QR path, not an empty shell
+
+    // A different guest (different encoded URL) renders visibly different
+    // QR content — proves the QR is genuinely derived from the guest's
+    // own link, without depending on qrcode.react's internal SVG path
+    // format/library-specific details.
+    await page.goto(`/dashboard/events/${event.id}/guests/${guestTwo.id}/invitation`);
+    const svgTwoContent = await page.locator("svg[role='img']").innerHTML();
+    expect(svgTwoContent).not.toBe(svgOneContent);
   });
 
   test("regenerating the token invalidates the old personalized link and the new one works", async ({
