@@ -73,6 +73,20 @@ export interface PublicGiftMethod {
   instructions: string | null;
 }
 
+/**
+ * Only the display fields a guest needs — never `guestId`, `eventId`, or
+ * `status`/moderation history (docs/DECISIONS.md D-039). `id` is included
+ * for the same reason `PublicGiftMethod.id`/`PublicGalleryItem.id` are: a
+ * stable React key, not anything sensitive (a `cuid`, not a
+ * sequential/guessable value).
+ */
+export interface PublicWish {
+  id: string;
+  name: string;
+  message: string;
+  createdAt: Date;
+}
+
 export interface PublicWeddingProfile {
   brideFullName: string | null;
   brideNickname: string | null;
@@ -108,5 +122,6 @@ export interface PublicInvitation {
   loveStory: PublicLoveStory | null;
   galleries: PublicGallery[];
   giftMethods: PublicGiftMethod[];
+  wishes: PublicWish[];
   guest: PublicGuestContext | null;
 }

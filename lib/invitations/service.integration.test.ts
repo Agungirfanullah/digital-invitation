@@ -327,4 +327,77 @@ describe("getPublicInvitationBySlug (integration — live Supabase DEV database)
     const invitation = await getPublicInvitationBySlug(event.slug);
     expect(invitation.giftMethods).toEqual([]);
   });
+
+  it("renders an APPROVED wish on the public invitation", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+    const { guest } = await createTestGuestWithInvitation(event.id, "Ayu Lestari");
+    await prisma.wish.create({
+      data: {
+        eventId: event.id,
+        guestId: guest.id,
+        name: "Ayu Lestari",
+        message: "Selamat menempuh hidup baru!",
+        status: "APPROVED",
+      },
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+
+    expect(invitation.wishes).toHaveLength(1);
+    expect(invitation.wishes[0]).toMatchObject({
+      name: "Ayu Lestari",
+      message: "Selamat menempuh hidup baru!",
+    });
+  });
+
+  it("never exposes a PENDING, HIDDEN, or DELETED wish on the public invitation", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+    const { guest } = await createTestGuestWithInvitation(event.id, "Ayu Lestari");
+    await prisma.wish.createMany({
+      data: [
+        { eventId: event.id, guestId: guest.id, name: "Pending", message: "p", status: "PENDING" },
+        { eventId: event.id, guestId: guest.id, name: "Hidden", message: "h", status: "HIDDEN" },
+        { eventId: event.id, guestId: guest.id, name: "Deleted", message: "d", status: "DELETED" },
+      ],
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.wishes).toEqual([]);
+  });
+
+  it("never exposes another event's wishes, guestId, eventId, or status", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const eventA = await createTestEvent(userA.id);
+    const eventB = await createTestEvent(userB.id);
+    const { guest: guestB } = await createTestGuestWithInvitation(eventB.id, "Guest Of B");
+    await prisma.wish.create({
+      data: {
+        eventId: eventB.id,
+        guestId: guestB.id,
+        name: "Guest Of B",
+        message: "Rahasia acara lain",
+        status: "APPROVED",
+      },
+    });
+
+    const invitation = await getPublicInvitationBySlug(eventA.slug);
+    expect(invitation.wishes).toEqual([]);
+
+    const invitationB = await getPublicInvitationBySlug(eventB.slug);
+    const serialized = JSON.stringify(invitationB.wishes);
+    expect(serialized).not.toContain(guestB.id);
+    expect(serialized).not.toContain(eventB.id);
+    expect(serialized).not.toContain("APPROVED");
+  });
+
+  it("wishes default to an empty array when none are approved yet", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.wishes).toEqual([]);
+  });
 });

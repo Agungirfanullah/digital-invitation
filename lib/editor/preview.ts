@@ -34,12 +34,13 @@ export interface PreviewSource {
  * the editor's own use), so they pass through unchanged; only the theme
  * needs `parseTheme()`'s default-fallback treatment, same as production.
  *
- * Gift methods are intentionally not part of `PreviewSource` — they're
- * managed on their own dedicated dashboard page
- * (`/dashboard/events/[eventId]/gifts`), not the editor, so there's no
- * unsaved/in-progress gift state for this preview to reflect (see
- * docs/DECISIONS.md D-034). `giftMethods` is always empty here; the real
- * published invitation still renders whatever is actually configured.
+ * Gift methods and wishes are intentionally not part of `PreviewSource` —
+ * both are managed on their own dedicated dashboard pages
+ * (`/dashboard/events/[eventId]/gifts`, `/wishes`), not the editor, so
+ * there's no unsaved/in-progress state for this preview to reflect (see
+ * docs/DECISIONS.md D-034, D-039). `giftMethods`/`wishes` are always empty
+ * here; the real published invitation still renders whatever is actually
+ * configured/approved.
  */
 export function buildPreviewInvitation(source: PreviewSource): PublicInvitation {
   return {
@@ -55,6 +56,7 @@ export function buildPreviewInvitation(source: PreviewSource): PublicInvitation 
     loveStory: source.loveStory,
     galleries: source.gallery ? [source.gallery] : [],
     giftMethods: [],
+    wishes: [],
     guest: null,
   };
 }

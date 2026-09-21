@@ -63,5 +63,10 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
   const rsvpView = to && invitation.guest ? await getRsvpGuestView(invitation.eventId, to) : null;
   const rsvp = rsvpView && to ? { token: to, view: rsvpView } : null;
 
-  return <InvitationRenderer invitation={invitation} rsvp={rsvp} />;
+  // No second lookup needed — invitation.guest already resolved the
+  // display name from the same token (see docs/DECISIONS.md D-039).
+  const wishGuest =
+    to && invitation.guest ? { token: to, guestName: invitation.guest.displayName } : null;
+
+  return <InvitationRenderer invitation={invitation} rsvp={rsvp} wishGuest={wishGuest} />;
 }

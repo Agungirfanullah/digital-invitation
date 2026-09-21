@@ -17,11 +17,13 @@ import type { RsvpGuestView } from "@/lib/rsvp/types";
 export function InvitationRenderer({
   invitation,
   rsvp,
+  wishGuest,
 }: {
   invitation: PublicInvitation;
   rsvp?: { token: string; view: RsvpGuestView } | null;
+  wishGuest?: { token: string; guestName: string } | null;
 }) {
   const Template = resolveTemplateComponent(invitation.templateKey);
-  return <Template invitation={invitation} rsvp={rsvp} />;
+  return <Template invitation={invitation} rsvp={rsvp} wishGuest={wishGuest} />;
 }
 /* eslint-enable react-hooks/static-components */

@@ -714,3 +714,94 @@ CLAUDE.md §7.4/§1.4 forbid faking.
 alongside the phase-numbering mismatch pattern already documented in
 `docs/STATUS.md`, so the deferral is a recorded decision rather than a
 silent omission.
+
+## D-038 --- Wish Moderation Is a Soft Delete; Submission Is Capped Per Guest via a Plain Count Check
+
+**Decision:** Roadmap Phase 10 ("Wishes") implements "Delete" as a status
+transition (`lib/wishes/service.ts`'s `deleteWishForUser()` sets
+`Wish.status` to `DELETED`), never a `prisma.wish.delete()` row removal.
+Separately, `submitWishForGuest()` rejects a submission once a guest
+already has `WISH_PER_GUEST_LIMIT` (3) non-deleted wishes for the event,
+computed with a plain `prisma.wish.count()` — no schema change.
+
+**Rationale:** `WishStatus` (docs/DATABASE.md §17,
+`prisma/schema.prisma`) already defines four values — `PENDING`,
+`APPROVED`, `HIDDEN`, `DELETED` — as one enum on one column. A `DELETED`
+value only makes sense as a state a row can be *in*; if hard deletion were
+intended, the schema would have no reason to distinguish it from `HIDDEN`
+at all (both would just be "not shown"). Per CLAUDE.md §41's ambiguity
+order (existing implementation first), the schema's own shape is treated
+as the authoritative signal here, since neither `docs/PRD.md` §23 nor
+`docs/DATABASE.md` §17 explicitly states delete semantics beyond "Owner
+can: Approve / Hide / Delete." Soft delete also keeps an audit trail a
+hard delete would destroy, at no extra cost.
+
+Separately, `Wish` has no `@@unique([eventId, guestId])` (docs/DATABASE.md
+§17 deliberately allows more than one message per guest, unlike RSVP's
+`eventId_guestId` unique index) — so there is no database-level constraint
+available to prevent a guest from submitting many wishes the way RSVP's
+upsert prevents duplicate RSVPs. The task brief explicitly asked for
+"repeated abuse" prevention "if this can be done cleanly with the existing
+schema," and explicitly prohibited inventing a migration for it. A count
+check against the existing `eventId`/`guestId` columns is exactly that:
+clean, requires no schema change, and still allows a guest 1-2 genuine
+corrections (a typo, a follow-up thought) before being blocked. A deleted
+wish doesn't count toward the cap, since only an EDITOR/OWNER can delete
+one — a guest cannot use deletion to reset their own quota, so excluding
+`DELETED` from the count creates no abuse loophole; it only means a
+moderator removing a spam/duplicate entry frees up room for a genuine one.
+
+**Impact:** `lib/wishes/service.ts`'s `WISH_PER_GUEST_LIMIT = 3` and
+`buildWishFilter()` (`ALL` = every non-`DELETED` row; `DELETED` is its own
+explicit dashboard filter). No IP-only rate limiting was treated as
+sufficient on its own — `lib/wishes/rate-limit.ts` (10 submissions per 10
+minutes per IP, tighter than RSVP's 20) is a first line of defense against
+scripted abuse, while the per-guest cap is what actually bounds one real
+guest's submission count regardless of IP. No CAPTCHA, external moderation
+provider, or other new infrastructure was added — the brief explicitly
+ruled these out absent a canonical-docs requirement, and none exists.
+Covered by `lib/wishes/service.integration.test.ts` (cap enforcement,
+deleted-wish exclusion, per-guest independence, soft-delete row survival).
+
+## D-039 --- Public Wishes List Lives in the Shared Projection; Guest Submission Identity Reuses the Already-Resolved Guest Context
+
+**Decision:** Approved wishes are added directly to
+`lib/invitations/projection.ts`'s `PUBLIC_EVENT_INCLUDE`
+(`where: { status: APPROVED }`, display columns only) and mapped onto a
+new `PublicInvitation.wishes` field — the same shape gift methods already
+use (D-034/D-035), not RSVP's separately-resolved-lookup shape (D-025).
+Separately, the *submission* identity context a template needs (which
+guest, via which token, is allowed to submit) is threaded as a new
+`wishGuest?: { token: string; guestName: string } | null` prop alongside
+`rsvp`, but is built in `app/invite/[slug]/page.tsx` **without a second
+database query** — it reuses `invitation.guest.displayName`, which the
+page already resolved once via `resolveGuestContext()` for the base
+invitation.
+
+**Rationale:** An approved wish is static, event-wide content read
+identically by every visitor once published — exactly the gift-method
+case D-034/D-035 already reasoned through, not the per-guest mutable-state
+case RSVP's D-025 addresses. Splitting it into a separately-resolved
+lookup would copy D-025's isolation pattern without its underlying reason
+(RSVP needed its own query because it needed `seatQuota`/existing-answer
+data the base projection doesn't carry). For the submission-identity half,
+RSVP's D-025 lookup (`getRsvpGuestView()`) exists specifically to fetch
+`seatQuota` and an existing answer that aren't in `PublicInvitation` —
+wishes need neither; the only thing a wish submission form displays is the
+guest's name, which `invitation.guest.displayName` already provides from
+the query the page runs regardless. Adding a second, RSVP-shaped lookup
+here would be an unnecessary database round trip on every personalized
+page load with no data it would return that isn't already in hand.
+
+**Impact:** `lib/invitations/types.ts`'s `PublicWish` (`id`, `name`,
+`message`, `createdAt` — never `guestId`/`eventId`/`status`) and
+`PublicInvitation.wishes`. `lib/invitations/templates/registry.ts`'s
+`InvitationTemplateProps.wishGuest` and
+`components/invitation/invitation-renderer.tsx` thread it through exactly
+like `rsvp`, but `app/invite/[slug]/page.tsx` needed zero new queries for
+either half of this feature. Covered by
+`lib/invitations/projection.test.ts` (fabricated-input mapping, no
+guestId/eventId/status leak), `lib/invitations/service.integration.test.ts`
+(approved-only visibility, cross-event isolation, real DB round trip), and
+`e2e/wishes.spec.ts` (the full submit → PENDING → approve → public,
+hide → not-public flow).

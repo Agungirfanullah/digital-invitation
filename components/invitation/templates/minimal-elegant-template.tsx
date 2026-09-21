@@ -6,6 +6,7 @@ import { ScheduleSection } from "@/components/invitation/sections/schedule-secti
 import { LoveStorySection } from "@/components/invitation/sections/love-story-section";
 import { GallerySection } from "@/components/invitation/sections/gallery-section";
 import { GiftSection } from "@/components/invitation/sections/gift-section";
+import { WishesSection } from "@/components/invitation/sections/wishes-section";
 import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { ClosingSection } from "@/components/invitation/sections/closing-section";
 
@@ -16,7 +17,7 @@ import { ClosingSection } from "@/components/invitation/sections/closing-section
  * event with only a title still renders a complete, honest page instead
  * of empty placeholders.
  */
-export function MinimalElegantTemplate({ invitation, rsvp }: InvitationTemplateProps) {
+export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
   return (
     <main
       style={themeToCssVars(invitation.theme)}
@@ -30,6 +31,11 @@ export function MinimalElegantTemplate({ invitation, rsvp }: InvitationTemplateP
         <GallerySection galleries={invitation.galleries} />
         <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />
         <GiftSection giftMethods={invitation.giftMethods} />
+        <WishesSection
+          eventId={invitation.eventId}
+          wishes={invitation.wishes}
+          guest={wishGuest ?? null}
+        />
         <ClosingSection />
       </div>
     </main>

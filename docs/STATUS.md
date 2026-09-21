@@ -12,19 +12,22 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 9 --- Digital Gift / Angpao Foundation
+**Current Phase:** Phase 10 --- Wishes / Guestbook Foundation
 
-**Status:** Phase 0-8 remain complete and passing. Phase 9 adds a real,
-secure gift-method configuration and public-display foundation: event
-owners/editors can create bank transfer, e-wallet, QRIS, or a manual/
-physical-gift method under `/dashboard/events/[eventId]/gifts`, and any
-active method is displayed on the public invitation's new "Kirim Hadiah"
-section with a copy-to-clipboard action. No schema migration was
-required — the Phase 0 `GiftMethod` model already covered everything
-this phase needs. This is configuration/display only — no payment
-processing, no fake transaction confirmation, and `GiftRegistry`/
-`GiftItem`/`GiftReservation`/`GiftTransaction` remain fully deferred (see
-D-037).
+**Status:** Phase 0-9 remain complete and passing. Phase 10 implements
+`docs/ROADMAP.md`'s Phase 10 ("Wishes") — a real, secure guestbook: a
+personalized guest can submit a name + message from the public invitation
+(identity always resolved server-side from their invitation token, never
+from client input), event owners/editors can approve, hide, or delete
+each submission under `/dashboard/events/[eventId]/wishes`, and only
+`APPROVED` wishes are displayed on the public invitation's new "Ucapan &
+Doa" section. No schema migration was required — the Phase 0 `Wish`
+model already covered everything this phase needs. "Delete" is
+implemented as a soft status transition (`WishStatus.DELETED`), not a row
+removal, and submission is capped at 3 non-deleted wishes per guest per
+event via a plain count check — both are recorded decisions (D-038,
+D-039), not silent choices. This phase does not touch RSVP, check-in, or
+any other domain.
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -68,7 +71,14 @@ physical-gift configuration, copy-to-clipboard, "no fake payment
 confirmation") is unambiguous and was implemented as described, and the
 label mismatch is recorded here rather than silently resolved or used as
 a reason to halt. `docs/ROADMAP.md`'s own Phase 17 ("Gift Registry", P2)
-remains deferred — see D-037.
+remains deferred — see D-037. This phase, "Phase 10 — Wishes / Guestbook
+Foundation," is the first phase in this engagement whose number matches
+`docs/ROADMAP.md`'s own numbering exactly (Roadmap Phase 10, "Wishes") —
+no reconciliation was needed. It was chosen as the next phase precisely
+because it's the lowest-numbered P1 phase not yet implemented, directly
+following the completed RSVP foundation in the Roadmap's own dependency
+order (§29), per an explicit prior inspection task. Check-in (Roadmap
+Phase 14) remains future work.
 
 ## Documentation Baseline
 
@@ -1902,6 +1912,197 @@ authenticated session — D-022):
     a dedicated dashboard section"). The public invitation still reads
     real, live gift data regardless of where it's managed.
 
+## Phase 10 --- Wishes / Guestbook Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including full authenticated + guest-facing browser
+E2E coverage (see D-022). No fake/mocked authorization, persistence, or
+moderation logic. No schema migration was required — the Phase 0 `Wish`
+model (`id`, `eventId`, `guestId`, `name`, `message`, `status`,
+`createdAt`, `updatedAt`, indexed on `eventId, status`) and `WishStatus`
+enum (`PENDING`/`APPROVED`/`HIDDEN`/`DELETED`) already covered everything
+this phase needs, exactly as specified in `docs/DATABASE.md` §17.
+
+-   [x] Guest-facing submission (`components/wishes/wish-form.tsx`,
+    `lib/wishes/actions.ts`'s `submitWishAction`) — name + message, only
+    reachable from a personalized invitation (`?to=` token). Guest
+    identity is **always** resolved server-side from the token
+    (`lib/wishes/service.ts`'s `resolveGuestForWish()`, private/never
+    exported) — the Server Action never accepts or trusts a client-supplied
+    `guestId`. A malformed, unknown, or cross-event token all resolve
+    identically to `InvalidWishTokenError` (IDOR-safe: a caller can't
+    distinguish "no such token" from "token for another event"), matching
+    `lib/rsvp/service.ts`'s established `resolveGuestForRsvp()` pattern.
+-   [x] Public rendering (`components/invitation/sections/wishes-section.tsx`)
+    — renders every submitted `message`/`name` as plain JSX text
+    interpolation only; no `dangerouslySetInnerHTML` anywhere in this
+    phase's code. Mirrors `RsvpSection`'s always-render behavior: a
+    personalized visitor sees a real, working form; an anonymous visitor
+    sees a truthful explanatory note instead ("Ucapan hanya dapat dikirim
+    melalui tautan undangan pribadi Anda") — never a blank/fake section,
+    since the note is genuine information, not a placeholder.
+-   [x] Rate limiting + per-guest submission cap (see D-038) —
+    `lib/wishes/rate-limit.ts` (10 submissions per 10 minutes per IP,
+    using the existing `lib/rate-limit/` infrastructure, same pattern as
+    RSVP) plus `WISH_PER_GUEST_LIMIT = 3` (a plain `prisma.wish.count()`
+    check against the existing schema — no migration). No CAPTCHA or
+    external moderation provider was added; none is required by the
+    canonical docs and the brief explicitly ruled them out absent that
+    requirement.
+-   [x] Moderation dashboard (`/dashboard/events/[eventId]/wishes`,
+    `lib/wishes/service.ts`'s `getWishesForModeration()`/
+    `approveWishForUser()`/`hideWishForUser()`/`deleteWishForUser()`) —
+    list is VIEWER-and-above readable (matching the guest list's/RSVP
+    dashboard's established D-023 read boundary); approve/hide/delete all
+    require EDITOR-and-above. Every mutation re-verifies `{ id: wishId,
+    eventId }` via `findFirst` before acting — never `wish.update({
+    where: { id } })` alone — the same IDOR pattern established for gift
+    methods and nested editor entities.
+-   [x] Soft delete (see D-038) — "Delete" sets `WishStatus.DELETED`
+    rather than removing the row; the dashboard's default "ALL" filter
+    excludes deleted wishes, with an explicit `DELETED` filter option to
+    view them. A `HIDDEN` wish can be re-approved.
+-   [x] Public projection extension (see D-039) — `lib/invitations/
+    projection.ts`'s `PUBLIC_EVENT_INCLUDE` gained a `wishes` relation
+    (`where: { status: APPROVED }`, select `id`/`name`/`message`/
+    `createdAt` only — never `guestId`/`eventId`/`status`/moderation
+    history), mapped onto a new `PublicInvitation.wishes` field. The
+    submission-identity context a template needs (`wishGuest`) reuses the
+    guest display name already resolved for `invitation.guest` — **zero
+    new database queries** were added to `app/invite/[slug]/page.tsx`.
+-   [x] Loading/error/empty/unauthorized states — `wishes/loading.tsx`
+    skeleton, the shared not-found page for unauthorized/nonexistent
+    events, a real empty state ("Belum ada ucapan."), inline Indonesian
+    field errors on the submission form, an honest "Gagal mengirim ucapan"
+    class of message (never a raw Prisma error) on every failure path.
+
+### Security review findings
+
+No new gaps were found in existing code during this phase (Phase 4/7/9
+already closed the `javascript:`/`data:` URL, token-masking, and IDOR
+classes of issue this phase's surfaces could otherwise repeat). Wish-specific
+review points, all satisfied by the design above:
+
+-   **IDOR** — every wish query/mutation requires `getAuthorizedEvent(eventId,
+    userId, minRole)`, and every mutation additionally re-verifies
+    `{ id: wishId, eventId }` before acting. Proven directly: creating a
+    wish under Event A and then calling approve/hide/delete against it via
+    Event B's id is rejected with `WishNotFoundError`, and the row is
+    confirmed unchanged/still `PENDING` afterward
+    (`lib/wishes/service.integration.test.ts`).
+-   **`guestId` never trusted from the client** — `submitWishAction`
+    (`lib/wishes/actions.ts`) only ever accepts `eventId`/`token` as
+    server-bound parameters (from the already-resolved invitation page)
+    and `name`/`message` from the form; a malicious extra `guestId` form
+    field is proven ignored (`lib/wishes/actions.test.ts`).
+-   **No token leakage** — wish moderation/public code paths never
+    reference `GuestInvitation.token`; grepped, confirmed no overlap with
+    the guest-token domain at all (a wish only ever stores the resolved
+    `guestId`, not the token used to resolve it).
+-   **Public projection scoping** — proven by both a unit test
+    (`lib/invitations/projection.test.ts`, fabricated input asserting the
+    excluded properties) and an integration test
+    (`lib/invitations/service.integration.test.ts`) creating a wish on a
+    *different* event and confirming it never appears in the first
+    event's public invitation, plus confirming `PENDING`/`HIDDEN`/
+    `DELETED` wishes never appear regardless of event.
+-   **Unauthorized moderation** — a VIEWER-role member and a stranger are
+    both proven rejected (`EventNotFoundError`, IDOR-safe — identical to
+    "event doesn't exist") for every moderation action, at both the
+    integration-test and E2E level.
+-   **No unsafe URL/content handling** — wishes carry no URL field at
+    all (just `name`/`message` plain text), so `lib/invitations/
+    url-safety.ts` doesn't apply here; every rendered value goes through
+    ordinary JSX text interpolation (React's automatic escaping), never
+    `dangerouslySetInnerHTML` — grepped and confirmed absent from every
+    file this phase touches.
+-   **No raw database errors exposed** — `mapWishErrorMessage()`
+    (`lib/wishes/errors.ts`) logs the raw `Error` server-side only and
+    returns a generic Indonesian message for anything unexpected, matching
+    every other domain's established error-mapping convention. Tested
+    directly: an error containing a fake wish message never leaks into
+    the returned string.
+-   **Missing rate limits** — closed by `lib/wishes/rate-limit.ts` (IP)
+    plus the per-guest submission cap (D-038); both are exercised in the
+    integration suite.
+
+### Tests Added (Phase 10)
+
+Pure unit tests (no database):
+
+-   `lib/wishes/validation.test.ts` (14 tests) — `wishFormSchema`:
+    trimming, empty/over-length name and message rejection, the 500-char
+    boundary; `wishStatusFilterSchema`/`wishModerationQuerySchema`: every
+    `WishStatus` value + `ALL` accepted, malformed query input always
+    falls back to safe defaults rather than erroring
+-   `lib/wishes/errors.test.ts` (5 tests) — Indonesian error-message
+    mapping for every domain error, confirms an unexpected error's raw
+    message never leaks into the returned string
+-   `lib/wishes/actions.test.ts` (8 tests) — rate-limit short-circuit
+    (service layer never called when rate-limited), server-side validation
+    short-circuits before the service layer runs, a client-supplied
+    `guestId`/`userId` form field is proven ignored, `notFound()` on
+    `EventNotFoundError`/`WishNotFoundError` for every moderation action
+-   `lib/invitations/projection.test.ts` (+2 tests) — a wish's display
+    fields map correctly; `guestId`/`eventId`/`status`/`updatedAt` are
+    never present on the public DTO
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/wishes/service.integration.test.ts` (18 tests) — token resolution
+    (valid/malformed/unknown/cross-event, all IDOR-safe), the per-guest
+    submission cap (enforced, deleted wishes excluded from the count,
+    independent per guest), full moderation authorization matrix
+    (owner/editor can moderate, viewer cannot, stranger cannot),
+    cross-event IDOR protection on every moderation action with the
+    target row proven unchanged, the default-`ALL`-excludes-`DELETED`
+    filter behavior, soft-delete row survival, HIDDEN→APPROVED
+    re-approval
+-   `lib/invitations/service.integration.test.ts` (+4 tests) — an
+    APPROVED wish renders on the public invitation; PENDING/HIDDEN/DELETED
+    wishes never appear; another event's wish never leaks (including a
+    direct check that its `guestId`/`eventId`/`status` never appear in the
+    serialized payload); an event with none approved returns an empty
+    array (not an error)
+
+E2E (real Supabase DEV database; dashboard tests drive a real
+authenticated session — D-022; guest-facing tests are public/
+unauthenticated, Prisma-seeded — same pattern as `e2e/rsvp.spec.ts`):
+
+-   `e2e/wishes.spec.ts` (5 tests) — a non-personalized invitation cannot
+    submit a wish (shows the explanatory note, no form); a token
+    belonging to a different event cannot submit for this event; **the
+    full acceptance flow in one test** (a guest submits a wish through
+    the real public form → it is not yet publicly visible → it appears as
+    `PENDING` in the authenticated dashboard → the owner approves it → it
+    becomes visible on the public invitation → the owner hides it → it
+    disappears from the public invitation again); a viewer sees the
+    moderation list with no approve/hide/delete controls; a stranger gets
+    the shared not-found page for another owner's wishes dashboard
+-   Confirmed via a full E2E run: all 46 pre-existing Phase 0-9 E2E tests
+    continue passing (51/51 total)
+
+### Known Limitations
+
+-   The invitation editor's live preview (`lib/editor/preview.ts`) does
+    not reflect wishes — same rationale as gift methods (D-034): wishes
+    are moderated on their own dedicated dashboard page, not the editor,
+    so there is no unsaved/in-progress wish state for the preview to
+    show. The real published invitation still renders whatever is
+    actually approved.
+-   No search/sort on the moderation list beyond the status filter — the
+    brief scoped this to approve/hide/delete plus PRD §23's explicit
+    requirements; a guest list-style search was not requested and would
+    be scope beyond what's needed for a first moderation pass.
+-   No owner-initiated wish creation (posting a wish on a guest's behalf)
+    — out of scope; the brief and PRD both describe wishes as
+    guest-submitted content only.
+-   The per-guest submission cap (`WISH_PER_GUEST_LIMIT = 3`, D-038) is a
+    plain count check, not a database-enforced constraint (the schema has
+    no `@@unique([eventId, guestId])` on `Wish`, unlike RSVP) — this is a
+    deliberate, documented choice per the brief's explicit instruction not
+    to invent a migration for it.
+
 ## Known Blockers
 
 None currently. The Supabase DEV database credential blocker recorded here
@@ -1967,47 +2168,60 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (472/472 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (521/521 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
                              lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
-                             lib/gifts/*; 158 of these are live-DB integration tests — 15
-                             events, 18 invitations, 31 editor, 40 guests, 36 rsvp, 18
-                             gifts — 0 leftover rows verified after each run)
+                             lib/gifts/*, lib/wishes/*; 176 of these are live-DB
+                             integration tests — 15 events, 22 invitations, 31 editor, 40
+                             guests, 36 rsvp, 18 gifts, 18 wishes — 0 leftover rows
+                             verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
                              /invite/[slug], the editor route, all guest routes, the
                              per-guest invitation route, the RSVP dashboard/export routes,
-                             and the new gift-method dashboard routes correctly dynamic)
-E2E:                        PASS (46/46 — homepage smoke test, auth foundation suite,
+                             the gift-method dashboard routes, and the new wishes
+                             dashboard route correctly dynamic)
+E2E:                        PASS (51/51 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
                              suite, guest management suite, RSVP suite, guest invitation
-                             delivery suite, RSVP dashboard suite, and gift method
-                             dashboard suite; auth/invitation/editor/guests/rsvp/
-                             guest-invitation/rsvp-dashboard/gifts-dashboard suites
-                             exercise the real Supabase DEV database directly, no mocks —
-                             the editor, guests, guest-invitation, rsvp-dashboard, and
-                             gifts-dashboard suites additionally drive a real authenticated
-                             session (D-022); the RSVP guest flow is public/unauthenticated
-                             by design, so its suite seeds fixtures directly via Prisma
-                             instead, the same pattern e2e/invitation.spec.ts already
-                             uses. The rsvp-dashboard suite additionally drives one real
-                             public RSVP submission through the actual invitation flow to
-                             prove Phase 6 hasn't regressed; the gifts-dashboard suite
-                             drives a real create/edit/delete flow through the UI and
-                             confirms the public invitation renders real, live gift data)
+                             delivery suite, RSVP dashboard suite, gift method dashboard
+                             suite, and the new wishes suite; auth/invitation/editor/
+                             guests/rsvp/guest-invitation/rsvp-dashboard/gifts-dashboard/
+                             wishes suites exercise the real Supabase DEV database
+                             directly, no mocks — the editor, guests, guest-invitation,
+                             rsvp-dashboard, gifts-dashboard, and wishes (dashboard half)
+                             suites additionally drive a real authenticated session
+                             (D-022); the RSVP guest flow and the wishes suite's
+                             guest-facing half are public/unauthenticated by design, so
+                             they seed fixtures directly via Prisma instead, the same
+                             pattern e2e/invitation.spec.ts already uses. The
+                             rsvp-dashboard suite drives one real public RSVP submission
+                             through the actual invitation flow to prove Phase 6 hasn't
+                             regressed; the gifts-dashboard suite drives a real
+                             create/edit/delete flow through the UI and confirms the
+                             public invitation renders real, live gift data; the wishes
+                             suite drives one real end-to-end flow — public submission →
+                             PENDING in the dashboard → approve → visible publicly → hide
+                             → not visible publicly — through the actual UI, not mocked
+                             at any step. One unrelated pre-existing flaky failure
+                             (e2e/gifts-dashboard.spec.ts's create/edit/delete test,
+                             under 6-worker parallel load against the live DB) was
+                             confirmed to pass in isolation — not a regression from this
+                             phase, which touches no gift-method code)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 9, the existing GiftMethod schema was fully
-                             sufficient)
+                             none new in Phase 10, the existing Wish/WishStatus schema
+                             was fully sufficient)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
                              seat-quota/IDOR, guest-invitation token-masking/regeneration
                              IDOR, RSVP dashboard filter/export/cross-event authorization,
-                             AND gift-method CRUD/cross-event/public-projection
+                             gift-method CRUD/cross-event/public-projection authorization,
+                             AND wish submission/moderation/cross-event/public-projection
                              authorization proofs; Auth via a real authenticated login in
                              e2e/editor.spec.ts, e2e/guests.spec.ts,
-                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts, and
-                             e2e/gifts-dashboard.spec.ts)
+                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
+                             e2e/gifts-dashboard.spec.ts, and e2e/wishes.spec.ts)
 ```
 
 ## Update Rules

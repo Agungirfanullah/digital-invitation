@@ -24,6 +24,7 @@ function fakeEvent(overrides: Partial<PublicEventRecord> = {}): PublicEventRecor
     loveStories: [],
     galleries: [],
     giftMethods: [],
+    wishes: [],
   };
 
   return { ...base, ...overrides } as unknown as PublicEventRecord;
@@ -194,6 +195,7 @@ describe("toPublicInvitation", () => {
     expect(dto.loveStory).toBeNull();
     expect(dto.galleries).toEqual([]);
     expect(dto.giftMethods).toEqual([]);
+    expect(dto.wishes).toEqual([]);
   });
 
   it("maps a configured gift method's display fields", () => {
@@ -269,5 +271,42 @@ describe("toPublicInvitation", () => {
     expect(dto.giftMethods[0]).not.toHaveProperty("isActive");
     expect(dto.giftMethods[0]).not.toHaveProperty("createdAt");
     expect(dto.giftMethods[0]).not.toHaveProperty("updatedAt");
+  });
+
+  it("maps an approved wish's display fields", () => {
+    const createdAt = new Date("2026-11-01T10:00:00Z");
+    const dto = toPublicInvitation(
+      fakeEvent({
+        wishes: [
+          { id: "wish-1", name: "Ayu Lestari", message: "Selamat menempuh hidup baru!", createdAt },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.wishes).toEqual([
+      { id: "wish-1", name: "Ayu Lestari", message: "Selamat menempuh hidup baru!", createdAt },
+    ]);
+  });
+
+  it("never exposes guestId/eventId/status/moderation fields on a wish", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        wishes: [
+          {
+            id: "wish-1",
+            name: "Ayu Lestari",
+            message: "Selamat!",
+            createdAt: new Date(),
+          },
+        ] as never,
+      }),
+      null,
+    );
+
+    expect(dto.wishes[0]).not.toHaveProperty("guestId");
+    expect(dto.wishes[0]).not.toHaveProperty("eventId");
+    expect(dto.wishes[0]).not.toHaveProperty("status");
+    expect(dto.wishes[0]).not.toHaveProperty("updatedAt");
   });
 });

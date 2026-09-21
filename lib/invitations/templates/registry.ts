@@ -14,6 +14,15 @@ export interface InvitationTemplateProps {
    * not render a submittable RSVP form.
    */
   rsvp?: { token: string; view: RsvpGuestView } | null;
+  /**
+   * Present only when `?to=` resolved to a valid, same-event guest —
+   * reuses the guest context already resolved for `invitation.guest`
+   * rather than a second lookup like `rsvp` needs (see
+   * docs/DECISIONS.md D-039). A template must not render a submittable
+   * wish form without this, since `Wish.guestId` is a required column
+   * with no anonymous identity to attach a submission to.
+   */
+  wishGuest?: { token: string; guestName: string } | null;
 }
 
 /**

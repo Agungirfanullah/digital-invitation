@@ -53,6 +53,9 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <Link href={`/dashboard/events/${event.id}/gifts`}>Hadiah</Link>
           </Button>
           <Button asChild variant="outline">
+            <Link href={`/dashboard/events/${event.id}/wishes`}>Ucapan</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href={`/dashboard/events/${event.id}/edit`}>Edit Acara</Link>
           </Button>
         </div>

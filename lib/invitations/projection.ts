@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@prisma/client";
+import { WishStatus, type Prisma } from "@prisma/client";
 
 import { parseTheme } from "@/lib/invitations/theme";
 import { toSafeHttpUrl } from "@/lib/invitations/url-safety";
@@ -44,6 +44,17 @@ export const PUBLIC_EVENT_INCLUDE = {
       qrImageUrl: true,
       instructions: true,
     },
+  },
+  // Only approved wishes, and only the display fields a guest needs —
+  // never guestId/eventId/status/moderation history. Lives directly in the
+  // shared public projection (like galleries/gift methods above) rather
+  // than a separately-resolved lookup like RSVP (D-025) — an approved
+  // wish is static, event-wide content read identically by every visitor,
+  // not per-guest mutable state. See docs/DECISIONS.md D-039.
+  wishes: {
+    where: { status: WishStatus.APPROVED },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true, message: true, createdAt: true },
   },
 } satisfies Prisma.EventInclude;
 
@@ -129,6 +140,12 @@ export function toPublicInvitation(
       accountNumber: method.accountNumber,
       qrImageUrl: toSafeHttpUrl(method.qrImageUrl),
       instructions: method.instructions,
+    })),
+    wishes: event.wishes.map((wish) => ({
+      id: wish.id,
+      name: wish.name,
+      message: wish.message,
+      createdAt: wish.createdAt,
     })),
     guest,
   };
