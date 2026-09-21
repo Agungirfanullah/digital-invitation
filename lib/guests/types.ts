@@ -31,6 +31,8 @@ export interface GuestListItem {
   invitationStatus: GuestInvitationStatus;
   /** `null` means no RSVP submitted yet — not a fourth attendance value, just "no row" (see `lib/rsvp/`'s "PENDING" filter concept). Phase 8: surfaced here so the guest list doesn't need a second query to show it. */
   rsvpAttendance: RSVPAttendance | null;
+  /** Phase 14: derived from `CheckIn` existence (the authoritative source — see docs/DECISIONS.md), not `GuestInvitationStatus`. Surfaced here so the guest list doesn't need a second query to show it. */
+  isCheckedIn: boolean;
 }
 
 export interface GuestDetail extends GuestListItem {

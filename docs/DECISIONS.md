@@ -1014,3 +1014,141 @@ control, VIEWER sees neither, a real downloaded file is valid SVG, and
 two different guests produce visibly different QR content — proving the
 QR is genuinely link-derived without depending on `qrcode.react`'s
 internal SVG structure).
+
+## D-045 --- Check-in Scanning Uses `qr-scanner` (Nimiq), Camera Requested Only on Explicit Action
+
+**Decision:** Roadmap Phase 14 ("Check-in") adds `qr-scanner` (`^1.4.2`)
+as the only new dependency for decoding a QR code from the device camera.
+`components/checkin/qr-code-scanner.tsx` wraps its plain `QrScanner`
+class: a `<video>` element plus `new QrScanner(video, onDecode, options)`,
+started/stopped imperatively. Camera access (`getUserMedia`, via the
+library's `.start()`) is requested only when the staff member explicitly
+taps "Mulai Pindai" — never automatically on mount or tab switch — and
+`QrScanner.hasCamera()` is checked first so a device with no camera shows
+an honest "Tidak ada kamera yang terdeteksi" state rather than a raw
+permission prompt or a silent failure. A denied/unavailable camera never
+blocks the feature: manual search (`components/checkin/manual-search.tsx`,
+server-backed via `searchGuestsForCheckInAction`) is a mandatory, always-
+visible fallback, not something gated behind a failed camera attempt.
+
+**Rationale:** Evaluated against `jsqr` (decode-only, would need hand-
+written camera/canvas capture glue — more code to secure and maintain),
+`@zxing/library`/`@zxing/browser` (heavier, broader multi-format barcode
+surface than this feature needs), `html5-qrcode` (bundles more UI/behavior
+than this feature's custom reception flow wants to inherit), and React-
+specific wrapper packages (extra indirection and version-lag risk against
+React 19). `qr-scanner` was selected per AGENT_EXECUTION.md §18's
+dependency discipline after checking `npm view qr-scanner`: **zero runtime
+dependencies of its own** (one type-only dev dependency,
+`@types/offscreencanvas`), **no peer dependencies** (framework-agnostic
+plain JS, so it composes cleanly with a thin React wrapper rather than
+fighting one), MIT-licensed, and a cohesive camera+decode API purpose-
+built for exactly this "scan with the device camera, get a decoded
+string" need — `npm install` reported "added 2 packages" (the package
+itself plus its one type-only dependency), confirming no unexpected
+transitive dependency surface.
+
+**Impact:** `components/checkin/qr-code-scanner.tsx` is a `"use client"`
+component; it never resolves what a scanned value *means* — it only
+reports the raw decoded string to its parent via `onDecode`. All token
+extraction and validation happens server-side (see D-046) — the client
+never interprets, echoes back, or trusts its own decode result as an
+identity. The component pauses (`.stop()`) rather than tearing down while
+a preview/result is showing (parent-controlled via an `active` prop), and
+guards against firing `onDecode` more than once per active scanning
+session, preventing duplicate decode events for a single physical scan.
+
+## D-046 --- `CheckIn` Is the Authoritative Source of Check-in State; `GuestInvitationStatus.CHECKED_IN` Is a Transactionally-Synchronized Projection
+
+**Decision:** `CheckIn` is the authoritative source of check-in state.
+`GuestInvitationStatus.CHECKED_IN` is synchronized transactionally as a
+denormalized invitation-lifecycle projection. Duplicate prevention relies
+on the database unique constraint `[eventId, guestId]` on `CheckIn` — not
+on reading `GuestInvitation.status` as a check-then-act guard. A
+check-in attempt (`lib/checkin/service.ts`'s `performCheckIn()`) always
+goes straight to the authoritative write:
+`prisma.$transaction([checkIn.create(...), guestInvitation.update({ status: CHECKED_IN })])`.
+If the guest is already checked in, `checkIn.create()` itself fails the
+unique constraint (Prisma error code `P2002`); that failure is caught and
+translated into an honest `ALREADY_CHECKED_IN` outcome, and the losing
+request never touches `GuestInvitation.status` again — the transaction
+that actually created the `CheckIn` row is the only writer of that status
+transition, ever.
+
+**Rationale:** A "read `GuestInvitation.status`, then create `CheckIn` if
+it isn't already `CHECKED_IN`" sequence is a classic check-then-act race:
+two concurrent requests can both read a not-yet-`CHECKED_IN` status,
+decide independently to proceed, and (absent the constraint doing the
+real work) either produce two `CheckIn` rows or leave the second write
+silently racing the first. Postgres's own unique index is the only thing
+in this system that can atomically arbitrate "who got here first" under
+real concurrency — no application-level advisory lock or `SERIALIZABLE`
+isolation level was introduced, because the unique constraint already
+gives the correctness guarantee needed (proven directly in
+`lib/checkin/service.integration.test.ts`'s genuinely concurrent
+`Promise.all([...])` test: exactly one `CheckIn` row, one `SUCCESS`, one
+honest `ALREADY_CHECKED_IN`). Keeping `GuestInvitationStatus.CHECKED_IN`
+as a *projection* (rather than the source of truth) also avoids
+duplicating the one thing a unique index already guarantees; the status
+column exists for lifecycle display (matching `NOT_SENT`/`SENT`/`OPENED`/
+`RSVPED`'s existing meaning, per `docs/DATABASE.md` §9), not for
+concurrency control.
+
+**Impact:** `lib/checkin/service.ts`'s `performCheckIn()` is the only
+writer of a `CheckIn` row anywhere in the codebase. The pre-existing
+never-downgrade protections in `lib/rsvp/service.ts`'s
+`resolveNextInvitationStatus()` and `lib/guests/service.ts`'s
+`resolveInvitationAfterRegeneration()` (both already treat `CHECKED_IN`
+as a terminal, later-than-`RSVPED` lifecycle stage) are unmodified and
+remain correct under this decision, since check-in only ever moves status
+*into* `CHECKED_IN`, never out of it. Every read path that needs to know
+"is this guest checked in" (dashboard summary, search results, guest-list
+column, preview) queries `CheckIn` existence directly
+(`checkIn.findUnique`/`count`), never `GuestInvitationStatus` — the status
+column is shown as supplementary lifecycle information only (e.g. the
+existing guest-list "Sudah Check-in" label), never as the thing a
+duplicate check-in decision is made from.
+
+## D-047 --- Check-in Authorization Reuses `EventMemberRole`; RSVP Status Never Gates Check-in; "Reception Mode" Means a Fast Repeated-Scan Loop, Not a Separate Concept
+
+**Decision:** Check-in introduces no new role or permission system.
+OWNER and EDITOR may view and perform check-ins; VIEWER may view
+(dashboard summary, search, guest preview) but cannot mutate — enforced
+server-side in `lib/checkin/service.ts` by re-deriving the caller's role
+from `getAuthorizedEvent(eventId, userId, minRole)` on every call, exactly
+like every other domain in this codebase (never trusting a client-supplied
+role or id). A guest's RSVP status (`ATTENDING`/`NOT_ATTENDING`/`MAYBE`/no
+response) is display-only on the check-in screen and never blocks
+check-in — nothing in `docs/PRD.md`, `docs/DATABASE.md`, or the existing
+RSVP/check-in relationship implies otherwise, and walk-in/plus-one
+attendance at a real event is common enough that hard-gating check-in on a
+prior RSVP would actively work against the feature's purpose. "Reception
+mode" was interpreted as a UX requirement, not a new domain concept: after
+any check-in result (success, already-checked-in, invalid, error), the
+operator stays on `/dashboard/events/[eventId]/check-in`
+(`components/checkin/checkin-shell.tsx` never navigates away) and one
+obvious action resets straight back to scanning/searching, so a queue of
+arriving guests can be processed back-to-back without re-navigating
+through the dashboard each time.
+
+**Rationale:** Introducing a separate STAFF role or a check-in-specific
+permission table would duplicate `EventMemberRole`'s existing
+OWNER/EDITOR/VIEWER semantics for no product benefit this phase's brief
+asked for — every other domain in this codebase already treats EDITOR as
+"can perform the domain's write operations" and VIEWER as "read-only",
+and check-in fits that pattern exactly. Gating check-in on RSVP status
+was considered and rejected: `CheckIn`'s own unique constraint (D-046)
+already makes duplicate check-in impossible regardless of RSVP state, and
+nothing in the product requirements ties physical attendance to a prior
+RSVP answer.
+
+**Impact:** `lib/checkin/service.ts`'s `requireCheckInViewerAccess()` /
+`requireCheckInEditorAccess()` are the only authorization entry points;
+every service function calls one of them before touching the database.
+`CheckInGuestView.rsvpAttendance` is surfaced for display only — no
+function in `lib/checkin/service.ts` branches on its value before
+allowing a check-in. `components/checkin/checkin-shell.tsx` implements
+the reception loop as a small client-side state machine
+(`idle → loading → preview → result → idle`) with no server-side "session"
+concept — each scan/search is an independent, freshly-authorized request,
+consistent with every other Server Action in this codebase.

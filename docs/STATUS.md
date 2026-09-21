@@ -12,9 +12,27 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 13 --- QR Invitation
+**Current Phase:** Phase 14 --- Event Check-in
 
-**Status:** Phase 0-11 remain complete and passing. Phase 13 implements
+**Status:** Phase 0-11 and Phase 13 remain complete and passing. Phase 14
+implements `docs/ROADMAP.md`'s Phase 14 ("Check-in") — OWNER and EDITOR
+users can check in guests at `/dashboard/events/[eventId]/check-in` by
+scanning a guest's existing personalized-invitation QR (decoded
+client-side via `qr-scanner`, D-045) or by manual name search
+(server-backed, mandatory fallback); VIEWER can view the dashboard/search
+read-only but cannot check anyone in. `CheckIn` (new model, already
+present in `prisma/schema.prisma` before this phase — no migration was
+needed) is the authoritative source of check-in state, with
+`GuestInvitationStatus.CHECKED_IN` synchronized transactionally as a
+denormalized projection and duplicate prevention driven entirely by the
+database's own `[eventId, guestId]` unique constraint rather than a
+check-then-act read (D-046). RSVP status never gates check-in, and
+"reception mode" is a fast, stay-on-page repeated-scan loop, not a
+separate concept (D-047). See D-045/D-046/D-047 for the full rationale.
+This phase does not touch Roadmap Phase 15 (Analytics) or WhatsApp
+Business API sending, both of which remain explicitly out of scope.
+
+**Status (Phase 13, unchanged by this phase):** implements
 `docs/ROADMAP.md`'s Phase 13 ("QR Invitation") — OWNER and EDITOR users can
 view and download a QR code for any guest's personalized invitation from
 the existing per-guest invitation page
@@ -28,9 +46,8 @@ introduced — the QR is purely a different visual encoding of data that
 already exists and is already correctly authorized; VIEWER-role masking
 is inherited for free from the existing token-masking behavior
 (D-027), not reimplemented. See D-044 for the full library-selection and
-architecture rationale. This phase does not touch Roadmap Phase 14
-(Check-in), Phase 15 (Analytics), or WhatsApp Business API sending, all of
-which remain explicitly out of scope.
+architecture rationale. Phase 14 (this phase) is the first thing that
+actually consumes this QR for check-in.
 
 **Note on Phase 12 (WhatsApp Sharing):** remains at the state described
 under "Phase 7" below — message composition, `wa.me` deep link, and
@@ -105,7 +122,10 @@ already actionable-complete (message composition + `wa.me` deep link,
 D-029) via the existing Phase 7 work, so Phase 13 — the next phase with
 zero code written and all dependencies satisfied — was chosen instead,
 consistent with this engagement's established "verify before assuming a
-phase needs (re)work" practice.
+phase needs (re)work" practice. This phase, "Phase 14 — Event Check-in,"
+likewise matches `docs/ROADMAP.md`'s own Phase 14 exactly and was chosen
+as the direct, dependency-satisfied next step after Phase 13 (which built
+the personalized-invitation QR this phase now scans).
 
 ## Documentation Baseline
 
@@ -2605,10 +2625,12 @@ E2E (real Supabase DEV database, real authenticated sessions — D-022):
 ### Known Limitations
 
 -   **No QR scanning, check-in, or check-in dashboard** — explicitly out
-    of scope for this phase (Roadmap Phase 14); the QR encodes a URL a
-    phone camera can already open today (the existing `/invite/[slug]`
-    route), but nothing in this codebase yet consumes a scanned QR for a
-    check-in workflow.
+    of scope for this phase (Roadmap Phase 14) *at the time this phase
+    was written*; the QR encodes a URL a phone camera can already open
+    today (the existing `/invite/[slug]` route). **This is no longer
+    accurate** — Roadmap Phase 14 ("Check-in"), implemented immediately
+    after this phase, now consumes exactly this QR for check-in. See
+    "Phase 14 — Event Check-in" below.
 -   **No WhatsApp Business API sending, no analytics** — both explicitly
     out of scope for this phase, unchanged from their existing states
     (D-029; Roadmap Phase 15 not started).
@@ -2616,6 +2638,225 @@ E2E (real Supabase DEV database, real authenticated sessions — D-022):
     anywhere beyond the per-guest invitation page** — matches the phase
     brief's explicit scope (this page only); a "send the QR image itself"
     flow was not requested and was not built.
+
+## Phase 14 --- Event Check-in
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including full authenticated browser E2E coverage
+(D-022). No fake/mocked authorization, token, or check-in logic. No
+schema migration was required or generated — confirmed by inspection, not
+assumed: `CheckIn` and `CheckInMethod` already existed in
+`prisma/schema.prisma` before this phase started (`npx prisma migrate
+status` reported "Database schema is up to date!" both before and after
+this phase's code changes).
+
+-   [x] QR check-in — `components/checkin/qr-code-scanner.tsx` (new,
+    `"use client"`, wraps `qr-scanner`, D-045) decodes a QR client-side
+    and hands the *raw* decoded string to the server unmodified; the
+    server (`lib/checkin/token.ts`'s
+    `extractInvitationTokenFromScannedValue()`, `import "server-only"`)
+    is the only place that parses out and validates the invitation token,
+    reusing the exact `guestTokenSchema` format check
+    `lib/invitations/token.ts` already established. The client never
+    interprets, trusts, or echoes back a guest/invitation identity of its
+    own.
+-   [x] Manual search — `components/checkin/manual-search.tsx` (new),
+    server-backed via `searchGuestsForCheckInAction` →
+    `lib/checkin/service.ts`'s `searchGuestsForCheckIn()`, event-scoped,
+    matches by name/phone/email (reusing the existing guest-search
+    pattern) but returns only `{ guestId, guestName, category,
+    isCheckedIn }` — never phone/email/notes/token, verified directly by
+    an integration test asserting the exact returned key set. Always
+    available regardless of camera state — the mandatory fallback the
+    phase brief required, not merely an option next to the scanner.
+-   [x] Guest confirmation — `components/checkin/guest-confirmation-card.tsx`
+    (new) shows exactly guest name, RSVP status, seat quota, and check-in
+    status before/after a check-in decision — the same minimal field set
+    the search results use, never phone/email/notes/internal ids.
+-   [x] Authorization — `lib/checkin/service.ts`'s
+    `requireCheckInViewerAccess()` / `requireCheckInEditorAccess()` (no
+    new role/permission system, D-047): OWNER/EDITOR can view and check
+    in, VIEWER can view/search/preview read-only but every mutating
+    function (`confirmQrCheckIn`, `confirmManualCheckIn`) throws
+    `CheckInUnauthorizedError` for a VIEWER before touching the database.
+    A stranger/nonexistent event gets the same IDOR-safe `notFound()` as
+    every other dashboard route (`EventNotFoundError`) — proven
+    indistinguishable by test.
+-   [x] Duplicate/concurrency safety — `performCheckIn()` always attempts
+    the authoritative `CheckIn` write first and lets the database's own
+    `@@unique([eventId, guestId])` constraint arbitrate, catching Prisma
+    `P2002` and translating it into an honest `ALREADY_CHECKED_IN`
+    outcome — never a check-then-act read of existing state (D-046).
+    Proven under **genuine concurrency**, not sequential calls dressed up
+    as concurrent: `lib/checkin/service.integration.test.ts` fires two
+    real overlapping `confirmManualCheckIn()` calls via `Promise.all(...)`
+    against the same guest against the live database and asserts exactly
+    one `CheckIn` row and one honest `ALREADY_CHECKED_IN` loser.
+-   [x] `GuestInvitation.status` sync — `performCheckIn()` writes
+    `CheckIn` and updates `GuestInvitation.status = CHECKED_IN` inside one
+    `prisma.$transaction([...])` (same array-form transaction pattern as
+    `lib/rsvp/service.ts`'s `submitRsvpForGuest()`); a duplicate/losing
+    attempt never re-touches `GuestInvitation.status` a second time,
+    verified by asserting `updatedAt` is unchanged after a losing attempt
+    (D-046). The pre-existing never-downgrade protections in
+    `lib/rsvp/service.ts` and `lib/guests/service.ts` (both already treat
+    `CHECKED_IN` as terminal) are unmodified and remain correct.
+-   [x] RSVP never gates check-in — proven directly: a guest with
+    `NOT_ATTENDING` or no RSVP row at all can still be checked in
+    successfully (D-047); RSVP status is shown on the confirmation card
+    for context only.
+-   [x] Reception flow — `components/checkin/checkin-shell.tsx` (new,
+    `"use client"` orchestrator) never navigates away from
+    `/dashboard/events/[eventId]/check-in` after a result; a single
+    "Pindai / Cari Tamu Lain" action resets straight back to
+    scanning/searching. A `submittingRef` guard prevents a second
+    preview/confirm request from firing while one is already in flight.
+-   [x] Dashboard — `app/dashboard/events/[eventId]/check-in/page.tsx`
+    (new Server Component) + `loading.tsx`, showing a server-computed
+    summary (Total Diundang / Konfirmasi Hadir / Sudah Check-in / Belum
+    Check-in — no charts or unrelated analytics) via
+    `getCheckInDashboardData()`. Linked from the event detail page's
+    action row; removed from that page's "Segera hadir" (coming soon)
+    list, since it's no longer coming soon.
+-   [x] Guest-list "Check-in" column (PRD §19, secondary/optional) —
+    implemented cleanly rather than deferred: `lib/guests/service.ts`'s
+    existing `GUEST_SELECT` now also selects `checkIns: { select: { id:
+    true } }` (same one-extra-relation shape already used for `rsvps`,
+    no N+1 — one query, same as before), and the guest list
+    (`/dashboard/events/[eventId]/guests`) shows the existing
+    `CheckInStatusBadge` next to a guest's RSVP badge when
+    `isCheckedIn` is true.
+-   [x] Rate limiting — `lib/checkin/rate-limit.ts`, a new
+    check-in-specific limiter (`checkin:submit:{userId}`, 300 requests /
+    10 minutes) reusing the existing generic `lib/rate-limit/`
+    infrastructure (same shape as `lib/guests/rate-limit.ts`/
+    `lib/editor/gallery-rate-limit.ts`), sized for a realistic reception
+    burst (many rapid scans in a short window) rather than the tighter
+    limits used for lower-frequency mutations elsewhere in the codebase.
+    Applied only to the two confirm actions, not to read-only
+    preview/search.
+
+### Dependency added
+
+`qr-scanner` (`^1.4.2`) — see D-045 for the full selection rationale.
+Zero runtime dependencies of its own (one type-only dev dependency,
+`@types/offscreencanvas`), no peer dependencies. `npm install` reported
+"added 2 packages," confirming no unexpected transitive dependency
+surface.
+
+### Security review findings
+
+-   **eventId/guestId scoping** — every service function re-derives
+    authorization from `{ eventId, userId }` via `getAuthorizedEvent()`
+    and re-verifies `{ guestId, eventId }` together for every guest
+    lookup (`resolveGuestByGuestId`), never trusting a client-supplied id
+    alone; proven by dedicated cross-event IDOR tests for both the QR
+    token path and the manual guestId path.
+-   **IDOR** — a stranger and a nonexistent event both resolve to the
+    same `EventNotFoundError` → `notFound()`, consistent with every other
+    domain in this codebase; proven by test.
+-   **QR token security** — the server re-resolves the guest from the
+    *raw* scanned value on every call (including confirm, which never
+    trusts a previously-resolved guestId from its own preview step,
+    matching `lib/rsvp/service.ts`'s always-re-resolve precedent); an
+    unknown, malformed, or cross-event token produces the same generic
+    `InvalidCheckInGuestError` → "Tamu tidak ditemukan untuk acara ini."
+    regardless of which of those three it actually was.
+-   **No raw token logging/exposure** — grepped: no file under
+    `lib/checkin/` or `components/checkin/` logs a token or scanned
+    value; `mapCheckInErrorMessage()`'s fallback branch logs the caught
+    `Error` object for operators (`console.error`), never the scanned
+    string itself, and never returns raw error detail to the client.
+-   **Unique constraint remains authoritative, no duplicate rows
+    possible** — the entire point of D-046; proven under genuine
+    concurrency (see above), not assumed from the schema alone.
+-   **No unnecessary PII exposure** — `CheckInGuestView` and
+    `CheckInSearchResultItem` both deliberately exclude
+    phone/email/notes/invitation token; verified directly by asserting
+    the exact key set a search result returns.
+-   **No `dangerouslySetInnerHTML`/XSS** — grepped: no occurrence
+    anywhere under `lib/checkin/` or `components/checkin/`; all guest
+    data is rendered as plain React children (auto-escaped).
+-   **Rate limiting present** — see "Rate limiting" above; applied to
+    both confirm actions before any database write is attempted.
+-   **No raw DB errors exposed** — `mapCheckInErrorMessage()` never
+    returns a Prisma error message or stack trace to the client; the
+    `P2002` duplicate case is handled as a normal typed business outcome
+    (`ALREADY_CHECKED_IN`), not surfaced as an "error" at all.
+-   **Client/server boundary** — `lib/checkin/token.ts`,
+    `lib/checkin/errors.ts`, `lib/checkin/rate-limit.ts`, and
+    `lib/checkin/service.ts` all import `"server-only"`; a clean
+    production build confirms no server-only import leaked into a client
+    bundle (the exact class of issue Phase 11 hit and fixed did not
+    recur here).
+
+### Tests Added (Phase 14)
+
+Pure unit tests (no database):
+
+-   `lib/checkin/validation.test.ts` (9 tests, new) — QR/manual/search
+    Zod schemas: trims and accepts valid input, rejects empty/oversized
+    input, rejects a missing field.
+-   `lib/checkin/token.test.ts` (7 tests, new) —
+    `extractInvitationTokenFromScannedValue()`: extracts a valid token
+    from a well-formed invitation URL regardless of other query params,
+    returns `null` for a non-URL value, a URL with no `to` param, and a
+    `to` value that fails token-format validation, and confirms the
+    embedded slug is never read (only the token param matters).
+-   `lib/checkin/errors.test.ts` (4 tests, new) — `mapCheckInErrorMessage()`
+    maps each domain error to its Indonesian message and falls back to a
+    generic message (logging, not leaking, an unexpected error's detail).
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/checkin/service.integration.test.ts` (22 tests, new) — covers
+    the full matrix required by the phase brief: correct guest resolution
+    from a valid token, cross-event token/guestId rejection, unknown
+    event membership rejection, OWNER/EDITOR check-in success (QR and
+    manual, correct `checkedInBy`/`checkedInAt`/`method`), VIEWER
+    rejection with zero rows created, RSVP not gating check-in, a second
+    attempt returning `ALREADY_CHECKED_IN` with exactly one row,
+    **genuinely concurrent** `Promise.all([...])` attempts resolving to
+    exactly one row and one honest loser, transactional
+    `GuestInvitation.status` sync on success, a losing attempt never
+    re-mutating that status, search returning only the minimal field set
+    and reflecting check-in state correctly, and dashboard summary counts
+    matching seeded data exactly.
+
+E2E (real Supabase DEV database, real authenticated sessions — D-022):
+
+-   `e2e/check-in.spec.ts` (5 tests, new) — a stranger is rejected from
+    another owner's dashboard; the QR scanner's no-camera state is
+    asserted (this headless environment has no video input device, so
+    `QrScanner.hasCamera()` genuinely resolves false — this is **not** a
+    substitute for real hardware verification, see "Known Limitations"
+    below) and manual search remains available as a working fallback; an
+    owner can search, check in, and see that a repeat search reflects the
+    already-checked-in state; a VIEWER can search/preview but has no
+    confirm control anywhere in the UI; and a 390×844 mobile viewport
+    renders the check-in page without horizontal overflow.
+
+### Known Limitations
+
+-   **No real-device camera verification.** All QR-scanning verification
+    in this phase is automated-only: unit tests for token parsing, and an
+    E2E assertion that headless Chromium (no camera hardware) correctly
+    falls back to its "no camera detected" state. **Actual QR decoding on
+    a real Android Chrome or iOS Safari camera was not performed** — no
+    physical device or device-farm access was available in this
+    environment. This is stated honestly rather than claimed: the
+    scanner's *code path* (permission states, start/stop lifecycle,
+    single-decode-per-session guard, manual fallback) is verified; live
+    camera decoding behavior on real hardware is not.
+-   **No check-in undo/reversal, no separate check-in history feed** —
+    both explicitly out of scope per the phase brief; `CheckIn.checkedInAt`
+    /`checkedInBy` are the only record kept, matching PRD/DATABASE
+    guidance for this phase.
+-   **No new `AuditLog` usage** — explicitly out of scope per the phase
+    brief; not introduced.
+-   **No WhatsApp Business API sending, no analytics** — unchanged,
+    explicitly out of scope for this phase (D-029; Roadmap Phase 15 not
+    started).
 
 ## Known Blockers
 
@@ -2682,59 +2923,65 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (596/596 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (638/638 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
                              lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
-                             lib/gifts/*, lib/wishes/*, lib/storage/*; 193 of these are
-                             live-DB integration tests — 15 events, 22 invitations, 43
-                             editor, 41 guests (+1 in this phase: an explicit EDITOR-role
-                             case for getGuestInvitationDetail(), the function the QR
-                             feature's authorization depends on), 36 rsvp, 18 gifts, 18
-                             wishes — 0 leftover DB rows and 0 leftover Storage objects
-                             verified after each run)
+                             lib/gifts/*, lib/wishes/*, lib/storage/*, lib/checkin/* (new,
+                             this phase: 20 pure unit tests + 22 live-DB integration
+                             tests, including a genuinely concurrent Promise.all(...)
+                             duplicate-check-in test); 215 of the 638 are live-DB
+                             integration tests — 15 events, 22 invitations, 43 editor, 41
+                             guests, 36 rsvp, 18 gifts, 18 wishes, 22 check-in (new) — 0
+                             leftover DB rows and 0 leftover Storage objects verified
+                             after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware; all
-                             existing dynamic routes unchanged and correctly dynamic; no
-                             server/client boundary issue from the new qrcode.react/
-                             lib/guests/qr-filename.ts import chain)
-E2E:                        PASS (57/57 on a clean, uninterrupted run on a freshly-cleared
-                             `.next` — homepage smoke test, auth foundation suite,
+                             existing dynamic routes unchanged and correctly dynamic, plus
+                             the new /dashboard/events/[eventId]/check-in route correctly
+                             registered as dynamic; no server/client boundary issue from
+                             the new qr-scanner/lib/checkin/* import chain — every
+                             server-only module in lib/checkin/ imports "server-only" and
+                             the production build stayed clean)
+E2E:                        PASS (62/62 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
                              suite, guest management suite, RSVP suite, guest invitation
-                             delivery suite (extended with QR assertions + 1 new download
-                             test), RSVP dashboard suite, gift method dashboard suite,
-                             wishes suite, and gallery suite; all database-backed suites
-                             exercise the real Supabase DEV database directly, no mocks —
-                             the guest-invitation suite's new download test drives a real
-                             file download via Playwright and reads it from disk. Across
-                             repeated full-suite runs during this phase's verification, a
-                             small, variable subset of unrelated pre-existing tests
-                             (e2e/gifts-dashboard.spec.ts's and e2e/wishes.spec.ts's
-                             heaviest tests) intermittently failed under 6-worker parallel
-                             load with the generic "stuck on /login" symptom — confirmed,
-                             again, via isolated re-runs on a fresh server to pass
-                             reliably alone; the already-documented D-030 characteristic,
-                             not a Phase 13 regression, since neither file's code was
-                             touched in this phase)
+                             delivery suite, RSVP dashboard suite, gift method dashboard
+                             suite, wishes suite, gallery suite, and check-in suite (new,
+                             5 tests); all database-backed suites exercise the real
+                             Supabase DEV database directly, no mocks. On a full
+                             5-worker parallel run, 8 tests across
+                             e2e/gifts-dashboard.spec.ts, e2e/guests.spec.ts,
+                             e2e/rsvp-dashboard.spec.ts, and e2e/wishes.spec.ts
+                             intermittently failed with the generic "stuck on /login"
+                             symptom and 54 passed directly; re-running exactly those 8
+                             with reduced parallelism (`--workers=1`) passed all 17 tests
+                             in their files cleanly — this is the pre-existing,
+                             already-documented D-030 characteristic (login flakiness
+                             under heavy parallel load), not a Phase 14 regression: none
+                             of the 8 failures were in e2e/check-in.spec.ts, and none of
+                             gifts-dashboard/rsvp-dashboard/wishes's code was touched this
+                             phase)
 Prisma validate:            PASS
-Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 13 — confirmed by inspection that the QR
-                             feature adds no persisted state at all, reusing
-                             GuestInvitation.token and buildGuestInvitationUrl() as-is)
+Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total,
+                             unchanged by this phase; confirmed by inspection that
+                             `CheckIn`/`CheckInMethod` already existed in
+                             prisma/schema.prisma before this phase started, so no
+                             migration was generated or needed)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
                              seat-quota/IDOR, guest-invitation token-masking/regeneration
-                             IDOR (including the new explicit EDITOR-role case), RSVP
-                             dashboard filter/export/cross-event authorization,
+                             IDOR, RSVP dashboard filter/export/cross-event authorization,
                              gift-method CRUD/cross-event/public-projection authorization,
                              wish submission/moderation/cross-event/public-projection
-                             authorization, AND gallery upload/reorder/delete/cross-event
-                             authorization proofs; Storage via the real, connected
-                             Supabase project's `invitation-assets` bucket; Auth via a
-                             real authenticated login in e2e/editor.spec.ts,
-                             e2e/guests.spec.ts, e2e/guest-invitation.spec.ts,
-                             e2e/rsvp-dashboard.spec.ts, e2e/gifts-dashboard.spec.ts,
-                             e2e/wishes.spec.ts, and e2e/gallery.spec.ts)
+                             authorization, gallery upload/reorder/delete/cross-event
+                             authorization, AND check-in authorization/duplicate-
+                             prevention/transactional-sync/concurrency proofs (new); Storage
+                             via the real, connected Supabase project's
+                             `invitation-assets` bucket; Auth via a real authenticated
+                             login in e2e/editor.spec.ts, e2e/guests.spec.ts,
+                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
+                             e2e/gifts-dashboard.spec.ts, e2e/wishes.spec.ts,
+                             e2e/gallery.spec.ts, and e2e/check-in.spec.ts (new))
 ```
 
 ## Update Rules
