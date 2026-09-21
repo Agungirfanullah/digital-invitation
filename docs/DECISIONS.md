@@ -805,3 +805,154 @@ guestId/eventId/status leak), `lib/invitations/service.integration.test.ts`
 (approved-only visibility, cross-event isolation, real DB round trip), and
 `e2e/wishes.spec.ts` (the full submit → PENDING → approve → public,
 hide → not-public flow).
+
+## D-040 --- Gallery Image Deletion Is Storage-First, Non-Atomic, Fail-Closed
+
+**Decision:** `lib/editor/service.ts`'s `deleteGalleryItem()` removes the
+underlying Supabase Storage object (when the item's `url` resolves to one —
+see D-041) *before* deleting the `GalleryItem` row, inside a plain
+try/catch, not a database transaction. If the storage removal call throws,
+the function re-throws `GalleryStorageDeletionError` immediately and the
+`GalleryItem` row is left completely untouched — the operation either
+fully succeeds (object gone AND row gone) or the caller sees a clear,
+retryable error with both still intact. There is no path that deletes the
+DB row while the storage object survives.
+
+**Rationale:** A Prisma `$transaction` cannot span an external HTTP call
+to Supabase Storage, so an all-or-nothing guarantee isn't available for
+free — the task brief explicitly asked for a documented compensation
+strategy instead. Two alternatives were considered and rejected:
+(a) delete the DB row first, then best-effort delete storage and swallow
+a failure — rejected because it reports a false "fully deleted" success
+to the owner while silently leaking a storage object forever (an ongoing
+cost with no way for the owner to ever discover or retry it), which is
+exactly what the brief's "do not leave the system falsely reporting a
+successful complete deletion" instruction rules out; (b) delete storage
+first but keep the DB row on failure while *also* marking it as
+"deletion pending" for a background retry — rejected as unnecessary
+complexity for this product's scale (no queue/worker infrastructure
+exists or is otherwise needed elsewhere in this codebase). Storage-first
+with a hard abort on failure is the simplest strategy that never orphans
+a storage object and never lies about the outcome; its cost is that a
+transient Storage outage blocks deletion entirely until it recovers,
+which is an acceptable, honest tradeoff (the owner sees "gagal
+menghapus... coba lagi" and can retry) rather than a silent leak.
+
+**Impact:** `lib/storage/errors.ts`'s `GalleryStorageDeletionError` /
+`mapStorageErrorMessage()` produce the Indonesian retry message; no raw
+Supabase error ever reaches the client. Proven directly in
+`lib/editor/service.integration.test.ts`: deleting a real uploaded image
+removes both the DB row and the live Storage object (confirmed via a
+follow-up download attempt that fails); a VIEWER's rejected delete
+attempt leaves both the row and the object provably intact.
+
+## D-041 --- No New Storage-Object-Path Column; the Path Is Recovered From the Stored Public URL
+
+**Decision:** `GalleryItem` gained no new column for Phase 11.
+`lib/storage/paths.ts`'s `derivePathFromPublicUrl()` recovers a bucket-
+relative object path purely by string-prefix-stripping the item's already-
+stored `url` against `{NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/
+{SUPABASE_STORAGE_BUCKET}/`, returning `null` (never a guess) when the URL
+doesn't match that exact prefix.
+
+**Rationale:** The task brief explicitly required stopping to report
+before adding a schema column for this, rather than assuming the existing
+`url` column is enough. It genuinely is enough, for a reason specific to
+this feature's own design: every object this codebase ever uploads is
+placed at a path *we* generate (`lib/storage/paths.ts`'s
+`buildGalleryObjectPath()`) and immediately store the resulting Supabase-
+issued public URL — a deterministic, well-known format
+(`.../object/public/<bucket>/<path>`) — as `GalleryItem.url`. Deletion
+never needs to derive a path for an object it didn't itself create with a
+known, parseable URL shape. The one case this could fail — a `GalleryItem`
+whose `url` is an arbitrary externally-pasted address (every gallery item
+created before this phase, via the old URL-paste flow, plus every `VIDEO`
+item going forward, which remains URL-based — see the "VIDEO" note in
+`docs/STATUS.md`) — is handled correctly by design: `derivePathFromPublicUrl`
+returns `null` for it, and `deleteGalleryItem` correctly treats `null` as
+"no storage object to remove," not an error, since no such object was ever
+created by this application. Adding a dedicated `storagePath` column would
+duplicate information already fully recoverable from `url` for every case
+that matters, for no behavioral benefit.
+
+**Impact:** No Prisma migration. Covered directly by
+`lib/storage/paths.test.ts` (own-bucket URL → correct path; a different
+host, a different bucket name, or a traversal-shaped suffix → `null`) and
+`lib/editor/service.integration.test.ts` (a legacy/external-URL video item
+deletes its row without ever attempting a storage call).
+
+## D-042 --- `next/image` Not Adopted for the Gallery; Plain `<img>` Retained
+
+**Decision:** The gallery grid, lightbox, and editor preview all continue
+using plain `<img>` (with `loading="lazy"` and `decoding="async"` added in
+this phase), not `next/image`.
+
+**Rationale:** Every other section that renders event-owner-supplied
+media in this codebase (Hero, Couple, LoveStory, Gift) already made this
+exact choice deliberately, each with its own `eslint-disable
+@next/next/no-img-element` comment recorded at the time — switching only
+Gallery to `next/image` would be an inconsistent one-off, not a
+architecture-wide improvement. More concretely: `next/image` requires a
+fixed, known allowlist of remote origins (`images.remotePatterns`) to
+optimize a URL, but this codebase's gallery items come from a genuine mix
+of origins even after this phase — newly-uploaded images live on this
+project's own Supabase Storage bucket (a stable, allowlist-able origin),
+but pre-existing/legacy URL-pasted images and every `VIDEO` item's
+`thumbnailUrl` remain arbitrary external URLs by design (D-041's "VIDEO
+stays URL-based" point). A per-URL-origin branch (Supabase-hosted →
+`next/image`, everything else → plain `<img>`) was considered and
+rejected as exactly the "unnecessary custom image-processing
+infrastructure" the task brief warns against, for a benefit — the Next.js
+built-in optimizer's resize/reformat pipeline — that Supabase Storage's
+own `invitation-assets` bucket has no confirmed image-transformation
+add-on for anyway (that's a separate, paid Supabase feature this project
+has not verified or enabled).
+
+**Impact:** `components/invitation/sections/gallery-grid.tsx`'s and
+`components/editor/sections/gallery-form.tsx`'s `<img>` usage keeps the
+same `eslint-disable-next-line @next/next/no-img-element` pattern as every
+other media-rendering component in this codebase. Layout shift is already
+prevented structurally (a fixed `aspect-square` CSS container the image
+fills via `object-cover`/`object-contain`), not via reserved intrinsic
+`width`/`height` attributes, so no new `GalleryItem` columns were needed
+for this either. If a real product need for responsive multi-resolution
+delivery emerges later, the narrow fix is enabling and verifying Supabase
+Storage's image transformation for the specific bucket in use, then
+introducing `next/image` scoped only to that one confirmed-safe origin —
+not before.
+
+## D-043 --- Image Format/Dimension Validation Is Hand-Rolled Magic-Byte Sniffing, Not a New Dependency
+
+**Decision:** `lib/storage/image-format.ts` implements PNG/GIF/JPEG/WebP
+signature detection and dimension extraction directly (a few dozen lines
+of buffer parsing), rather than adding a package such as `image-size` for
+the same purpose.
+
+**Rationale:** This is the actual security check behind "reject
+executable/non-image content even if a client claims an image MIME type"
+— a client can set `Content-Type: image/png` on any byte stream, so the
+real authenticity gate has to read the file's own magic bytes, which
+requires *some* implementation either way. A dedicated npm package would
+do this more completely (full WebP VP8/VP8L bit-packed dimension decode,
+more formats), but the task brief explicitly warns against building
+"unnecessary custom image-processing infrastructure," and this module
+deliberately stays on the validation side of that line: it never decodes,
+resizes, or transcodes pixel data, only reads a handful of fixed-offset
+header bytes per format to confirm authenticity and bounds. Avoiding a new
+runtime dependency for a server-only validation utility this size also
+sidesteps supply-chain surface for no real functionality loss for this
+product's actual needs (JPEG/PNG/GIF/WebP from phone cameras and standard
+image editors).
+
+**Impact:** WebP's simpler `VP8 `/`VP8L` sub-formats are authenticated by
+signature but their dimensions aren't decoded (documented directly in
+`lib/storage/image-format.ts`'s own comments); only the `VP8X` (extended)
+sub-format returns decoded dimensions, which is what modern export
+tooling most commonly produces. This is a narrower, explicitly-scoped
+limitation, not a silent gap — dimension *bounds* simply aren't enforced
+for that one sub-format, while every other validation (size, MIME,
+extension, and the authenticity check itself) still fully applies.
+Covered by `lib/storage/image-format.test.ts` (real/hand-built fixtures
+per format, including a genuine PNG and a rejected Windows PE/executable
+signature) and `lib/storage/validation.test.ts` (the full validation
+pipeline, including a mismatched-content-vs-claimed-MIME rejection).

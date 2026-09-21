@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  galleryItemSchema,
+  galleryCaptionSchema,
+  galleryVideoItemSchema,
   loveStoryItemSchema,
   scheduleFormSchema,
   templateSelectionSchema,
@@ -197,22 +198,32 @@ describe("loveStoryItemSchema", () => {
   });
 });
 
-describe("galleryItemSchema", () => {
-  it("accepts a valid image item", () => {
+describe("galleryVideoItemSchema", () => {
+  it("accepts a valid video item", () => {
     expect(
-      galleryItemSchema.safeParse({
-        type: "IMAGE",
-        url: "https://example.com/a.jpg",
+      galleryVideoItemSchema.safeParse({
+        type: "VIDEO",
+        url: "https://example.com/a.mp4",
         caption: null,
       }).success,
     ).toBe(true);
   });
 
+  it("rejects type IMAGE — image items are only ever created via upload, never this URL-based schema", () => {
+    expect(
+      galleryVideoItemSchema.safeParse({
+        type: "IMAGE",
+        url: "https://example.com/a.jpg",
+        caption: null,
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects an invalid type", () => {
     expect(
-      galleryItemSchema.safeParse({
+      galleryVideoItemSchema.safeParse({
         type: "AUDIO",
-        url: "https://example.com/a.jpg",
+        url: "https://example.com/a.mp4",
         caption: null,
       }).success,
     ).toBe(false);
@@ -220,8 +231,22 @@ describe("galleryItemSchema", () => {
 
   it("rejects a javascript: URL", () => {
     expect(
-      galleryItemSchema.safeParse({ type: "IMAGE", url: "javascript:alert(1)", caption: null })
+      galleryVideoItemSchema.safeParse({ type: "VIDEO", url: "javascript:alert(1)", caption: null })
         .success,
     ).toBe(false);
+  });
+});
+
+describe("galleryCaptionSchema", () => {
+  it("accepts a valid caption", () => {
+    expect(galleryCaptionSchema.safeParse({ caption: "Momen bahagia" }).success).toBe(true);
+  });
+
+  it("accepts a null caption", () => {
+    expect(galleryCaptionSchema.safeParse({ caption: null }).success).toBe(true);
+  });
+
+  it("rejects a caption over 200 characters", () => {
+    expect(galleryCaptionSchema.safeParse({ caption: "a".repeat(201) }).success).toBe(false);
   });
 });

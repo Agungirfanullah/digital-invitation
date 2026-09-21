@@ -1,6 +1,12 @@
 import type { PublicGallery } from "@/lib/invitations/types";
+import { GalleryGrid } from "@/components/invitation/sections/gallery-grid";
 
-/** Only rendered when at least one gallery has at least one item. */
+/**
+ * Server Component — only the grid/lightbox interaction
+ * (`components/invitation/sections/gallery-grid.tsx`) is a Client
+ * Component. Only rendered when at least one gallery has at least one
+ * item; never a placeholder/empty section (CLAUDE.md §1.5/§9.1).
+ */
 export function GallerySection({ galleries }: { galleries: PublicGallery[] }) {
   const nonEmptyGalleries = galleries.filter((gallery) => gallery.items.length > 0);
   if (nonEmptyGalleries.length === 0) return null;
@@ -21,26 +27,7 @@ export function GallerySection({ galleries }: { galleries: PublicGallery[] }) {
               {gallery.title}
             </p>
           )}
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {gallery.items.map((item) => (
-              <li key={item.id}>
-                <a
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block aspect-square overflow-hidden rounded-md"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URLs; see love-story-section.tsx. */}
-                  <img
-                    src={item.thumbnailUrl ?? item.url}
-                    alt={item.caption ?? (item.type === "VIDEO" ? "Video acara" : "Foto acara")}
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
-                </a>
-              </li>
-            ))}
-          </ul>
+          <GalleryGrid items={gallery.items} />
         </div>
       ))}
     </section>

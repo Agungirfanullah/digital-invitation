@@ -23,15 +23,37 @@ import {
   deleteSchedule,
   getEditorEvent,
   listTemplateOptions,
+  moveGalleryItem,
   selectTemplate,
   updateGalleryItem,
+  updateGalleryItemCaption,
   updateLoveStoryItem,
   updateLoveStoryTitle,
   updateSchedule,
   updateTheme,
   updateWeddingProfile,
+  uploadGalleryImage,
 } from "@/lib/editor/service";
+import { getStorageProvider } from "@/lib/storage/provider";
+import { derivePathFromPublicUrl } from "@/lib/storage/paths";
+import { validateGalleryImageUpload } from "@/lib/storage/validation";
+import { createSupabaseServiceClient } from "@/lib/supabase/server";
+import { getServerEnv } from "@/lib/env";
 import type { ScheduleInput } from "@/lib/editor/validation";
+
+/** A real, valid 1x1 transparent PNG — used to exercise the actual upload/storage path, not a mocked buffer. */
+const TINY_PNG_BASE64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+function tinyPngUpload() {
+  const buffer = Buffer.from(TINY_PNG_BASE64, "base64");
+  return validateGalleryImageUpload({
+    name: "photo.png",
+    type: "image/png",
+    size: buffer.length,
+    buffer,
+  });
+}
 
 const createdUserIds: string[] = [];
 const createdEventIds: string[] = [];
@@ -458,14 +480,21 @@ describe("love story mutations (integration)", () => {
 });
 
 describe("gallery mutations (integration)", () => {
-  const galleryItem = { type: "IMAGE" as const, url: "https://example.com/a.jpg", caption: null };
+  // Video items only — image items are created via uploadGalleryImage
+  // (see the "gallery image upload" and "gallery item deletion + storage
+  // cleanup" describe blocks below), not addGalleryItem/updateGalleryItem.
+  const galleryVideoItem = {
+    type: "VIDEO" as const,
+    url: "https://example.com/a.mp4",
+    caption: null,
+  };
 
   it("auto-creates the gallery on first item add", async () => {
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id);
 
-    const created = await addGalleryItem(event.id, owner.id, galleryItem);
-    expect(created.url).toBe("https://example.com/a.jpg");
+    const created = await addGalleryItem(event.id, owner.id, galleryVideoItem);
+    expect(created.url).toBe("https://example.com/a.mp4");
 
     const galleryCount = await prisma.gallery.count({ where: { eventId: event.id } });
     expect(galleryCount).toBe(1);
@@ -474,10 +503,10 @@ describe("gallery mutations (integration)", () => {
   it("updates and deletes an item, scoped correctly to the event", async () => {
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id);
-    const created = await addGalleryItem(event.id, owner.id, galleryItem);
+    const created = await addGalleryItem(event.id, owner.id, galleryVideoItem);
 
     const updated = await updateGalleryItem(event.id, owner.id, created.id, {
-      ...galleryItem,
+      ...galleryVideoItem,
       caption: "Momen bahagia",
     });
     expect(updated.caption).toBe("Momen bahagia");
@@ -487,16 +516,32 @@ describe("gallery mutations (integration)", () => {
     expect(loaded.gallery?.items ?? []).toHaveLength(0);
   });
 
+  it("updates only the caption via updateGalleryItemCaption, leaving the URL untouched", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const created = await addGalleryItem(event.id, owner.id, galleryVideoItem);
+
+    const updated = await updateGalleryItemCaption(event.id, owner.id, created.id, "Ucapan baru");
+    expect(updated.caption).toBe("Ucapan baru");
+    expect(updated.url).toBe(galleryVideoItem.url);
+  });
+
   it("prevents mutating a gallery item that belongs to a different event (IDOR via cross-event id)", async () => {
     const owner = await createTestUser("owner");
     const eventA = await createTestEvent(owner.id);
     const eventB = await createTestEvent(owner.id);
-    const itemInA = await addGalleryItem(eventA.id, owner.id, galleryItem);
+    const itemInA = await addGalleryItem(eventA.id, owner.id, galleryVideoItem);
 
-    await expect(updateGalleryItem(eventB.id, owner.id, itemInA.id, galleryItem)).rejects.toThrow(
+    await expect(
+      updateGalleryItem(eventB.id, owner.id, itemInA.id, galleryVideoItem),
+    ).rejects.toThrow(EventNotFoundError);
+    await expect(deleteGalleryItem(eventB.id, owner.id, itemInA.id)).rejects.toThrow(
       EventNotFoundError,
     );
-    await expect(deleteGalleryItem(eventB.id, owner.id, itemInA.id)).rejects.toThrow(
+    await expect(
+      updateGalleryItemCaption(eventB.id, owner.id, itemInA.id, "hijack"),
+    ).rejects.toThrow(EventNotFoundError);
+    await expect(moveGalleryItem(eventB.id, owner.id, itemInA.id, "up")).rejects.toThrow(
       EventNotFoundError,
     );
   });
@@ -505,16 +550,189 @@ describe("gallery mutations (integration)", () => {
     const owner = await createTestUser("owner");
     const stranger = await createTestUser("stranger");
     const event = await createTestEvent(owner.id);
-    const created = await addGalleryItem(event.id, owner.id, galleryItem);
+    const created = await addGalleryItem(event.id, owner.id, galleryVideoItem);
 
-    await expect(addGalleryItem(event.id, stranger.id, galleryItem)).rejects.toThrow(
+    await expect(addGalleryItem(event.id, stranger.id, galleryVideoItem)).rejects.toThrow(
       EventNotFoundError,
     );
-    await expect(updateGalleryItem(event.id, stranger.id, created.id, galleryItem)).rejects.toThrow(
-      EventNotFoundError,
-    );
+    await expect(
+      updateGalleryItem(event.id, stranger.id, created.id, galleryVideoItem),
+    ).rejects.toThrow(EventNotFoundError);
     await expect(deleteGalleryItem(event.id, stranger.id, created.id)).rejects.toThrow(
       EventNotFoundError,
     );
+  });
+
+  it("moving the only item up or down is a safe no-op (already at both edges)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const created = await addGalleryItem(event.id, owner.id, galleryVideoItem);
+
+    const afterUp = await moveGalleryItem(event.id, owner.id, created.id, "up");
+    expect(afterUp.map((item) => item.id)).toEqual([created.id]);
+    const afterDown = await moveGalleryItem(event.id, owner.id, created.id, "down");
+    expect(afterDown.map((item) => item.id)).toEqual([created.id]);
+  });
+
+  it("moving an item down persists the new sortOrder — reflected by a fresh load", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const first = await addGalleryItem(event.id, owner.id, {
+      ...galleryVideoItem,
+      caption: "first",
+    });
+    await addGalleryItem(event.id, owner.id, { ...galleryVideoItem, caption: "second" });
+
+    const reordered = await moveGalleryItem(event.id, owner.id, first.id, "down");
+    expect(reordered.map((item) => item.caption)).toEqual(["second", "first"]);
+
+    // Reflected by a completely independent read, proving it's persisted
+    // (sortOrder in the DB), not just the in-memory return value.
+    const reloaded = await getEditorEvent(event.id, owner.id);
+    expect(reloaded.gallery?.items.map((item) => item.caption)).toEqual(["second", "first"]);
+  });
+
+  it("rejects moving a nonexistent/foreign item id", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await addGalleryItem(event.id, owner.id, galleryVideoItem);
+
+    await expect(
+      moveGalleryItem(event.id, owner.id, `missing-${randomUUID()}`, "up"),
+    ).rejects.toThrow(EventNotFoundError);
+  });
+});
+
+describe("gallery image upload (integration — real Supabase Storage)", () => {
+  it("an owner can upload a real image; it creates a correct DB record with a resolvable object path", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    const created = await uploadGalleryImage(event.id, owner.id, tinyPngUpload(), "Foto pertama");
+
+    expect(created.type).toBe("IMAGE");
+    expect(created.caption).toBe("Foto pertama");
+    expect(created.url).toContain(event.id);
+
+    const path = derivePathFromPublicUrl(created.url);
+    expect(path).not.toBeNull();
+    expect(path).toContain(event.id);
+
+    // Cleanup: this test verifies creation, not deletion — remove the
+    // real object directly so it doesn't linger in the bucket.
+    if (path) await getStorageProvider().remove(path);
+  });
+
+  it("an EDITOR-role member can upload", async () => {
+    const owner = await createTestUser("owner");
+    const editor = await createTestUser("editor");
+    const event = await createTestEvent(owner.id);
+    await prisma.eventMember.create({
+      data: { eventId: event.id, userId: editor.id, role: EventMemberRole.EDITOR },
+    });
+
+    const created = await uploadGalleryImage(event.id, editor.id, tinyPngUpload(), null);
+    const path = derivePathFromPublicUrl(created.url);
+    if (path) await getStorageProvider().remove(path);
+  });
+
+  it("rejects a VIEWER-role member", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const event = await createTestEvent(owner.id);
+    await prisma.eventMember.create({
+      data: { eventId: event.id, userId: viewer.id, role: EventMemberRole.VIEWER },
+    });
+
+    await expect(uploadGalleryImage(event.id, viewer.id, tinyPngUpload(), null)).rejects.toThrow(
+      EventNotFoundError,
+    );
+  });
+
+  it("rejects a stranger with no relationship to the event", async () => {
+    const owner = await createTestUser("owner");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id);
+
+    await expect(uploadGalleryImage(event.id, stranger.id, tinyPngUpload(), null)).rejects.toThrow(
+      EventNotFoundError,
+    );
+  });
+
+  it("two uploads for two different events never collide on object path", async () => {
+    const owner = await createTestUser("owner");
+    const eventA = await createTestEvent(owner.id);
+    const eventB = await createTestEvent(owner.id);
+
+    const createdA = await uploadGalleryImage(eventA.id, owner.id, tinyPngUpload(), null);
+    const createdB = await uploadGalleryImage(eventB.id, owner.id, tinyPngUpload(), null);
+
+    expect(createdA.url).not.toBe(createdB.url);
+    expect(createdA.url).toContain(eventA.id);
+    expect(createdB.url).toContain(eventB.id);
+
+    for (const url of [createdA.url, createdB.url]) {
+      const path = derivePathFromPublicUrl(url);
+      if (path) await getStorageProvider().remove(path);
+    }
+  });
+});
+
+describe("gallery item deletion + storage cleanup (integration — real Supabase Storage)", () => {
+  it("deleting an uploaded image removes both the DB record and the storage object", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const created = await uploadGalleryImage(event.id, owner.id, tinyPngUpload(), null);
+    const path = derivePathFromPublicUrl(created.url);
+    expect(path).not.toBeNull();
+
+    await deleteGalleryItem(event.id, owner.id, created.id);
+
+    const dbRow = await prisma.galleryItem.findUnique({ where: { id: created.id } });
+    expect(dbRow).toBeNull();
+
+    // The object is genuinely gone — downloading it now fails.
+    const bucket = getServerEnv().SUPABASE_STORAGE_BUCKET;
+    const { error } = await createSupabaseServiceClient().storage.from(bucket).download(path!);
+    expect(error).not.toBeNull();
+  });
+
+  it("deleting a legacy/externally-hosted video item never calls storage removal and still deletes the row", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const created = await addGalleryItem(event.id, owner.id, {
+      type: "VIDEO",
+      url: "https://example.com/legacy-video.mp4",
+      caption: null,
+    });
+
+    // No real storage object exists for this URL — derivePathFromPublicUrl
+    // must return null so deleteGalleryItem skips storage removal
+    // entirely rather than erroring against a nonexistent path.
+    expect(derivePathFromPublicUrl(created.url)).toBeNull();
+
+    await expect(deleteGalleryItem(event.id, owner.id, created.id)).resolves.toBeUndefined();
+    const dbRow = await prisma.galleryItem.findUnique({ where: { id: created.id } });
+    expect(dbRow).toBeNull();
+  });
+
+  it("rejects a VIEWER-role member deleting an uploaded image; the DB record and storage object both survive", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const event = await createTestEvent(owner.id);
+    await prisma.eventMember.create({
+      data: { eventId: event.id, userId: viewer.id, role: EventMemberRole.VIEWER },
+    });
+    const created = await uploadGalleryImage(event.id, owner.id, tinyPngUpload(), null);
+
+    await expect(deleteGalleryItem(event.id, viewer.id, created.id)).rejects.toThrow(
+      EventNotFoundError,
+    );
+
+    const dbRow = await prisma.galleryItem.findUnique({ where: { id: created.id } });
+    expect(dbRow).not.toBeNull();
+
+    const path = derivePathFromPublicUrl(created.url)!;
+    await getStorageProvider().remove(path); // real cleanup for this test's own upload
   });
 });

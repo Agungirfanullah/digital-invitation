@@ -159,10 +159,25 @@ export const loveStoryItemSchema = z.object({
 
 export type LoveStoryItemInput = z.infer<typeof loveStoryItemSchema>;
 
-export const galleryItemSchema = z.object({
-  type: z.enum(["IMAGE", "VIDEO"]),
+/**
+ * URL-based gallery items are video-only as of Phase 11 — an image item
+ * is always created through the real upload path
+ * (lib/storage/validation.ts's `validateGalleryImageUpload`), never a
+ * pasted URL. `type` is a fixed literal (not `z.enum(["IMAGE","VIDEO"])`
+ * as it was pre-Phase-11) so this schema can never be used to create an
+ * IMAGE row without going through upload validation.
+ */
+export const galleryVideoItemSchema = z.object({
+  type: z.literal("VIDEO"),
   url: safeHttpUrl(500, "URL wajib berupa tautan http/https yang valid."),
   caption: nullableString(200, "Keterangan maksimal 200 karakter."),
 });
 
-export type GalleryItemInput = z.infer<typeof galleryItemSchema>;
+export type GalleryVideoItemInput = z.infer<typeof galleryVideoItemSchema>;
+
+/** Caption-only edit — the one mutation shared by IMAGE and VIDEO items after creation (replacing an image's file means delete + re-upload, not an in-place edit). */
+export const galleryCaptionSchema = z.object({
+  caption: nullableString(200, "Keterangan maksimal 200 karakter."),
+});
+
+export type GalleryCaptionInput = z.infer<typeof galleryCaptionSchema>;

@@ -5,8 +5,12 @@ import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { EventNotFoundError, TemplateNotAvailableError } from "@/lib/editor/errors";
 import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
+import { GalleryStorageDeletionError } from "@/lib/storage/errors";
+import { buildGalleryObjectPath, derivePathFromPublicUrl } from "@/lib/storage/paths";
+import { getStorageProvider } from "@/lib/storage/provider";
+import type { ValidatedGalleryImage } from "@/lib/storage/validation";
 import type {
-  GalleryItemInput,
+  GalleryVideoItemInput,
   LoveStoryItemInput,
   ScheduleInput,
   ThemeInput,
@@ -413,7 +417,12 @@ async function getOrCreateGallery(eventId: string) {
   return prisma.gallery.create({ data: { eventId } });
 }
 
-export async function addGalleryItem(eventId: string, userId: string, input: GalleryItemInput) {
+/** Video items only as of Phase 11 — see GalleryVideoItemInput's doc comment. */
+export async function addGalleryItem(
+  eventId: string,
+  userId: string,
+  input: GalleryVideoItemInput,
+) {
   await requireEditorAccess(eventId, userId);
 
   const gallery = await getOrCreateGallery(eventId);
@@ -424,11 +433,12 @@ export async function addGalleryItem(eventId: string, userId: string, input: Gal
   });
 }
 
+/** Video items only — editing an image's file is delete + re-upload, not an in-place URL edit. */
 export async function updateGalleryItem(
   eventId: string,
   userId: string,
   itemId: string,
-  input: GalleryItemInput,
+  input: GalleryVideoItemInput,
 ) {
   await requireEditorAccess(eventId, userId);
 
@@ -440,6 +450,71 @@ export async function updateGalleryItem(
   return prisma.galleryItem.update({ where: { id: itemId }, data: input });
 }
 
+/** Caption-only edit, valid for both IMAGE and VIDEO items. */
+export async function updateGalleryItemCaption(
+  eventId: string,
+  userId: string,
+  itemId: string,
+  caption: string | null,
+) {
+  await requireEditorAccess(eventId, userId);
+
+  const existing = await prisma.galleryItem.findFirst({
+    where: { id: itemId, gallery: { eventId } },
+  });
+  if (!existing) throw new EventNotFoundError();
+
+  return prisma.galleryItem.update({ where: { id: itemId }, data: { caption } });
+}
+
+/**
+ * Uploads a real image file to object storage and creates its
+ * `GalleryItem` row. `validated` must already have passed
+ * `lib/storage/validation.ts`'s `validateGalleryImageUpload()` — this
+ * function does not re-validate file content, only authorization and
+ * persistence.
+ */
+export async function uploadGalleryImage(
+  eventId: string,
+  userId: string,
+  validated: ValidatedGalleryImage,
+  caption: string | null,
+) {
+  await requireEditorAccess(eventId, userId);
+
+  const gallery = await getOrCreateGallery(eventId);
+  const count = await prisma.galleryItem.count({ where: { galleryId: gallery.id } });
+
+  const path = buildGalleryObjectPath(eventId, validated.extension);
+  const { publicUrl } = await getStorageProvider().upload(
+    path,
+    validated.buffer,
+    validated.contentType,
+  );
+
+  return prisma.galleryItem.create({
+    data: {
+      galleryId: gallery.id,
+      type: "IMAGE",
+      url: publicUrl,
+      thumbnailUrl: null,
+      caption,
+      sortOrder: count,
+    },
+  });
+}
+
+/**
+ * Deletes a gallery item. Storage-first, non-atomic, fail-closed — see
+ * docs/DECISIONS.md D-040: the underlying object (when this item's `url`
+ * resolves to one of our own storage objects — see
+ * `derivePathFromPublicUrl`'s doc comment for why a legacy/external URL
+ * safely no-ops here) is removed *before* the DB row, and a storage
+ * failure aborts the whole operation (the DB row is left in place) rather
+ * than deleting the row and silently orphaning the object. A Prisma
+ * transaction cannot span an external Storage API call, so this ordering
+ * is the compensation strategy instead.
+ */
 export async function deleteGalleryItem(
   eventId: string,
   userId: string,
@@ -452,5 +527,81 @@ export async function deleteGalleryItem(
   });
   if (!existing) throw new EventNotFoundError();
 
+  const objectPath = derivePathFromPublicUrl(existing.url);
+  if (objectPath) {
+    try {
+      await getStorageProvider().remove(objectPath);
+    } catch (error) {
+      console.error("[gallery] Failed to remove storage object; delete aborted", error);
+      throw new GalleryStorageDeletionError();
+    }
+  }
+
   await prisma.galleryItem.delete({ where: { id: itemId } });
+}
+
+/**
+ * Pure — swaps the target item with its immediate neighbor in display
+ * order. Returns `null` when the item isn't found or is already at the
+ * relevant edge (nothing to do), so the caller can no-op cleanly instead
+ * of persisting a pointless identical order.
+ */
+export function resolveGalleryMoveSwap(
+  itemIdsInOrder: string[],
+  itemId: string,
+  direction: "up" | "down",
+): { indexA: number; indexB: number } | null {
+  const index = itemIdsInOrder.indexOf(itemId);
+  if (index === -1) return null;
+
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= itemIdsInOrder.length) return null;
+
+  return { indexA: index, indexB: targetIndex };
+}
+
+/**
+ * Persists a one-step reorder (move up/down by one position) by swapping
+ * the two affected items' `sortOrder` values in a transaction. Returns
+ * the gallery's items in their new order so the caller can update local
+ * state directly from the server's own result rather than optimistically
+ * guessing it.
+ */
+export async function moveGalleryItem(
+  eventId: string,
+  userId: string,
+  itemId: string,
+  direction: "up" | "down",
+) {
+  await requireEditorAccess(eventId, userId);
+
+  const gallery = await prisma.gallery.findFirst({
+    where: { eventId },
+    include: { items: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!gallery) throw new EventNotFoundError();
+
+  const itemIds = gallery.items.map((item) => item.id);
+  const swap = resolveGalleryMoveSwap(itemIds, itemId, direction);
+  if (!swap) {
+    // Not found at all is a real IDOR/not-found case; already-at-the-edge
+    // is a legitimate no-op — both return the current order unchanged.
+    if (!itemIds.includes(itemId)) throw new EventNotFoundError();
+    return gallery.items;
+  }
+
+  const itemA = gallery.items[swap.indexA];
+  const itemB = gallery.items[swap.indexB];
+
+  await prisma.$transaction([
+    prisma.galleryItem.update({ where: { id: itemA.id }, data: { sortOrder: itemB.sortOrder } }),
+    prisma.galleryItem.update({ where: { id: itemB.id }, data: { sortOrder: itemA.sortOrder } }),
+  ]);
+
+  const reordered = [...gallery.items];
+  [reordered[swap.indexA], reordered[swap.indexB]] = [
+    reordered[swap.indexB],
+    reordered[swap.indexA],
+  ];
+  return reordered;
 }

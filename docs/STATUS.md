@@ -12,22 +12,34 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 10 --- Wishes / Guestbook Foundation
+**Current Phase:** Phase 11 --- Gallery Foundation
 
-**Status:** Phase 0-9 remain complete and passing. Phase 10 implements
-`docs/ROADMAP.md`'s Phase 10 ("Wishes") — a real, secure guestbook: a
-personalized guest can submit a name + message from the public invitation
-(identity always resolved server-side from their invitation token, never
-from client input), event owners/editors can approve, hide, or delete
-each submission under `/dashboard/events/[eventId]/wishes`, and only
-`APPROVED` wishes are displayed on the public invitation's new "Ucapan &
-Doa" section. No schema migration was required — the Phase 0 `Wish`
-model already covered everything this phase needs. "Delete" is
-implemented as a soft status transition (`WishStatus.DELETED`), not a row
-removal, and submission is capped at 3 non-deleted wishes per guest per
-event via a plain count check — both are recorded decisions (D-038,
-D-039), not silent choices. This phase does not touch RSVP, check-in, or
-any other domain.
+**Status:** Phase 0-10 remain complete and passing. Phase 11 implements
+`docs/ROADMAP.md`'s Phase 11 ("Gallery") — real image upload replaces the
+previous URL-paste-only flow: event owners/editors upload real image files
+(JPEG/PNG/WebP/GIF, 5MB max) through a new `lib/storage/` provider
+abstraction backed by Supabase Storage, with server-side magic-byte format
+validation (never trusting the client's claimed MIME type alone), a
+per-event-scoped, non-guessable object path, and honest upload
+progress/error states. Gallery items can now be reordered (persisted via
+`GalleryItem.sortOrder`, which already existed but was previously
+write-once) and deleted (which also removes the real Storage object,
+storage-first and fail-closed — see D-040). The public invitation's
+gallery grid now opens an accessible in-page lightbox instead of the raw
+image URL in a new tab, and `VIDEO` items (still URL-based, not uploaded —
+see the "VIDEO" note below) render through a real `<video>` element
+instead of the previous `<img>` bug. No schema migration was required —
+`Gallery`/`GalleryItem`'s existing columns (including `sortOrder` on both)
+already covered everything this phase needs; the object path is instead
+recovered from the stored public URL (D-041), a deliberate, verified
+decision, not an unexamined assumption. This phase does not touch RSVP,
+Wishes, check-in, or any other domain.
+
+**VIDEO note:** `docs/PRD.md` §24 and the existing `GalleryItemType` enum
+only ever specified "Video URLs," never uploaded video files — this phase
+preserves that distinction exactly as it already existed (video items are
+still added via a pasted URL, unchanged from Phase 4) and does not invent
+a video hosting/upload system, per the phase brief's explicit scope limit.
 
 **Note on phase numbering:** this engagement's "Phase 3 — Invitation
 Foundation" was scoped by an explicit task brief to consolidate parts of
@@ -78,7 +90,10 @@ no reconciliation was needed. It was chosen as the next phase precisely
 because it's the lowest-numbered P1 phase not yet implemented, directly
 following the completed RSVP foundation in the Roadmap's own dependency
 order (§29), per an explicit prior inspection task. Check-in (Roadmap
-Phase 14) remains future work.
+Phase 14) remains future work. This phase, "Phase 11 — Gallery
+Foundation," likewise matches `docs/ROADMAP.md`'s own Phase 11 ("Gallery")
+exactly — no reconciliation needed here either, chosen as the direct next
+lowest-numbered unimplemented P1 phase per the same prior inspection task.
 
 ## Documentation Baseline
 
@@ -2103,6 +2118,335 @@ unauthenticated, Prisma-seeded — same pattern as `e2e/rsvp.spec.ts`):
     deliberate, documented choice per the brief's explicit instruction not
     to invent a migration for it.
 
+## Phase 11 --- Gallery Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database *and* real Supabase Storage (the connected project's
+actual configured bucket — see "Bucket note" below), including full
+authenticated browser E2E coverage (D-022) exercising genuine file
+uploads. No fake/mocked authorization, persistence, upload, or storage
+logic. No schema migration was required — `Gallery`/`GalleryItem`'s
+existing columns (`sortOrder` on both, `type`/`url`/`thumbnailUrl`/
+`caption` on `GalleryItem`) already covered everything this phase needs,
+confirmed rather than assumed (see D-041 for the specific case the brief
+asked to verify before skipping a migration: whether a dedicated
+storage-object-path column was needed for reliable deletion — it wasn't).
+
+-   [x] Storage provider abstraction (`lib/storage/`) — `types.ts`'s
+    `StorageProvider` interface (`upload`/`remove`), `supabase-provider.ts`
+    (the only module that touches `createSupabaseServiceClient()` for
+    gallery uploads — the service-role key never reaches the browser),
+    `provider.ts` (the factory seam business logic depends on, per
+    ARCHITECTURE.md §23's provider-abstraction convention, matching
+    `lib/invitation-delivery/`'s existing shape).
+-   [x] Real image upload (`lib/editor/service.ts`'s `uploadGalleryImage()`,
+    `lib/editor/actions.ts`'s `uploadGalleryImageAction`,
+    `components/editor/sections/gallery-form.tsx`) — a real
+    `<input type="file">` + FormData flow (not JSON, since a `File` can't
+    be represented as the plain object every other editor action accepts).
+    EDITOR-and-above only (the editor route already gates VIEWER out
+    entirely — D-021), rate-limited (`lib/editor/gallery-rate-limit.ts`,
+    20 uploads/10min per user, userId-keyed since this is an authenticated
+    mutation — same pattern as D-028's token-regeneration limiter).
+-   [x] Server-side file validation (`lib/storage/validation.ts`,
+    `lib/storage/image-format.ts`) — size (≤5MB, `GALLERY_UPLOAD_MAX_BYTES`
+    in `lib/storage/limits.ts`), claimed MIME type + extension checked
+    against an allowlist, **and, the actual authenticity gate, real
+    magic-byte content sniffing** (PNG/GIF/JPEG/WebP) that must match the
+    claimed MIME type — a mislabeled or executable file is rejected
+    regardless of what filename/Content-Type the client sent (see D-043).
+    Decoded pixel dimensions are bounded at 8000px
+    (`GALLERY_MAX_DIMENSION_PX`) where the format's header exposes them.
+-   [x] Safe, deterministic, event-scoped object paths
+    (`lib/storage/paths.ts`'s `buildGalleryObjectPath()`) —
+    `events/{eventId}/gallery/{128-bit-random-hex}.{ext}`; the random
+    filename component is never derived from the client-supplied filename
+    (defense against collision, path traversal, and information leakage),
+    and `eventId`/extension are defensively pattern-validated before
+    being interpolated into a path at all.
+-   [x] Persistent reorder (`lib/editor/service.ts`'s
+    `moveGalleryItem()`/`resolveGalleryMoveSwap()`) — up/down move-by-one
+    buttons (not drag-and-drop — simpler, fully keyboard/mobile
+    accessible, no new dependency), swapping the two affected items'
+    `sortOrder` values in a single `$transaction`. `sortOrder` existed
+    since Phase 0 but was previously write-once (set at creation, never
+    updated) — this phase is what actually makes it a real, user-facing
+    reorder feature.
+-   [x] Delete with real storage cleanup (`lib/editor/service.ts`'s
+    `deleteGalleryItem()`, extended) — removes the live Supabase Storage
+    object before the DB row, storage-first and fail-closed: if storage
+    removal fails, the row is left in place and the owner sees a clear,
+    retryable Indonesian error rather than a false "deleted" success that
+    would silently orphan the object (see D-040 for the full compensation
+    strategy and the alternatives considered and rejected).
+-   [x] Two-step delete confirmation, caption-only editing
+    (`updateGalleryItemCaptionAction`, valid for both IMAGE and VIDEO
+    items), and the existing video-by-URL add/edit flow, all preserved —
+    the gallery editor was extended, not rebuilt (`addGalleryItemAction`/
+    `updateGalleryItemAction` still exist, now scoped to `type: "VIDEO"`
+    only via `galleryVideoItemSchema`'s literal type).
+-   [x] In-page lightbox (`components/invitation/gallery-lightbox.tsx`,
+    `components/invitation/sections/gallery-grid.tsx`) — replaces the
+    previous `target="_blank"` new-tab behavior. Real `role="dialog"
+    aria-modal="true"`, Escape-to-close, a labeled close button, focus
+    moved into the dialog on open and restored on close, click-outside-
+    to-close, and keyboard-accessible prev/next navigation between items.
+    Only ever renders the already-safe-URL-filtered `PublicGalleryItem`
+    fields (`caption` is the event owner's own text) — no internal id,
+    storage path, or any other metadata beyond what was already public.
+-   [x] `GallerySection` split into a Server Component (heading, per-
+    gallery titles — unchanged) and a new Client Component
+    (`GalleryGrid`, the only part that needs interactivity), per CLAUDE.md
+    §6.1 — the public route needed zero new data-fetching changes.
+-   [x] Real `VIDEO` rendering — a `<video controls>` element (muted/
+    `preload="metadata"` for the grid thumbnail, full `controls autoPlay`
+    in the lightbox) replaces the pre-existing bug where a `VIDEO` item
+    rendered through a plain `<img>` tag (which would show a broken image
+    for any video with no manually-supplied `thumbnailUrl`). Video remains
+    URL-based only, unchanged from Phase 4 — no upload/hosting system was
+    added for it (see the "VIDEO note" above and D-042's related
+    reasoning).
+-   [x] Image delivery — `loading="lazy"` (already present) plus
+    `decoding="async"` (new) on every gallery `<img>`; layout shift is
+    prevented structurally via the existing fixed `aspect-square`
+    container, not new stored dimensions. `next/image` was deliberately
+    not adopted — see D-042 for the full reasoning (mixed same-origin/
+    external URL sources, unconfirmed Supabase Storage transform
+    availability).
+-   [x] Honest dashboard UX — real "Mengunggah..."/"Menyimpan..."/
+    "Menghapus..." pending states, inline field errors (including the
+    server's actual rejection reason — file too large, unsupported type,
+    dimensions exceeded), a real empty state ("Belum ada foto atau
+    video."), two-step delete confirmation, and the shared not-found page
+    for unauthorized/nonexistent events. The previous "Unggah berkas belum
+    didukung" ("file upload not yet supported") copy is gone — upload is
+    now real.
+
+### Bucket note (manual Supabase step)
+
+The connected Supabase DEV project's actual storage bucket is named
+`invitation-assets` (from this environment's `.env.local`
+`SUPABASE_STORAGE_BUCKET` value — **not** `invitation-media`, the
+illustrative default `.env.example` documents; `.env.example` was left
+as-is since it's just a placeholder name, not a claim about what any real
+environment uses). This bucket did not exist yet when this phase's live
+Storage integration tests were first run (`StorageApiError: Bucket not
+found`). It was created directly against the connected Supabase DEV
+project (public bucket, 6MB object size ceiling, MIME allowlist restricted
+to `image/jpeg`/`image/png`/`image/webp`/`image/gif`) so the integration
+suite could genuinely exercise upload/delete rather than being skipped or
+mocked. **Any other environment (staging, production) needs the same
+bucket created — with the same public-read + MIME-allowlist configuration
+— before this feature will work there; the application code reads the
+bucket name from `SUPABASE_STORAGE_BUCKET` and does not create it
+automatically.**
+
+### Security review findings
+
+No new gaps were found in existing code during this phase (the
+`javascript:`/`data:` URL, IDOR, and token-masking classes of issue were
+already closed in Phase 4/7/9/10). Upload/storage-specific review points,
+all satisfied by the design above:
+
+-   **IDOR** — every gallery mutation (upload, caption edit, video
+    add/edit, delete, move) requires `requireEditorAccess()`
+    (`getAuthorizedEvent(eventId, userId, EDITOR)`), and every mutation
+    targeting an existing item additionally re-verifies
+    `{ id: itemId, gallery: { eventId } }` before acting — the same
+    pattern already established for schedules/love-story items in this
+    same file. Proven directly: creating an item under Event A and then
+    calling update/delete/move against it via Event B's id is rejected
+    with `EventNotFoundError`, with the row confirmed unchanged.
+-   **Cross-event storage access** — object paths are always
+    `events/{eventId}/gallery/...`, built server-side from the
+    *authorized* `eventId`, never a client-supplied path; two uploads for
+    two different events are proven to never collide
+    (`lib/editor/service.integration.test.ts`).
+-   **Service-role exposure** — grepped: `createSupabaseServiceClient()`
+    is only ever called from `lib/storage/supabase-provider.ts`, which is
+    only ever called from `lib/storage/provider.ts`, which is only ever
+    called from server-side `lib/editor/service.ts` — no client component
+    imports any of these three files (confirmed indirectly by the
+    production build's server/client module-graph separation catching a
+    real violation of this during development — see the "Notable
+    implementation decision" below).
+-   **Arbitrary storage path manipulation** — `buildGalleryObjectPath()`
+    defensively pattern-validates both `eventId` and `extension` before
+    interpolating them into a path, and the random filename component is
+    never client-influenced; `derivePathFromPublicUrl()` (used for
+    deletion) rejects any candidate path containing `..` or a leading `/`
+    even though a well-formed self-generated path can never contain
+    either.
+-   **Executable upload / MIME spoofing** — the actual gate is
+    `lib/storage/image-format.ts`'s magic-byte sniff: a Windows PE/`.exe`
+    renamed to `photo.png` with `Content-Type: image/png` is rejected
+    (proven in `lib/storage/validation.test.ts`), as is a genuine PNG
+    mislabeled as `image/jpeg` (content must match the claimed type, not
+    just look plausible).
+-   **Oversized uploads** — enforced both on the claimed `size` field and
+    the real received buffer length (a spoofed `size` field smaller than
+    the actual payload is still rejected); `next.config.ts`'s Server
+    Actions `bodySizeLimit` (6MB) is a transport-level backstop above the
+    5MB application limit, not the actual enforcement point.
+-   **Orphaned Storage objects** — addressed by D-040's storage-first,
+    fail-closed delete ordering; proven directly via a real upload → real
+    delete → real re-download-attempt-fails round trip.
+-   **Unsafe public URLs** — gallery item URLs (including newly-uploaded
+    ones) still pass through the existing `toSafeHttpUrl()` filter in
+    `lib/invitations/projection.ts`, unchanged by this phase; a Supabase
+    Storage public URL is `https://...` and passes through normally.
+-   **Unauthorized mutations** — a VIEWER-role member cannot reach the
+    editor at all (D-021, unchanged), proven for gallery specifically via
+    both a live-DB integration test and an E2E test asserting the shared
+    not-found page.
+-   **Raw storage/database error leakage** — `mapStorageErrorMessage()`
+    logs the raw Supabase/Prisma error server-side only and returns a
+    generic or specific-but-safe Indonesian message; grepped, no
+    `console.*` call anywhere in `lib/storage/`/`lib/editor/` includes a
+    raw provider error object in a client-facing return value.
+-   **Token/guest data leakage** — gallery items carry no guest/token
+    data at all; N/A to this phase's surfaces.
+
+### Notable implementation decision
+
+**`lib/storage/limits.ts` was split out from `lib/storage/validation.ts`**
+after the production build caught a real Server/Client Component boundary
+violation: `components/editor/sections/gallery-form.tsx` (a Client
+Component, since it needs `useState`/`useTransition` for the upload
+form) originally imported `GALLERY_UPLOAD_MAX_BYTES` directly from
+`lib/storage/validation.ts`, which has a top-level `import "server-only"`
+— Turbopack correctly refused to bundle it for the browser. The two
+numeric limits (`GALLERY_UPLOAD_MAX_BYTES`, `GALLERY_MAX_DIMENSION_PX`)
+were moved to a new `lib/storage/limits.ts` with no `server-only` import,
+re-exported from `validation.ts` for server-side callers, so the "max
+5MB" copy shown in the upload form and the actual server-side limit stay
+the exact same constant with no duplication. A concrete example of the
+production build catching a real architectural boundary issue that
+`next dev` alone did not surface.
+
+### Tests Added (Phase 11)
+
+Pure unit tests (no database, no network):
+
+-   `lib/storage/image-format.test.ts` (12 tests) — real/hand-built
+    fixture buffers per format (a genuine tiny PNG plus hand-constructed
+    GIF/JPEG/WebP-VP8X headers): correct format detection + dimension
+    extraction; a plain-text file, a Windows PE/executable signature, an
+    empty buffer, a truncated PNG signature, and a SOF-less JPEG all
+    correctly rejected (return `null`)
+-   `lib/storage/validation.test.ts` (12 tests) — the full
+    `validateGalleryImageUpload()` pipeline: valid PNG accepted;
+    over-size, zero-byte, and claimed-size-mismatching-real-buffer-length
+    all rejected; disallowed MIME type rejected; mismatched
+    extension-for-MIME rejected; a renamed executable rejected even with
+    a matching claimed MIME+extension (content sniff catches it); content
+    whose real format doesn't match its claimed MIME type rejected;
+    oversized/at-the-limit dimension bounds
+-   `lib/storage/paths.test.ts` (11 tests) — `buildGalleryObjectPath()`:
+    correct event-scoped shape, no collision across calls, different
+    events get different prefixes, unsafe `eventId`/extension rejected;
+    `derivePathFromPublicUrl()`: correct recovery for a genuine own-bucket
+    URL, `null` for a different host/different-project/different-bucket/
+    traversal-shaped/empty-suffix URL
+-   `lib/storage/errors.test.ts` (5 tests) — Indonesian error-message
+    mapping for every domain error, confirms a raw provider error's
+    detail never leaks into the returned string
+-   `lib/editor/service.test.ts` (6 tests, new file) —
+    `resolveGalleryMoveSwap()`: correct up/down swap targets, both-edges
+    no-ops, an id not in the list, a single-item list
+-   `lib/editor/validation.test.ts` (+6 tests) — `galleryVideoItemSchema`
+    (rejects `type: "IMAGE"` — image items only ever come from upload),
+    `galleryCaptionSchema` (length bounds)
+-   `lib/editor/actions.test.ts` (+12 tests) — every new/changed gallery
+    action: rate-limit short-circuit, missing-file rejection, caption
+    length validation, a thrown validation error mapped safely, the
+    authenticated user's id (never client-supplied) passed to the service
+    layer for upload/caption/move
+
+Integration tests (real Supabase DEV Postgres **and real Supabase
+Storage**, no mocks):
+
+-   `lib/editor/service.integration.test.ts` (+17 gallery tests, using a
+    real 1×1 PNG fixture) — video-item mutations re-scoped from IMAGE to
+    VIDEO fixtures; caption-only update leaves the URL untouched;
+    cross-event IDOR now covers caption/move alongside the pre-existing
+    update/delete; reorder no-ops at both edges and persists across a
+    fresh independent read; a nonexistent/foreign move target is
+    rejected; a **real upload** creates a correct DB record whose URL
+    resolves to a real object path; EDITOR-role can upload, VIEWER/
+    stranger cannot; two events' uploads never collide on path; **a real
+    delete removes both the DB row and the live Storage object** (proven
+    via a follow-up download attempt failing); a legacy/external-URL
+    video item's delete never attempts a storage call; a VIEWER's
+    rejected delete leaves both the row and the real object intact
+    (with real cleanup performed by the test itself afterward)
+
+E2E (real Supabase DEV database and a real authenticated session — D-022;
+real Supabase Storage uploads, not mocked):
+
+-   `e2e/gallery.spec.ts` (5 tests) — **one combined flow**: an owner
+    uploads two real image files through the actual file input, sees them
+    persist after a full page reload, reorders them via the up button
+    (persisting after another reload), opens the public invitation's
+    lightbox (`role="dialog"`, closes on Escape), deletes one image from
+    the dashboard, and confirms it's gone from both the dashboard and the
+    public invitation; existing video-by-URL add still works alongside
+    real upload; a VIEWER-role member cannot open the editor at all
+    (shared not-found page, D-021); a stranger cannot access another
+    owner's editor; an empty gallery renders no "Galeri" heading publicly
+    (never a placeholder section)
+-   Confirmed via a full E2E run against a clean environment: all 51
+    pre-existing Phase 0-10 E2E tests continue passing alongside all 5 new
+    gallery tests (56/56 total) — see "Known dev-server caveat" below for
+    what "clean environment" required discovering
+
+### Known dev-server caveat (not a product limitation)
+
+Running `next build` and then `next dev` on top of the *same* `.next`
+directory without clearing it in between was found, during this phase's
+own verification, to intermittently and sometimes consistently break
+Turbopack's dev-mode route resolution for one specific nested dynamic
+route (`/dashboard/events/[eventId]/editor`), serving a framework-level
+404 with no server-side error logged, even though `next build` itself
+always compiled that same route successfully. This is a local
+development-workflow artifact of mixing build/dev `.next` state, not an
+application defect — confirmed by: the production build always succeeding
+throughout; every other route working normally in the same dev session;
+and the failure disappearing completely once `.next` was deleted before
+starting `next dev` fresh. No code change was made for this — it's a
+"clear `.next` before switching between `next build` and `next dev`"
+operational note for future work in this repository, not a bug fix.
+
+### Known Limitations
+
+-   **Editing/replacing an uploaded image's file is not supported** — an
+    owner can edit an image's caption or delete it and upload a
+    replacement, but there is no in-place "swap the file" action. This
+    matches the phase brief's explicit scope list (upload, delete,
+    caption editing, reorder) and keeps the upload validation/storage-path
+    logic from needing a second "replace" code path.
+-   **No server-side thumbnail generation** — `thumbnailUrl` stays `null`
+    for every uploaded image; the grid/lightbox show the original
+    uploaded file, scaled by CSS (`object-cover`/`object-contain`) within
+    a fixed-size container. Generating true resized thumbnails would need
+    an image-processing dependency (e.g. `sharp`) or a Supabase Storage
+    transform feature not confirmed available on the connected project —
+    out of scope per the brief's "do not build unnecessary custom
+    image-processing infrastructure" instruction.
+-   **WebP dimension bounds only enforced for the VP8X (extended)
+    sub-format** — see D-043. Format authenticity and the size/MIME
+    checks still fully apply to plain `VP8 `/`VP8L` WebP files; only the
+    pixel-dimension ceiling specifically isn't decoded/enforced for those
+    two subtypes.
+-   **Reorder is single-step move-up/move-down, not drag-and-drop** — a
+    deliberate simplicity/accessibility/no-new-dependency tradeoff, not a
+    stand-in for a "real" reorder feature to be replaced later; it fully
+    satisfies "persistent reorder" as specified.
+-   **`next/image` was not adopted** — see D-042. Responsive
+    multi-resolution/WebP-AVIF-on-the-fly delivery is not implemented;
+    only `loading="lazy"`/`decoding="async"` and structural
+    (CSS-aspect-ratio) layout-shift prevention are.
+
 ## Known Blockers
 
 None currently. The Supabase DEV database credential blocker recorded here
@@ -2168,60 +2512,73 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (521/521 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (591/591 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
                              lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
-                             lib/gifts/*, lib/wishes/*; 176 of these are live-DB
-                             integration tests — 15 events, 22 invitations, 31 editor, 40
-                             guests, 36 rsvp, 18 gifts, 18 wishes — 0 leftover rows
-                             verified after each run)
+                             lib/gifts/*, lib/wishes/*, lib/storage/*; 192 of these are
+                             live-DB integration tests — 15 events, 22 invitations, 43
+                             editor (26 of which are the new/extended gallery block,
+                             including real Supabase Storage upload/delete round trips),
+                             40 guests, 36 rsvp, 18 gifts, 18 wishes — 0 leftover DB rows
+                             and 0 leftover Storage objects verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware;
                              /invite/[slug], the editor route, all guest routes, the
                              per-guest invitation route, the RSVP dashboard/export routes,
-                             the gift-method dashboard routes, and the new wishes
-                             dashboard route correctly dynamic)
-E2E:                        PASS (51/51 — homepage smoke test, auth foundation suite,
-                             event-route protection suite, public invitation suite, editor
-                             suite, guest management suite, RSVP suite, guest invitation
-                             delivery suite, RSVP dashboard suite, gift method dashboard
-                             suite, and the new wishes suite; auth/invitation/editor/
-                             guests/rsvp/guest-invitation/rsvp-dashboard/gifts-dashboard/
-                             wishes suites exercise the real Supabase DEV database
-                             directly, no mocks — the editor, guests, guest-invitation,
-                             rsvp-dashboard, gifts-dashboard, and wishes (dashboard half)
-                             suites additionally drive a real authenticated session
-                             (D-022); the RSVP guest flow and the wishes suite's
-                             guest-facing half are public/unauthenticated by design, so
-                             they seed fixtures directly via Prisma instead, the same
-                             pattern e2e/invitation.spec.ts already uses. The
-                             rsvp-dashboard suite drives one real public RSVP submission
-                             through the actual invitation flow to prove Phase 6 hasn't
-                             regressed; the gifts-dashboard suite drives a real
-                             create/edit/delete flow through the UI and confirms the
-                             public invitation renders real, live gift data; the wishes
-                             suite drives one real end-to-end flow — public submission →
-                             PENDING in the dashboard → approve → visible publicly → hide
-                             → not visible publicly — through the actual UI, not mocked
-                             at any step. One unrelated pre-existing flaky failure
-                             (e2e/gifts-dashboard.spec.ts's create/edit/delete test,
-                             under 6-worker parallel load against the live DB) was
-                             confirmed to pass in isolation — not a regression from this
-                             phase, which touches no gift-method code)
+                             the gift-method dashboard routes, and the wishes dashboard
+                             route all correctly dynamic; this build is also what caught
+                             the real lib/storage/limits.ts server/client boundary issue
+                             — see Phase 11's "Notable implementation decision")
+E2E:                        PASS (56/56 on a clean run — homepage smoke test, auth
+                             foundation suite, event-route protection suite, public
+                             invitation suite, editor suite, guest management suite, RSVP
+                             suite, guest invitation delivery suite, RSVP dashboard suite,
+                             gift method dashboard suite, wishes suite, and the new
+                             gallery suite; auth/invitation/editor/guests/rsvp/
+                             guest-invitation/rsvp-dashboard/gifts-dashboard/wishes/gallery
+                             suites exercise the real Supabase DEV database directly, no
+                             mocks — the editor, guests, guest-invitation, rsvp-dashboard,
+                             gifts-dashboard, wishes (dashboard half), and gallery suites
+                             additionally drive a real authenticated session (D-022); the
+                             gallery suite's uploads hit the real, connected Supabase
+                             Storage bucket, not a mock. Across repeated full-suite runs
+                             during this phase's verification, a small, variable subset of
+                             unrelated pre-existing tests (e2e/gifts-dashboard.spec.ts's
+                             and e2e/guests.spec.ts's heaviest combined tests, occasionally
+                             e2e/editor.spec.ts/e2e/wishes.spec.ts) intermittently failed
+                             under 6-worker parallel load with the generic "stuck on
+                             /login" symptom — confirmed via repeated isolated re-runs to
+                             be the already-documented shared in-memory login-rate-limit/
+                             cold-Turbopack-compile characteristic (D-030), not a Phase 11
+                             regression: none of these files' code was touched in this
+                             phase, and every one of them passes reliably alone. The
+                             figure reported above (56/56) is from one full, uninterrupted
+                             run on a freshly-cleared `.next` with no other process having
+                             touched the dev server beforehand — see Phase 11's "Known
+                             dev-server caveat" for the specific operational trap
+                             (mixing `next build` and `next dev` on the same `.next`) that
+                             had to be identified and avoided to get a trustworthy result)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total;
-                             none new in Phase 10, the existing Wish/WishStatus schema
-                             was fully sufficient)
+                             none new in Phase 11, the existing Gallery/GalleryItem schema
+                             (including sortOrder on both) was fully sufficient — see
+                             D-041 for why a storage-object-path column specifically was
+                             verified unnecessary rather than assumed so)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
                              seat-quota/IDOR, guest-invitation token-masking/regeneration
                              IDOR, RSVP dashboard filter/export/cross-event authorization,
                              gift-method CRUD/cross-event/public-projection authorization,
-                             AND wish submission/moderation/cross-event/public-projection
-                             authorization proofs; Auth via a real authenticated login in
+                             wish submission/moderation/cross-event/public-projection
+                             authorization, AND gallery upload/reorder/delete/cross-event
+                             authorization proofs; Storage via the real, connected
+                             Supabase project's `invitation-assets` bucket — real
+                             upload-then-download-fails-after-delete round trips, not
+                             mocked; Auth via a real authenticated login in
                              e2e/editor.spec.ts, e2e/guests.spec.ts,
                              e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
-                             e2e/gifts-dashboard.spec.ts, and e2e/wishes.spec.ts)
+                             e2e/gifts-dashboard.spec.ts, e2e/wishes.spec.ts, and
+                             e2e/gallery.spec.ts)
 ```
 
 ## Update Rules

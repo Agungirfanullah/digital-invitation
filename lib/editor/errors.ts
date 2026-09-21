@@ -1,6 +1,13 @@
 import "server-only";
 
 import { EventNotFoundError, mapEventErrorMessage } from "@/lib/events/errors";
+import {
+  FileTooLargeError,
+  GalleryStorageDeletionError,
+  ImageDimensionsExceededError,
+  UnsupportedFileTypeError,
+  mapStorageErrorMessage,
+} from "@/lib/storage/errors";
 
 // Re-exported rather than duplicated: "event doesn't exist" and "event
 // exists but you can't edit it" are the exact same IDOR-safe concept
@@ -25,6 +32,14 @@ export function mapEditorErrorMessage(error: unknown): string {
   }
   if (error instanceof EventNotFoundError) {
     return mapEventErrorMessage(error);
+  }
+  if (
+    error instanceof FileTooLargeError ||
+    error instanceof UnsupportedFileTypeError ||
+    error instanceof ImageDimensionsExceededError ||
+    error instanceof GalleryStorageDeletionError
+  ) {
+    return mapStorageErrorMessage(error);
   }
 
   console.error("[editor] Unexpected error", error);

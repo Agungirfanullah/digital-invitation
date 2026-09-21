@@ -1,10 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// jsdom's global File polyfill in this test environment doesn't implement
+// `arrayBuffer()` (a real browser's File always does), which
+// uploadGalleryImageAction calls. Patching the prototype here — rather
+// than swapping in a different File class — keeps `file instanceof File`
+// in the action's own code working correctly against jsdom's real global
+// class; only the missing method is filled in.
+if (typeof File.prototype.arrayBuffer !== "function") {
+  File.prototype.arrayBuffer = function arrayBuffer(this: Blob) {
+    return new Response(this).arrayBuffer();
+  };
+}
+
 const requireAppUserMock = vi.fn();
 const updateWeddingProfileMock = vi.fn();
 const updateThemeMock = vi.fn();
 const selectTemplateMock = vi.fn();
 const createScheduleMock = vi.fn();
+const addGalleryItemMock = vi.fn();
+const uploadGalleryImageMock = vi.fn();
+const moveGalleryItemMock = vi.fn();
+const updateGalleryItemCaptionMock = vi.fn();
+const checkGalleryUploadRateLimitMock = vi.fn();
+const validateGalleryImageUploadMock = vi.fn();
 
 vi.mock("@/lib/auth/session", () => ({
   requireAppUser: (...args: unknown[]) => requireAppUserMock(...args),
@@ -15,24 +33,53 @@ vi.mock("@/lib/editor/service", () => ({
   updateTheme: (...args: unknown[]) => updateThemeMock(...args),
   selectTemplate: (...args: unknown[]) => selectTemplateMock(...args),
   createSchedule: (...args: unknown[]) => createScheduleMock(...args),
+  addGalleryItem: (...args: unknown[]) => addGalleryItemMock(...args),
+  uploadGalleryImage: (...args: unknown[]) => uploadGalleryImageMock(...args),
+  moveGalleryItem: (...args: unknown[]) => moveGalleryItemMock(...args),
+  updateGalleryItemCaption: (...args: unknown[]) => updateGalleryItemCaptionMock(...args),
 }));
 
+vi.mock("@/lib/editor/gallery-rate-limit", () => ({
+  checkGalleryUploadRateLimit: (...args: unknown[]) => checkGalleryUploadRateLimitMock(...args),
+}));
+
+vi.mock("@/lib/storage/validation", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/storage/validation")>();
+  return {
+    ...actual,
+    validateGalleryImageUpload: (...args: unknown[]) => validateGalleryImageUploadMock(...args),
+  };
+});
+
 import {
+  addGalleryItemAction,
   createScheduleAction,
+  moveGalleryItemAction,
   saveThemeAction,
   saveWeddingProfileAction,
   selectTemplateAction,
+  updateGalleryItemCaptionAction,
+  uploadGalleryImageAction,
 } from "@/lib/editor/actions";
 
-describe("editor actions — server-side validation and authorization", () => {
-  beforeEach(() => {
-    requireAppUserMock.mockReset().mockResolvedValue({ id: "user-1" });
-    updateWeddingProfileMock.mockReset();
-    updateThemeMock.mockReset();
-    selectTemplateMock.mockReset();
-    createScheduleMock.mockReset();
-  });
+// File-scoped, not nested in a single describe — both the original
+// describe block and the newer "uploadGalleryImageAction" block below
+// need these mocks reset the same way.
+beforeEach(() => {
+  requireAppUserMock.mockReset().mockResolvedValue({ id: "user-1" });
+  updateWeddingProfileMock.mockReset();
+  updateThemeMock.mockReset();
+  selectTemplateMock.mockReset();
+  createScheduleMock.mockReset();
+  addGalleryItemMock.mockReset();
+  uploadGalleryImageMock.mockReset();
+  moveGalleryItemMock.mockReset();
+  updateGalleryItemCaptionMock.mockReset();
+  checkGalleryUploadRateLimitMock.mockReset().mockResolvedValue(true);
+  validateGalleryImageUploadMock.mockReset();
+});
 
+describe("editor actions — server-side validation and authorization", () => {
   it("saveWeddingProfileAction rejects an invalid payload without checking auth or calling the service", async () => {
     const result = await saveWeddingProfileAction("event-1", { brideFullName: "" });
 
@@ -145,6 +192,121 @@ describe("editor actions — server-side validation and authorization", () => {
       expect.objectContaining({
         venue: expect.objectContaining({ name: "Gedung Serbaguna", address: "Jl. Uji Coba No. 1" }),
       }),
+    );
+  });
+
+  it("addGalleryItemAction rejects type IMAGE without calling the service — image items only go through uploadGalleryImageAction", async () => {
+    const result = await addGalleryItemAction("event-1", {
+      type: "IMAGE",
+      url: "https://example.com/a.jpg",
+      caption: null,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(addGalleryItemMock).not.toHaveBeenCalled();
+  });
+
+  it("updateGalleryItemCaptionAction rejects a caption over 200 characters without calling the service", async () => {
+    const result = await updateGalleryItemCaptionAction("event-1", "item-1", {
+      caption: "a".repeat(201),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(updateGalleryItemCaptionMock).not.toHaveBeenCalled();
+  });
+
+  it("updateGalleryItemCaptionAction passes the authenticated user's id, not a client-supplied one", async () => {
+    updateGalleryItemCaptionMock.mockResolvedValue({ id: "item-1", caption: "Baru" });
+
+    await updateGalleryItemCaptionAction("event-1", "item-1", { caption: "Baru" });
+
+    expect(updateGalleryItemCaptionMock).toHaveBeenCalledWith(
+      "event-1",
+      "user-1",
+      "item-1",
+      "Baru",
+    );
+  });
+
+  it("moveGalleryItemAction requires authentication before calling the service", async () => {
+    moveGalleryItemMock.mockResolvedValue([]);
+
+    await moveGalleryItemAction("event-1", "item-1", "up");
+
+    expect(requireAppUserMock).toHaveBeenCalledTimes(1);
+    expect(moveGalleryItemMock).toHaveBeenCalledWith("event-1", "user-1", "item-1", "up");
+  });
+});
+
+describe("uploadGalleryImageAction", () => {
+  function testFile(): File {
+    return new File([new Uint8Array([1, 2, 3, 4])], "photo.png", { type: "image/png" });
+  }
+
+  it("returns a rate-limit error without validating or calling the service when rate-limited", async () => {
+    checkGalleryUploadRateLimitMock.mockResolvedValue(false);
+    const formData = new FormData();
+    formData.set("file", testFile());
+
+    const result = await uploadGalleryImageAction("event-1", formData);
+
+    expect(result.ok).toBe(false);
+    expect(validateGalleryImageUploadMock).not.toHaveBeenCalled();
+    expect(uploadGalleryImageMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a request with no file field without calling the service", async () => {
+    const formData = new FormData();
+
+    const result = await uploadGalleryImageAction("event-1", formData);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.fieldErrors?.file).toBeDefined();
+    expect(uploadGalleryImageMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a caption over 200 characters without calling the service", async () => {
+    const formData = new FormData();
+    formData.set("file", testFile());
+    formData.set("caption", "a".repeat(201));
+
+    const result = await uploadGalleryImageAction("event-1", formData);
+
+    expect(result.ok).toBe(false);
+    expect(uploadGalleryImageMock).not.toHaveBeenCalled();
+  });
+
+  it("maps a thrown validation error to a safe message without calling the service", async () => {
+    const { UnsupportedFileTypeError } = await import("@/lib/storage/errors");
+    validateGalleryImageUploadMock.mockImplementation(() => {
+      throw new UnsupportedFileTypeError();
+    });
+    const formData = new FormData();
+    formData.set("file", testFile());
+
+    const result = await uploadGalleryImageAction("event-1", formData);
+
+    expect(result.ok).toBe(false);
+    expect(uploadGalleryImageMock).not.toHaveBeenCalled();
+  });
+
+  it("passes the authenticated user's id and the validated image to the service on success", async () => {
+    const validated = { buffer: Buffer.from([1]), extension: "png", contentType: "image/png" };
+    validateGalleryImageUploadMock.mockReturnValue(validated);
+    uploadGalleryImageMock.mockResolvedValue({ id: "item-1" });
+
+    const formData = new FormData();
+    formData.set("file", testFile());
+    formData.set("caption", "Momen bahagia");
+
+    const result = await uploadGalleryImageAction("event-1", formData);
+
+    expect(result.ok).toBe(true);
+    expect(uploadGalleryImageMock).toHaveBeenCalledWith(
+      "event-1",
+      "user-1",
+      validated,
+      "Momen bahagia",
     );
   });
 });
