@@ -1422,3 +1422,102 @@ the template default. `lib/invitations/color-contrast.test.ts` covers
 the contrast/luminance math itself, including its fallback behavior for
 a color format it can't parse (e.g. a named CSS color or `oklch()` an
 owner might type into the free-text theme editor).
+
+## D-052 --- `GuestInvitation.openedAt`/`OPENED` Remain Intentionally Unused; `InvitationView` Is the Sole Source of Truth for Invitation Opens
+
+**Decision:** `GuestInvitation.openedAt` and `GuestInvitationStatus.OPENED`
+remain **permanently, intentionally unwritten** by application code.
+`GuestInvitationStatus.SENT`/`GuestInvitation.sentAt` remain unwritten
+too, unchanged from D-029. No code was changed to implement this
+decision — it is a closed reconciliation of a question Phase 7 explicitly
+left open ("revisit if/when open-tracking becomes a real product
+priority," see `docs/STATUS.md`'s Phase 7 "Known Limitations"), re-
+examined now that Phase 15's `InvitationView` exists as a candidate
+alternative. `InvitationView` (already tracking `eventId`, an optional
+`guestId` resolved from a validated, event-scoped token exactly the way
+every other domain resolves guest identity, an anonymous session id, and
+a timestamp) is the sole, authoritative representation of "an invitation
+was viewed/opened" — including at a per-guest level, via
+`InvitationView.guestId`, even though no UI currently surfaces a
+per-guest breakdown (Analytics' dashboard only shows the aggregate
+`personalizedOpens` count today; building a per-guest "has this guest
+opened it" view, if ever wanted, should query `InvitationView` grouped by
+`guestId`, not add a new write path).
+
+**Rationale — audit findings that drove this conclusion:**
+
+1. **Zero application code writes these fields today.** A full-tree
+   search confirms `openedAt`/`sentAt`/`GuestInvitationStatus.SENT`/`.OPENED`
+   appear only in (a) `lib/guests/service.ts`'s token-regeneration reset
+   logic, which only ever sets them to `null`, never to a real value, and
+   (b) unit tests exercising that reset logic's *hypothetical* handling
+   of those states as pure-function input. No RSVP, check-in, QR, guest-
+   management, or public-invitation code path has ever produced `SENT` or
+   `OPENED` in this codebase's history.
+2. **`InvitationView` already structurally represents the same concept**,
+   built independently and later (Phase 15) but solving the identical
+   underlying question ("did this guest's personalized link get
+   accessed"), with its own token validation, cross-event scoping, and
+   privacy protections already proven correct (`lib/analytics/
+   service.integration.test.ts`). Writing `openedAt` too would mean the
+   same fact is recorded in two places, one of which (a per-guest,
+   permanent `GuestInvitation` column) has no deduplication/rate-limiting
+   applied the way `InvitationView`'s write path does today.
+3. **A per-guest, dashboard-visible "Opened" indicator carries a
+   materially different — and more misleading — claim than an aggregate
+   analytics count, given identical underlying data quality.** A
+   messaging app's link-preview unfurler (WhatsApp, Telegram, iMessage,
+   Slack, etc.) fetching a personalized URL the moment an owner shares it
+   would, if `openedAt` were written on page-render, prematurely and
+   permanently mark that specific named guest as having "opened" their
+   invitation before they ever saw it. An aggregate analytics number
+   inflated by the same bot traffic is a well-understood, accepted
+   limitation of any lightweight web view-counter; a confident per-person
+   status badge next to a named guest in a dashboard is read very
+   differently by an event owner, and being wrong there is a materially
+   worse product outcome for the same root cause. Both `InvitationView`
+   and a hypothetical `openedAt` write would fire at the identical
+   server-side resolution point and are therefore equally exposed to this
+   — the difference is entirely in how confidently each *presents* the
+   same imperfect signal.
+4. **`docs/PRD.md` §17 ("Invitation Opening") defines "opening" as a
+   client-side gesture, not a server-side page load.** The PRD describes
+   a cover/reveal screen — an opening title card with a "Buka Undangan"
+   button the guest must tap, which then reveals the invitation content
+   and (subject to browser autoplay restrictions) starts optional music.
+   This is a discrete client interaction, not something a Server
+   Component's GET-request execution can observe. **This pattern is not
+   implemented in any of the 6 templates today** (confirmed by a
+   repository-wide search — no "Buka Undangan" cover screen exists
+   anywhere), and implementing it is explicitly out of scope for this
+   task (it would be new template UI/UX work, not a lifecycle-tracking
+   fix). Critically, even a page-render-time `openedAt` write would *not*
+   correctly represent this PRD-defined "opening" moment — it would only
+   ever capture "the URL was fetched by some agent," the same signal
+   `InvitationView` already captures under a more honest label. If/when
+   the cover-screen interaction is built, tracking a genuine click-to-
+   reveal event would need its own new client→server signal (e.g. a
+   Server Action invoked by the reveal button) — not a repurposing of
+   this already-dead field.
+5. **The original Phase 3/Phase 7 reasoning for not writing on every
+   public page view — real abuse-surface and database-write-amplification
+   concerns — remains valid** and is reinforced, not weakened, by
+   Analytics already existing: Analytics' own write path (rate-limited by
+   session, 30-minute deduplicated) is the more carefully engineered of
+   the two candidate mechanisms for exactly this kind of high-frequency,
+   low-trust public write; duplicating it with a second, less-guarded
+   write path would only add risk, not correctness.
+
+**Impact:** No files changed. `GuestInvitationStatus`'s `SENT`/`OPENED`
+enum values and `GuestInvitation.sentAt`/`openedAt` columns remain in the
+schema (removing them would be a needless breaking schema change for
+values that cause no harm sitting unused, and `resolveNextInvitationStatus()`/
+`resolveInvitationAfterRegeneration()`'s existing never-downgrade logic
+already correctly handles them if they were ever set by a future data
+migration or feature). `docs/STATUS.md`'s Phase 7 "Known Limitations"
+section is updated to mark this as reconciled rather than merely
+deferred. A future phase wanting a per-guest "opened" indicator in the
+guest list UI should query `InvitationView` filtered by `guestId`, not
+add a write to `GuestInvitation`. A future phase implementing PRD §17's
+actual cover-screen interaction is a distinct, separately-scoped piece of
+template/UX work, not a revival of this field.

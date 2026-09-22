@@ -12,11 +12,34 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Roadmap Phase 3 (Template System) completion ---
-Five Additional Invitation Templates
+**Current Phase:** Roadmap Phase 8 (Guest Personalization) reconciliation
+--- Invitation Open/Sent Lifecycle State
 
-**Status:** Following a Roadmap Reconciliation Audit, the one genuine
-product gap found in an otherwise-complete feature set was closed:
+**Status:** An audit-first task re-examined the last remaining, previously
+self-documented open question from Phase 7: should
+`GuestInvitation.openedAt`/`status = OPENED` ever be written now that
+Phase 15's `InvitationView` exists? Conclusion: **no — they remain
+intentionally, permanently unused.** `InvitationView` (with its own
+`guestId` association) already represents "was this guest's personalized
+invitation accessed," and a per-guest write to `GuestInvitation` would
+duplicate that signal with materially worse characteristics — specifically
+a bot/link-preview-unfurler contamination risk that reads far more
+misleadingly on a discrete per-guest dashboard "Opened" badge than on an
+aggregate analytics count. A fresh reading of `docs/PRD.md` §17
+("Invitation Opening") also surfaced that the product's own definition of
+"opening" is a **client-side reveal gesture** (a "Buka Undangan" cover
+screen gating music autoplay) — not a server-side page-render event at
+all — which is unimplemented in every template today and, even if built,
+would need its own new client→server signal, not a reuse of this dead
+field. `SENT` remains correctly unused too, unchanged from D-029 (still
+blocked purely on a real delivery provider, which doesn't exist). **No
+code was changed** — this is a closed, documented architectural decision,
+not an implementation. See D-052 for the full rationale. Phases 0-11,
+13, 14, 15, and the Phase 3 template completion remain unaffected.
+
+**Status (Phase 3 template completion, unchanged by this task):**
+Following a Roadmap Reconciliation Audit, the one genuine product gap
+found in an otherwise-complete feature set was closed:
 Roadmap Phase 3 ("Template System") originally shipped with only 1 of
 its 6 seeded templates (`minimal-elegant`) actually implemented (see the
 "Phase 3 — Invitation Foundation" section below). All 5 remaining
@@ -1783,11 +1806,24 @@ never transmits a message itself. See D-029.
     consumer (the dashboard) for the first time — a deliberate scope
     boundary, revisit if/when open-tracking becomes a real product
     priority rather than expanding it opportunistically here.
--   `SENT` similarly has no real setter yet — it's reserved for a future
-    real provider confirming an actual send (D-029); nothing in this
-    phase (copy link, copy message, open WhatsApp) is allowed to set it,
-    by design, so in practice most guests will show NOT_SENT or
-    RSVPED/CHECKED_IN today.
+    **Reconciled (post-Phase 15, re-audited as its own task):** this
+    revisit happened, and the conclusion is that `OPENED`/`openedAt`
+    should remain **intentionally, permanently unused** rather than
+    implemented — not because it was never revisited, but because Phase
+    15's `InvitationView` (with its own `guestId` association) now
+    already represents this exact concept, and a per-guest write here
+    would duplicate it with strictly worse characteristics (see D-052 for
+    the full rationale, including a concrete bot/link-preview
+    contamination risk specific to a per-guest dashboard indicator that
+    doesn't apply the same way to an aggregate analytics count). No code
+    change was made; this is a closed, documented architectural decision.
+-   `SENT` similarly has no real setter — it's reserved for a future real
+    provider confirming an actual send (D-029); nothing in this phase
+    (copy link, copy message, open WhatsApp) is allowed to set it, by
+    design, so in practice most guests will show NOT_SENT or
+    RSVPED/CHECKED_IN today. **Reconciled (same re-audit):** this remains
+    correct and unchanged — still blocked purely on a real delivery
+    provider existing, not on any engineering gap. See D-052.
 -   The in-memory rate limiter (used for both RSVP submission, Phase 6,
     and token regeneration, Phase 7) remains a single-process stopgap —
     see "Rate limiting" above.
