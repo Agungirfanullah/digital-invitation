@@ -1521,3 +1521,98 @@ guest list UI should query `InvitationView` filtered by `guestId`, not
 add a write to `GuestInvitation`. A future phase implementing PRD §17's
 actual cover-screen interaction is a distinct, separately-scoped piece of
 template/UX work, not a revival of this field.
+
+## D-053 --- Content-Security-Policy: Nonce-Based `script-src`, `'unsafe-inline'` for `style-src`, Broad `img-src` — Each Directive Traced to Real Source Usage, Not a Generic Policy
+
+**Decision:** `proxy.ts` now sets a `Content-Security-Policy` and a small
+set of baseline security response headers (`lib/security/headers.ts`) on
+every request. Each directive was decided from actual source evidence, not
+copy-pasted:
+
+-   `script-src 'self' 'nonce-{random}' 'strict-dynamic'` (+
+    `'unsafe-eval'` only in development, matching React's dev-mode error
+    reconstruction). A fresh, cryptographically random nonce
+    (`crypto.randomUUID()`, base64-encoded) is generated per request in
+    `proxy.ts` and set on both the CSP header and an `x-nonce` request
+    header, following the exact pattern documented in Next.js 16.3.5's own
+    bundled guide (`node_modules/next/dist/docs/01-app/02-guides/
+    content-security-policy.md`) — confirmed by reading that file directly
+    rather than relying on training-data assumptions about an older Next
+    version. Next.js reads the nonce back out of the CSP header at render
+    time and applies it automatically to its own injected scripts (RSC
+    flight-data/hydration) — no per-component code changes were needed.
+-   `style-src 'self' 'unsafe-inline'` — deliberately **not** nonce-based.
+    9 files (all 6 invitation templates + `components/analytics/
+    progress-bar.tsx` + `components/checkin/qr-code-scanner.tsx` +
+    `components/invitation/sections/hero-section.tsx`) use React's
+    `style={{...}}` prop for dynamic, per-theme CSS custom properties —
+    values computed per render, with no practical nonce/hash strategy.
+    This is not presented as fully hardened; a future phase that wants a
+    stricter `style-src` would need to first move theme-variable
+    application off the `style` prop (e.g., a `<style>` block with a
+    nonce, or `element.style.setProperty` client-side) — out of scope
+    here per D-050/D-051's own template-composition boundaries.
+-   `img-src 'self' https: http: data: blob:` — matches `lib/invitations/
+    url-safety.ts`'s existing `toSafeHttpUrl()` validation exactly (scheme
+    only, not domain — D-041/D-042's deliberate owner-pasted-URL design).
+    A domain allowlist was considered and rejected: it would break real,
+    already-published invitations using external image/gift-QR URLs.
+-   `connect-src 'self'` — zero raw `fetch()` calls exist in `components/`,
+    and the one client-side Supabase helper (`lib/supabase/client.ts`,
+    `createSupabaseBrowserClient()`) has zero callers anywhere in the
+    codebase.
+-   `worker-src 'self'` — required, not optional: `qr-scanner` (used by
+    `components/checkin/qr-code-scanner.tsx`) falls back to a same-origin
+    bundled Web Worker via dynamic `import()` on browsers without the
+    native `BarcodeDetector` API, notably iOS Safari. Removing this
+    directive would silently break check-in QR scanning on those devices
+    only — an easy regression to miss testing from Chrome alone.
+-   `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN` — closes a
+    previously-open clickjacking gap; the public invitation and dashboard
+    have no documented cross-origin embedding requirement.
+-   `Permissions-Policy` explicitly allows `camera=(self)` (required —
+    `qr-scanner`'s `getUserMedia`-based camera access for check-in
+    scanning, confirmed by reading `components/checkin/qr-code-scanner.tsx`)
+    and explicitly denies `microphone=()`/`geolocation=()`/`payment=()`
+    (confirmed unused anywhere in the codebase by search, not assumed).
+-   `Strict-Transport-Security` is sent only when the incoming request's
+    own protocol was HTTPS (`request.nextUrl.protocol === "https:"` — the
+    same check `proxy.ts` already used for the analytics cookie's
+    `Secure` flag), never over local HTTP dev traffic. `includeSubDomains`
+    and `preload` are deliberately omitted for now: `preload` requires a
+    manual, largely irreversible submission to browsers' HSTS preload
+    list, and subdomain topology isn't confirmed yet — both are Track B
+    (external/manual) concerns for a later batch, not this one.
+-   `upgrade-insecure-requests` was deliberately **not** added: it would
+    force-upgrade the deliberately-allowed `http:` image URLs to `https:`
+    at the browser level, which could silently break an image hosted on a
+    server that doesn't support HTTPS — an unpredictable interaction with
+    the `img-src` decision above, not something this batch's audit
+    evidence justified.
+
+**Nonce forces dynamic rendering — handled directly.** Next's own CSP
+guide states plainly that a statically generated page has no per-request
+nonce available, so its own injected hydration script would be blocked by
+a nonce-based `script-src`. Every real route in this app already reads
+cookies/headers/searchParams somewhere in its render tree (auth session
+checks, guest tokens, analytics session cookie) except two: the root
+landing stub (`app/page.tsx`, a placeholder with zero data fetching) and
+the framework's default not-found fallback. Both were given
+`export const dynamic = "force-dynamic"` (the latter via a new, minimal
+`app/not-found.tsx`, styled to match the existing `app/invite/[slug]/
+not-found.tsx`) — confirmed via `next build` output that every route is
+now dynamically rendered (`ƒ`), not static (`○`).
+
+**Rationale for not going further this batch:** the full audit (Phase 20)
+identified more hardening opportunities — event/gift mutation rate
+limiting, rate-limiter eviction, `AuditLog` writes — deliberately left for
+a later batch to keep this one reviewable and regression-verifiable in
+isolation, per the task's own explicit batching instruction.
+
+**Impact:** New `lib/security/headers.ts` + `lib/security/headers.test.ts`
+(10 new unit tests). `proxy.ts` and `app/page.tsx` modified; new
+`app/not-found.tsx`. No database/schema change. Verified against the full
+E2E suite (68 tests across all 15 spec files, including the QR
+check-in/camera path and all 6 invitation templates) with the new headers
+live — see `docs/STATUS.md`'s Phase 20 (Batch 1) entry for the full
+verification record.

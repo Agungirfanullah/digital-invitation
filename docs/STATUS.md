@@ -3478,6 +3478,137 @@ Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant 
                              proxy.ts's cookie assignment end-to-end))
 ```
 
+## Phase 20 (Batch 1) --- CI Reliability & Security Headers / CSP
+
+**Status:** Implemented and verified. This is the first of several planned
+Phase 20 batches (see `docs/ROADMAP.md`'s Phase 20 task list) — scoped
+narrowly to the two items an audit (see `docs/DECISIONS.md`'s Phase 20
+entry) identified as the highest-value, lowest-risk repository-only fixes.
+Event/gift mutation rate limiting, rate-limiter eviction, `AuditLog`
+writes, structured logging, and every other audit finding remain
+deliberately unimplemented — see "Remaining Phase 20 Work" below.
+
+-   [x] CI E2E Supabase configuration corrected —
+    `.github/workflows/ci.yml`'s `e2e` job previously hardcoded
+    `NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co` and
+    `SUPABASE_SERVICE_ROLE_KEY: ci-placeholder` even though
+    `e2e/*.spec.ts` fixtures make real Supabase Auth Admin API calls
+    (`admin.auth.admin.createUser`) — those calls could not have been
+    succeeding against a fake project. Now sourced from
+    `secrets.CI_SUPABASE_URL` / `secrets.CI_SUPABASE_ANON_KEY` /
+    `secrets.CI_SUPABASE_SERVICE_ROLE_KEY`. **These three GitHub Actions
+    secrets do not exist yet in this repository configuration — that is
+    external, manual configuration this batch cannot perform (see
+    "External/Manual Actions Still Required" below).**
+-   [x] Both jobs now fail clearly, before installing dependencies, when a
+    required secret is missing — a "Verify required CI secrets are
+    configured" step checks presence (never value) and exits with a clear
+    `::error::` message, replacing the `validate` job's previous silent
+    fallback to an unreachable `postgresql://postgres:postgres@localhost:
+    5432/...` when `CI_DATABASE_URL` was unset.
+-   [x] Security response headers + Content-Security-Policy — new
+    `lib/security/headers.ts` (pure, unit-tested), applied in `proxy.ts`
+    to every request. Nonce-based `script-src` (`'strict-dynamic'` +
+    per-request nonce, following the exact pattern in Next.js 16.3.5's own
+    bundled CSP guide at `node_modules/next/dist/docs/01-app/02-guides/
+    content-security-policy.md` — not invented). `style-src` deliberately
+    keeps `'unsafe-inline'` (6 templates + 3 shared components use React's
+    `style={{...}}` for per-theme CSS variables — no practical nonce/hash
+    strategy exists for that). `img-src` stays broad
+    (`'self' https: http: data: blob:`) to match `lib/invitations/
+    url-safety.ts`'s existing scheme-only validation (D-041/D-042) exactly
+    — narrower would break real owner-pasted invitation/gift-QR images.
+    `worker-src 'self'` preserves `qr-scanner`'s same-origin Web Worker
+    fallback (iOS Safari, which lacks the native `BarcodeDetector` API).
+    `connect-src 'self'` (no client-side Supabase/`fetch()` usage exists).
+    `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+    `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN`,
+    `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-
+    when-cross-origin`, `Permissions-Policy` (explicitly allows
+    `camera=(self)` for QR check-in scanning; denies microphone/
+    geolocation/payment, all confirmed unused). `Strict-Transport-Security`
+    sent only when the request itself was HTTPS (never on local HTTP dev);
+    `includeSubDomains`/`preload` deliberately omitted this batch —
+    preload registration is a manual, largely irreversible external step
+    outside this batch's scope.
+-   [x] Nonce-compatibility fix — nonce-based CSP requires dynamic
+    rendering (confirmed directly from Next's own docs: a statically
+    generated page has no per-request nonce, so Next's own hydration
+    script on it would be blocked). Every real route already reads
+    cookies/headers/searchParams somewhere in its render tree except two:
+    the root landing stub (`app/page.tsx`) and the default not-found
+    fallback. Both now carry `export const dynamic = "force-dynamic"`
+    (the latter via a new minimal `app/not-found.tsx`, styled to match the
+    existing `app/invite/[slug]/not-found.tsx`). Confirmed via `next
+    build` output: every route is now `ƒ` (dynamic); none are `○`
+    (static) any longer.
+
+**Verification (this update):**
+
+```text
+TypeScript:      PASS
+Lint:             PASS
+Format check:     PASS
+Unit tests:       PASS (773/773 — 763 pre-existing + 10 new in the new
+                  lib/security/headers.test.ts, covering every CSP
+                  directive, the camera-allowed/microphone-denied
+                  Permissions-Policy split, HTTPS-only HSTS, nonce
+                  uniqueness, and that no token/guestId/eventId/userId
+                  ever appears in these headers)
+Prisma validate:  PASS (no schema change)
+Production build: PASS (next build — every route now dynamically
+                  rendered (ƒ); confirmed via build output, not assumed)
+E2E:              PASS (68/68 across all 15 spec files — templates,
+                  homepage, auth, rsvp, check-in (including the QR
+                  camera-permission/no-camera-fallback path and mobile
+                  viewport), gallery, wishes, gifts-dashboard, analytics,
+                  editor, events, guest-invitation, guests, invitation —
+                  run against a real running dev server with the new CSP
+                  headers live and verified present via curl beforehand.
+                  One transient batch of 6 e2e/guests.spec.ts failures
+                  during verification was diagnosed as a pre-existing,
+                  already-documented artifact (see lib/auth/rate-limit.ts's
+                  own comment): reusing one long-lived dev server process
+                  across three sequential full-suite Playwright
+                  invocations exhausted the single shared, IP-collapsed,
+                  in-memory login rate-limit bucket (30 logins / 10 min) —
+                  not a CSP regression. Re-ran e2e/guests.spec.ts alone
+                  against a freshly started server and all 7 passed
+                  cleanly, confirming the diagnosis.)
+CI workflow YAML: Syntax-validated locally (js-yaml parser) — actual
+                  GitHub Actions execution requires the external secrets
+                  below and could not be verified from this environment.
+```
+
+**Remaining Phase 20 Work (explicitly not implemented this batch):**
+
+-   Event mutation rate limiting (`lib/events/actions.ts` — create,
+    update, publish, unpublish, delete all currently unlimited)
+-   Gift mutation rate limiting (`lib/gifts/actions.ts` — create, update,
+    delete all currently unlimited)
+-   Rate-limiter eviction (`lib/rate-limit/index.ts`'s `Map` never removes
+    expired entries — unbounded growth risk for high-cardinality keys)
+-   `AuditLog` writes (the model exists in `prisma/schema.prisma` but is
+    never written to anywhere — no durable trail for destructive
+    mutations like event/gift-method deletion)
+-   Optional structured logging (the existing `console.error("[domain]
+    ...")` convention across every `lib/**/errors.ts` file is consistent
+    but unstructured, uncorrelated, and only as durable as Vercel's
+    default function log retention)
+-   CI `validate` job's `DATABASE_URL`/`DIRECT_URL` still depend entirely
+    on `secrets.CI_DATABASE_URL`/`secrets.CI_DIRECT_URL` existing and
+    pointing at a real, reachable Postgres — this batch made that
+    dependency fail clearly instead of silently, but did not add a
+    Postgres service container as an alternative (out of scope; would be
+    a new service)
+-   External Vercel Preview environment-variable configuration (separate
+    system from GitHub Actions secrets — unverified from this
+    environment)
+-   The remaining Phase 20 roadmap items not covered by this batch:
+    upload security review, error-monitoring integration, performance
+    optimization, SEO, accessibility, mobile QA, and the "verify
+    Vercel/Supabase production connectivity" checklist
+
 ## Update Rules
 
 1.  Do not claim completion without evidence.

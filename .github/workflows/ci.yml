@@ -18,9 +18,17 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: ${{ secrets.CI_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/digital_invitation_ci' }}
-      DIRECT_URL: ${{ secrets.CI_DIRECT_URL || 'postgresql://postgres:postgres@localhost:5432/digital_invitation_ci' }}
+      # No Postgres service container exists for this job — DATABASE_URL/
+      # DIRECT_URL must point at a real, reachable database. Deliberately no
+      # localhost fallback: a silent fallback here previously meant a missing
+      # secret failed deep inside `npm run test` with a confusing connection
+      # error instead of a clear one (see the "Verify required secrets" step).
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      # Unlike the e2e job below, nothing in `npm run test` makes a real
+      # Supabase Auth call (integration tests create User rows directly via
+      # Prisma) — these three stay inert placeholders on purpose.
       NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
@@ -44,6 +52,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify required CI secrets are configured
+        run: |
+          missing=""
+          [ -z "$DATABASE_URL" ] && missing="$missing CI_DATABASE_URL"
+          [ -z "$DIRECT_URL" ] && missing="$missing CI_DIRECT_URL"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required repository secrets:$missing — integration tests need a real, reachable Postgres database. Configure these in the repository's GitHub Actions secrets."
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -82,9 +100,14 @@ jobs:
       DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
+      # e2e/*.spec.ts fixtures make REAL Supabase Auth Admin API calls
+      # (admin.auth.admin.createUser) and exercise real login through the
+      # app — these must be a real, reachable Supabase project, not
+      # placeholders. A fake example.supabase.co + ci-placeholder key here
+      # would make every spec fail at fixture setup.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_STORAGE_BUCKET: invitation-media
       PAYMENT_PROVIDER: test
       PAYMENT_API_KEY: ci-placeholder
@@ -105,6 +128,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Verify required CI secrets are configured
+        run: |
+          missing=""
+          [ -z "$DATABASE_URL" ] && missing="$missing CI_DATABASE_URL"
+          [ -z "$DIRECT_URL" ] && missing="$missing CI_DIRECT_URL"
+          [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] && missing="$missing CI_SUPABASE_URL"
+          [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && missing="$missing CI_SUPABASE_ANON_KEY"
+          [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && missing="$missing CI_SUPABASE_SERVICE_ROLE_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing required repository secrets:$missing — E2E specs make real Supabase Auth calls and need a real, reachable project. Configure these in the repository's GitHub Actions secrets."
+            exit 1
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

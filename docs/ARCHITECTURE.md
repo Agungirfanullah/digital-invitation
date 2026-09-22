@@ -915,3 +915,40 @@ Provider abstractions
 ```
 
 This keeps development fast while preserving future scalability.
+
+---
+
+# 36. Security Response Headers / CSP
+
+Implemented in `proxy.ts` via `lib/security/headers.ts`, applied to every
+request the proxy matcher covers. See `docs/DECISIONS.md`'s D-053 for the
+full per-directive reasoning; summarized here:
+
+```text
+script-src   'self' 'nonce-{per-request}' 'strict-dynamic'
+style-src    'self' 'unsafe-inline'   (theme inline styles — see D-050/D-051)
+img-src      'self' https: http: data: blob:  (matches url-safety.ts — D-041/D-042)
+connect-src  'self'
+worker-src   'self'   (qr-scanner's Safari fallback worker)
+object-src   'none'
+frame-ancestors 'self'
+```
+
+Nonces require dynamic rendering (Next.js applies them at render time from
+the CSP header; a statically generated page has none). Every route in this
+app is dynamically rendered — confirmed via `next build` output, not
+assumed — either because it already reads cookies/headers/searchParams
+(auth, guest tokens, analytics session), or via an explicit
+`export const dynamic = "force-dynamic"` on the two pages that otherwise
+wouldn't (`app/page.tsx`, `app/not-found.tsx`).
+
+Do NOT:
+
+- Tighten `img-src` to a domain allowlist — owner-pasted external
+  image/gift-QR URLs are a deliberate product feature (D-041/D-042).
+- Tighten `style-src` without first moving theme-variable application off
+  React's `style` prop.
+- Remove `worker-src 'self'` — it silently breaks QR check-in scanning on
+  iOS Safari only, easy to miss testing from Chrome alone.
+- Add a new statically-rendered page without also opting it into dynamic
+  rendering, or its own Next.js hydration script will be blocked by CSP.
