@@ -12,25 +12,45 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 14 --- Event Check-in
+**Current Phase:** Phase 15 --- Analytics Foundation
 
-**Status:** Phase 0-11 and Phase 13 remain complete and passing. Phase 14
-implements `docs/ROADMAP.md`'s Phase 14 ("Check-in") — OWNER and EDITOR
-users can check in guests at `/dashboard/events/[eventId]/check-in` by
-scanning a guest's existing personalized-invitation QR (decoded
-client-side via `qr-scanner`, D-045) or by manual name search
-(server-backed, mandatory fallback); VIEWER can view the dashboard/search
-read-only but cannot check anyone in. `CheckIn` (new model, already
-present in `prisma/schema.prisma` before this phase — no migration was
-needed) is the authoritative source of check-in state, with
-`GuestInvitationStatus.CHECKED_IN` synchronized transactionally as a
+**Status:** Phase 0-11, Phase 13, and Phase 14 remain complete and
+passing. Phase 15 implements `docs/ROADMAP.md`'s Phase 15 ("Analytics") —
+first-party, internal invitation-view tracking plus an event-scoped
+analytics dashboard at `/dashboard/events/[eventId]/analytics`. Public
+invitation opens (`/invite/[slug]`) are tracked into the already-existing
+`InvitationView` model (present in the schema since the first migration —
+no migration was needed or created) via a first-party, opaque, HttpOnly
+anonymous session cookie assigned by `proxy.ts` — never a guest id, never
+an invitation token, never a raw IP (D-048). The dashboard aggregates
+total views, unique sessions, personalized opens, RSVP breakdown (reusing
+`lib/rsvp/service.ts`'s existing `calculateResponseRate()`), wishes,
+active gift methods (never a fabricated transaction/revenue figure,
+D-037), and authoritative `CheckIn`-derived check-in progress (D-049).
+Tracking a view never throws and can never block the invitation from
+rendering, even on a database failure. OWNER/EDITOR/VIEWER can all read
+the dashboard (read-only, same authorization model as every other
+dashboard); a stranger/unauthenticated caller is rejected exactly like
+every other event-scoped route. See D-048/D-049 for the full rationale.
+This phase does not implement WhatsApp/Email real sending, Gift Registry/
+Payment/Subscription, or any third-party analytics provider — all remain
+explicitly out of scope and deferred (see "Known Limitations" below).
+
+**Status (Phase 14, unchanged by this phase):** implements
+`docs/ROADMAP.md`'s Phase 14 ("Check-in") — OWNER and EDITOR users can
+check in guests at `/dashboard/events/[eventId]/check-in` by scanning a
+guest's existing personalized-invitation QR (decoded client-side via
+`qr-scanner`, D-045) or by manual name search (server-backed, mandatory
+fallback); VIEWER can view the dashboard/search read-only but cannot
+check anyone in. `CheckIn` is the authoritative source of check-in state,
+with `GuestInvitationStatus.CHECKED_IN` synchronized transactionally as a
 denormalized projection and duplicate prevention driven entirely by the
 database's own `[eventId, guestId]` unique constraint rather than a
 check-then-act read (D-046). RSVP status never gates check-in, and
 "reception mode" is a fast, stay-on-page repeated-scan loop, not a
 separate concept (D-047). See D-045/D-046/D-047 for the full rationale.
-This phase does not touch Roadmap Phase 15 (Analytics) or WhatsApp
-Business API sending, both of which remain explicitly out of scope.
+Phase 15 (this phase) only *reads* `CheckIn` data for its own dashboard —
+it does not modify Phase 14's architecture in any way.
 
 **Status (Phase 13, unchanged by this phase):** implements
 `docs/ROADMAP.md`'s Phase 13 ("QR Invitation") — OWNER and EDITOR users can
@@ -125,7 +145,16 @@ consistent with this engagement's established "verify before assuming a
 phase needs (re)work" practice. This phase, "Phase 14 — Event Check-in,"
 likewise matches `docs/ROADMAP.md`'s own Phase 14 exactly and was chosen
 as the direct, dependency-satisfied next step after Phase 13 (which built
-the personalized-invitation QR this phase now scans).
+the personalized-invitation QR this phase now scans). This phase, "Phase
+15 — Analytics Foundation," matches `docs/ROADMAP.md`'s own Phase 15
+exactly and was chosen after an explicit inspection task determined it
+was the correct next step: every data source it aggregates (RSVP,
+wishes, gifts, check-in) already existed and was populated by real user
+actions, its own schema (`InvitationView`) required zero migration, and —
+unlike every other currently-reachable roadmap item (real WhatsApp/Email
+sending, Gift Registry, Subscription/Payment) — it needed no external
+provider credential to satisfy its actual, documented acceptance
+criteria (PRD §35, ARCHITECTURE §25).
 
 ## Documentation Baseline
 
@@ -2854,9 +2883,221 @@ E2E (real Supabase DEV database, real authenticated sessions — D-022):
     guidance for this phase.
 -   **No new `AuditLog` usage** — explicitly out of scope per the phase
     brief; not introduced.
--   **No WhatsApp Business API sending, no analytics** — unchanged,
-    explicitly out of scope for this phase (D-029; Roadmap Phase 15 not
-    started).
+-   **No WhatsApp Business API sending, no analytics** — explicitly out
+    of scope for this phase (D-029). **Analytics is no longer accurate**
+    — Roadmap Phase 15 ("Analytics Foundation"), implemented immediately
+    after this phase, now reads exactly this `CheckIn` data for its own
+    dashboard. See "Phase 15 — Analytics Foundation" below.
+
+## Phase 15 --- Analytics Foundation
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database, including full authenticated + real unauthenticated
+browser E2E coverage (D-022). No fake/mocked analytics data, no
+third-party analytics provider. No schema migration was required or
+generated — confirmed by inspection, not assumed: `InvitationView`
+already existed in `prisma/schema.prisma` since the very first migration
+(`npx prisma migrate status` reported "Database schema is up to date!"
+both before and after this phase's code changes).
+
+-   [x] Invitation view tracking — `app/invite/[slug]/page.tsx` calls
+    `lib/analytics/service.ts`'s `trackPublicInvitationView()` on every
+    real page render, reading a first-party anonymous session cookie
+    (`di_analytics_sid`, assigned by `proxy.ts` — D-048) and the
+    `User-Agent`/`Referer` headers. Never throws; a database failure,
+    malformed cookie, or any other error is caught and logged internally
+    without ever affecting invitation rendering, metadata generation, or
+    SEO.
+-   [x] `InvitationView` is the authoritative source — proven directly:
+    no code anywhere infers a view from RSVP, `GuestInvitationStatus`, or
+    any other signal; every dashboard "views" number comes from a real
+    `count()`/`groupBy()` against `InvitationView`.
+-   [x] Anonymous session identity — a `crypto.randomUUID()` value,
+    HttpOnly, `SameSite=Lax`, `Secure` when served over HTTPS, scoped to
+    `path: "/invite"` only (never sent to `/dashboard` or any other
+    route), 90-day expiry. Never a guest id, never an invitation token,
+    never exposed to client-side JavaScript or to the dashboard UI
+    itself (D-048).
+-   [x] Personalized-guest association — a valid, event-scoped `?to=`
+    token resolves the real `guestId` server-side
+    (`resolveGuestIdForAnalyticsTracking()`, reusing the same
+    token-validation + cross-event-check pattern every other domain
+    already uses); a malformed, unknown, or cross-event token always
+    resolves to `guestId: null`, proven by dedicated integration tests —
+    the same IDOR-safe treatment every other domain gives an invalid
+    token.
+-   [x] View deduplication — the same `eventId`+`sessionId` within a
+    30-minute window counts as one tracked view (a plain existence check,
+    not a unique constraint — an accepted, documented approximation, not
+    a `CheckIn`-grade correctness guarantee). Proven directly against the
+    live database, including that a *different* session for the same
+    event is correctly counted as a separate view.
+-   [x] Abuse protection — `lib/analytics/rate-limit.ts`, a new
+    session-id-keyed limiter (20 tracked-view attempts per 5 minutes)
+    reusing the existing generic `lib/rate-limit/` infrastructure,
+    deliberately keyed by session rather than IP (D-048) since many real
+    guests can legitimately share one network around an event.
+-   [x] Analytics dashboard —
+    `app/dashboard/events/[eventId]/analytics/page.tsx` (new Server
+    Component, no client-side interactivity needed since the page is
+    entirely read-only): total views, unique sessions, personalized
+    opens, RSVP breakdown (confirmed/declined/maybe/unanswered/response
+    rate), wishes (total/approved), active gift methods, and
+    authoritative check-in progress. Summary cards + simple progress
+    bars only — no charting dependency was added, per the phase brief.
+-   [x] Authorization — OWNER/EDITOR/VIEWER can all read
+    (`getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER)`, the
+    same read boundary as the RSVP/wishes/check-in dashboards); a
+    stranger/nonexistent event gets the same IDOR-safe `notFound()` every
+    other dashboard route already produces; an unauthenticated visitor is
+    redirected to `/login` by the existing, unmodified
+    `isProtectedPath()`/proxy.ts logic (`/dashboard` was already a
+    protected prefix — no change needed there).
+-   [x] Metric correctness — RSVP metrics reuse
+    `lib/rsvp/service.ts`'s own `calculateResponseRate()` directly rather
+    than re-deriving it; wishes reuse the existing "non-DELETED" `ALL`
+    convention (D-038); check-in uses `CheckIn` counts, never
+    `GuestInvitationStatus`; gifts report only `activeMethods` — no
+    fabricated transaction/revenue figure exists anywhere, since Phase
+    9/16 never implemented real gift transactions (D-037, D-049).
+    `calculateCheckInProgress()` clamps at 100% to correctly handle a
+    walk-in guest who checks in without ever RSVPing `ATTENDING` (D-047's
+    "RSVP never gates check-in" made real by this exact scenario).
+-   [x] Empty/zero-safe states — a brand-new event's dashboard shows
+    "Belum ada tayangan.", "Belum ada respons RSVP.", "Belum ada
+    ucapan.", "Belum ada tamu yang check-in." and never `NaN`/`Infinity`
+    — verified directly by both a unit test (`calculateCheckInProgress`
+    zero-denominator cases) and an E2E assertion that neither string
+    literally appears on the rendered page.
+
+### Dependency added
+
+None. This phase introduces zero new npm packages — deliberately, per
+the phase brief's explicit "a chart library is NOT required for Phase
+15" and "do not over-engineer" instructions. All new code uses
+`@prisma/client`, `zod`, `next/headers`, and `crypto.randomUUID()`
+(Node/Edge built-in), all already present in this project.
+
+### Security review findings
+
+-   **Authorization/event scoping** — every dashboard read re-derives
+    the caller's role from `getAuthorizedEvent()`; no query anywhere
+    trusts a client-supplied `eventId` as sufficient authorization on its
+    own. Proven by dedicated OWNER/EDITOR/VIEWER/stranger/cross-event
+    tests (integration and E2E).
+-   **Guest identity** — resolved strictly server-side from a validated,
+    event-scoped token; a malformed/unknown/cross-event token always
+    yields `guestId: null`, never a client-supplied value, never an
+    error that could distinguish "wrong event" from "invalid token."
+-   **Privacy** — no raw IP address, no raw `User-Agent` string, no
+    invitation token, and no email/phone is stored anywhere in
+    `InvitationView`. Grepped: no file under `lib/analytics/` references
+    `.token`, `x-forwarded-for`, or `x-real-ip` at all — this domain
+    never touches IP, unlike `lib/rsvp/rate-limit.ts`'s IP-keyed limiter,
+    a deliberate difference (D-048).
+-   **Database** — every query is a parameterized Prisma call; no raw
+    SQL was introduced anywhere in this domain.
+-   **Client/server boundary** — `lib/analytics/service.ts`,
+    `lib/analytics/errors.ts`, and `lib/analytics/rate-limit.ts` all
+    import `"server-only"`; the dashboard page and its one presentational
+    component (`components/analytics/progress-bar.tsx`) never import
+    Prisma or a Supabase service-role client; confirmed by a clean
+    production build.
+-   **Errors** — `mapAnalyticsErrorMessage()` never returns a raw Prisma
+    error or stack trace; `trackPublicInvitationView()` never surfaces
+    any failure to the guest at all (see "Resilience" below).
+-   **Abuse** — public tracking is rate-limited (session-keyed, see
+    above); the same documented in-memory/single-process limitation as
+    every other limiter in this codebase applies (Phase 20 concern, not
+    new to this phase).
+-   **Input validation** — `lib/analytics/validation.ts`'s Zod schema
+    bounds every field (`eventId`/`guestId` ≤ 64 chars, `referrer` ≤ 200
+    chars, `sessionId` must match the UUID shape this app always
+    generates, `deviceType` restricted to a 4-value enum) — a forged or
+    oversized cookie/header value is rejected before it ever reaches a
+    query.
+-   **Rendering** — no `dangerouslySetInnerHTML` anywhere in this
+    domain; all values are plain React children.
+-   **Resilience** — `trackPublicInvitationView()` is wrapped in its own
+    try/catch and never throws; proven directly by an integration test
+    that tracks against a nonexistent `eventId` (a real foreign-key
+    violation) and asserts the call still resolves without throwing.
+
+### Tests Added (Phase 15)
+
+Pure unit tests (no database):
+
+-   `lib/analytics/session.test.ts` (11 tests, new) —
+    `isPublicInvitationPath()`, `classifyDeviceType()` (mobile/tablet/
+    desktop/unknown classification from real user-agent strings),
+    `normalizeReferrer()` (reduces a URL to its origin, rejects
+    unparseable input), and the cookie option shape
+    (HttpOnly/Lax/Secure/path).
+-   `lib/analytics/validation.test.ts` (7 tests, new) — accepts valid
+    input, rejects a malformed sessionId, an empty/oversized eventId, an
+    oversized referrer, and an unknown deviceType value.
+-   `lib/analytics/service.test.ts` (5 tests, new) —
+    `calculateCheckInProgress()`: zero-confirmed-guests safety, normal
+    rounding, exact 100%, and the walk-in-exceeds-confirmed clamp.
+-   `lib/analytics/errors.test.ts` (2 tests, new) — error-to-Indonesian-
+    message mapping and the generic-fallback/logging behavior.
+-   `lib/analytics/rate-limit.test.ts` (2 tests, new) — allows up to the
+    limit and blocks beyond it; tracks distinct sessions independently.
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/analytics/service.integration.test.ts` (12 tests, new) — an
+    anonymous view creates a row with the correct fields; a valid
+    personalized token resolves the correct `guestId`; a cross-event
+    token never leaks a guest id; a malformed/unknown token leaves
+    `guestId` null; a missing session id skips tracking without
+    throwing; a nonexistent `eventId` (real FK violation) is swallowed
+    without throwing; the dedup window correctly collapses repeated
+    views from the same session and correctly treats a different session
+    as a separate view; dashboard read access is proven for
+    OWNER/EDITOR/VIEWER and rejected for a stranger; cross-event
+    isolation is proven for the dashboard; a brand-new event returns
+    safe zero values; and a full aggregation test seeds real RSVP/Wish/
+    GiftMethod/CheckIn data (including a walk-in check-in exceeding
+    `confirmed`) and asserts every field of the returned DTO.
+
+E2E (real Supabase DEV database, real authenticated sessions — D-022):
+
+-   `e2e/analytics.spec.ts` (5 tests, new) — a **real, unauthenticated
+    browser navigation** to a published public invitation (exercising
+    `proxy.ts`'s cookie assignment and the page's tracking call for
+    real, not a seeded row) is later visible on the owner's dashboard as
+    exactly one total view and one unique visitor; a VIEWER-role member
+    can read the dashboard; a stranger is rejected; an unauthenticated
+    direct dashboard URL redirects to `/login`; and a brand-new event
+    shows the correct empty-state copy with no `NaN`/`Infinity` anywhere
+    on the page.
+
+### Known Limitations
+
+-   **No third-party analytics provider** — deliberately out of scope
+    per the phase brief; `ANALYTICS_PROVIDER`/`ANALYTICS_API_KEY` remain
+    unset in `.env.example`. Every metric this phase's actual PRD §35/
+    ARCHITECTURE §25 scope requires is first-party and already
+    implemented without one.
+-   **No date-range filtering/historical trend charts** — not required
+    by PRD §35 for this phase; the dashboard shows current-state
+    aggregates only, matching the phase brief's explicit "if date
+    filtering is not required, do not build an advanced date-range
+    analytics system in this phase."
+-   **The view-tracking rate limiter is in-memory/single-process** —
+    same pre-existing, already-documented limitation as every other
+    limiter in this codebase (Phase 20 production-hardening concern, not
+    new to or worsened by this phase).
+-   **View deduplication is approximate, not a correctness guarantee** —
+    a plain recency check, not a unique constraint; two requests racing
+    within milliseconds could in rare cases both insert a row. This is
+    an accepted characteristic of an analytics counter (D-048), not the
+    same class of guarantee `CheckIn`'s unique constraint provides for
+    check-in state.
+-   **No WhatsApp/Email real sending, no Gift Registry/Payment/
+    Subscription** — unchanged, explicitly out of scope for this phase
+    (D-029, D-037).
 
 ## Known Blockers
 
@@ -2923,49 +3164,60 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (638/638 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (677/677 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
                              lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
-                             lib/gifts/*, lib/wishes/*, lib/storage/*, lib/checkin/* (new,
-                             this phase: 20 pure unit tests + 22 live-DB integration
-                             tests, including a genuinely concurrent Promise.all(...)
-                             duplicate-check-in test); 215 of the 638 are live-DB
-                             integration tests — 15 events, 22 invitations, 43 editor, 41
-                             guests, 36 rsvp, 18 gifts, 18 wishes, 22 check-in (new) — 0
-                             leftover DB rows and 0 leftover Storage objects verified
-                             after each run)
+                             lib/gifts/*, lib/wishes/*, lib/storage/*, lib/checkin/*,
+                             lib/analytics/* (new, this phase: 25 pure unit tests + 2
+                             rate-limit unit tests + 12 live-DB integration tests); 227
+                             of the 677 are live-DB integration tests — 15 events, 22
+                             invitations, 43 editor, 41 guests, 36 rsvp, 18 gifts, 18
+                             wishes, 22 check-in, 12 analytics (new) — 0 leftover DB rows
+                             and 0 leftover Storage objects verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware; all
                              existing dynamic routes unchanged and correctly dynamic, plus
-                             the new /dashboard/events/[eventId]/check-in route correctly
+                             the new /dashboard/events/[eventId]/analytics route correctly
                              registered as dynamic; no server/client boundary issue from
-                             the new qr-scanner/lib/checkin/* import chain — every
-                             server-only module in lib/checkin/ imports "server-only" and
-                             the production build stayed clean)
-E2E:                        PASS (62/62 — homepage smoke test, auth foundation suite,
+                             the new lib/analytics/* import chain — every server-only
+                             module in lib/analytics/ imports "server-only" and the
+                             production build stayed clean)
+E2E:                        PASS (67/67 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
                              suite, guest management suite, RSVP suite, guest invitation
                              delivery suite, RSVP dashboard suite, gift method dashboard
-                             suite, wishes suite, gallery suite, and check-in suite (new,
-                             5 tests); all database-backed suites exercise the real
-                             Supabase DEV database directly, no mocks. On a full
-                             5-worker parallel run, 8 tests across
-                             e2e/gifts-dashboard.spec.ts, e2e/guests.spec.ts,
-                             e2e/rsvp-dashboard.spec.ts, and e2e/wishes.spec.ts
-                             intermittently failed with the generic "stuck on /login"
-                             symptom and 54 passed directly; re-running exactly those 8
-                             with reduced parallelism (`--workers=1`) passed all 17 tests
-                             in their files cleanly — this is the pre-existing,
-                             already-documented D-030 characteristic (login flakiness
-                             under heavy parallel load), not a Phase 14 regression: none
-                             of the 8 failures were in e2e/check-in.spec.ts, and none of
-                             gifts-dashboard/rsvp-dashboard/wishes's code was touched this
-                             phase)
+                             suite, wishes suite, gallery suite, check-in suite, and
+                             analytics suite (new, 5 tests, including a real
+                             unauthenticated browser navigation whose tracked view is
+                             verified on the dashboard afterward); all database-backed
+                             suites exercise the real Supabase DEV database directly, no
+                             mocks. On a full 5-worker parallel run, 16 tests across
+                             e2e/check-in.spec.ts, e2e/gallery.spec.ts,
+                             e2e/gifts-dashboard.spec.ts, e2e/guest-invitation.spec.ts,
+                             e2e/guests.spec.ts, e2e/rsvp-dashboard.spec.ts, and
+                             e2e/wishes.spec.ts intermittently failed with the generic
+                             "stuck on /login" symptom (51 passed directly) — a higher
+                             count than Phase 14's own full-parallel run (8/62), consistent
+                             with this phase adding 4 more login-dependent tests
+                             (e2e/analytics.spec.ts) to the same shared dev-server/
+                             Supabase-Auth bottleneck under 5-way concurrency, not a new
+                             failure mode. Re-running the same 7 files at reduced
+                             parallelism (`--workers=2`) dropped this to 3 failures (all in
+                             e2e/wishes.spec.ts, 37 passed); running e2e/wishes.spec.ts
+                             fully isolated (`--workers=1`, no other file running
+                             concurrently) passed all 5/5 cleanly. This reproduces the
+                             pre-existing, already-documented D-030 characteristic (login
+                             flakiness scales with parallel load against the dev server/
+                             Supabase Auth), now more pronounced only because the total
+                             login-heavy test count grew — not a Phase 15 code regression:
+                             none of the 16 full-parallel failures were in
+                             e2e/analytics.spec.ts itself, which passed 5/5 both alone and
+                             inside the mixed reduced-parallelism run)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total,
                              unchanged by this phase; confirmed by inspection that
-                             `CheckIn`/`CheckInMethod` already existed in
-                             prisma/schema.prisma before this phase started, so no
-                             migration was generated or needed)
+                             `InvitationView` already existed in prisma/schema.prisma
+                             since the first migration, so no migration was generated or
+                             needed)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
@@ -2974,14 +3226,18 @@ Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant 
                              gift-method CRUD/cross-event/public-projection authorization,
                              wish submission/moderation/cross-event/public-projection
                              authorization, gallery upload/reorder/delete/cross-event
-                             authorization, AND check-in authorization/duplicate-
-                             prevention/transactional-sync/concurrency proofs (new); Storage
-                             via the real, connected Supabase project's
-                             `invitation-assets` bucket; Auth via a real authenticated
-                             login in e2e/editor.spec.ts, e2e/guests.spec.ts,
-                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
-                             e2e/gifts-dashboard.spec.ts, e2e/wishes.spec.ts,
-                             e2e/gallery.spec.ts, and e2e/check-in.spec.ts (new))
+                             authorization, check-in authorization/duplicate-prevention/
+                             transactional-sync/concurrency proofs, AND analytics
+                             tracking/guest-resolution/cross-event-isolation/dashboard-
+                             authorization/aggregation proofs (new); Storage via the real,
+                             connected Supabase project's `invitation-assets` bucket; Auth
+                             via a real authenticated login in e2e/editor.spec.ts,
+                             e2e/guests.spec.ts, e2e/guest-invitation.spec.ts,
+                             e2e/rsvp-dashboard.spec.ts, e2e/gifts-dashboard.spec.ts,
+                             e2e/wishes.spec.ts, e2e/gallery.spec.ts,
+                             e2e/check-in.spec.ts, and e2e/analytics.spec.ts (new, plus a
+                             real unauthenticated public-invitation navigation exercising
+                             proxy.ts's cookie assignment end-to-end))
 ```
 
 ## Update Rules

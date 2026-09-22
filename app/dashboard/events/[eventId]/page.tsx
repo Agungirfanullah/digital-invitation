@@ -59,6 +59,9 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
             <Link href={`/dashboard/events/${event.id}/check-in`}>Check-in</Link>
           </Button>
           <Button asChild variant="outline">
+            <Link href={`/dashboard/events/${event.id}/analytics`}>Analitik</Link>
+          </Button>
+          <Button asChild variant="outline">
             <Link href={`/dashboard/events/${event.id}/edit`}>Edit Acara</Link>
           </Button>
         </div>
@@ -108,13 +111,6 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <div className="mt-4">
           <PublishToggleButton eventId={event.id} isPublished={event.status === "PUBLISHED"} />
         </div>
-      </div>
-
-      <div>
-        <h2 className="text-sm font-medium">Segera hadir</h2>
-        <ul className="text-muted-foreground mt-2 space-y-1 text-sm">
-          <li>Analitik</li>
-        </ul>
       </div>
 
       <div className="border-t pt-6">

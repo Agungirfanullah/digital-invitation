@@ -1152,3 +1152,123 @@ the reception loop as a small client-side state machine
 (`idle → loading → preview → result → idle`) with no server-side "session"
 concept — each scan/search is an independent, freshly-authorized request,
 consistent with every other Server Action in this codebase.
+
+## D-048 --- Analytics Session Tracking: First-Party Anonymous Cookie, `InvitationView` as Source of Truth, Never Blocks Rendering
+
+**Decision:** Roadmap Phase 15 ("Analytics") tracks invitation views using
+a first-party, opaque, HttpOnly analytics session cookie
+(`di_analytics_sid`, `lib/analytics/session.ts`) assigned by `proxy.ts`
+the first time a visitor hits `/invite/*` — never a guest id, never an
+invitation token, never derived from IP. `InvitationView` (already
+present in the schema before this phase) is the sole source of truth for
+view counts; nothing infers a view from RSVP, `GuestInvitationStatus`,
+page-count client state, or dashboard visits. The same `eventId` +
+`sessionId` pair within a 30-minute window counts as one tracked view
+(`lib/analytics/service.ts`'s `recordInvitationView()`), a plain
+"does a recent row already exist" check rather than a database
+uniqueness constraint — an accepted, approximate dedup, not a
+correctness guarantee like `CheckIn`'s. Tracking a view
+(`trackPublicInvitationView()`) never throws: it validates input, checks
+a session-keyed rate limit (`lib/analytics/rate-limit.ts`, reusing
+`lib/rate-limit/`), performs the dedup check, and writes — catching and
+logging any failure internally — so a database outage or malformed
+cookie can never prevent the invitation itself from rendering. Device
+type is a lightweight, controlled classification
+(`MOBILE`/`TABLET`/`DESKTOP`/`UNKNOWN`) computed from the `User-Agent`
+header and stored instead of it; `Referer` is reduced to just its origin
+before storage. Raw IP, raw user-agent strings, and invitation tokens are
+never stored or logged anywhere in this domain.
+
+**Rationale:** A Server Component (`app/invite/[slug]/page.tsx`) cannot
+set a cookie itself in the Next.js App Router — only a Server
+Action/Route Handler/Middleware response can — so cookie assignment had
+to live in `proxy.ts`, which already runs on every request and already
+manages the Supabase auth cookie the same way (mutate `request.cookies`,
+rebuild `response` from the mutated request, then set the cookie on that
+response — the exact pattern the existing Supabase block uses, reused
+rather than reinvented). Session-based (not IP-based) identification and
+rate limiting were chosen deliberately, unlike `lib/rsvp/rate-limit.ts`'s
+IP-keyed limiter: an invitation link is often opened by many distinct
+guests behind the same shared network (a family's WiFi, a venue's
+network around the event date), and IP-keying would risk conflating
+distinct real visitors or throttling them unfairly. "Unique visitors" is
+therefore always reported as unique anonymous sessions, never a claim
+about unique humans — one person using two browsers/devices counts
+twice, documented directly in `AnalyticsDashboardData`'s own field
+comments. Analytics tracking is deliberately unable to fail loudly: this
+is a secondary, best-effort metric, and CLAUDE.md's product-priority
+ordering (correctness/security/reliability of the *invitation itself*
+outranks analytics) means a tracking failure must degrade silently, not
+visibly.
+
+**Impact:** `proxy.ts` gained one additional, narrowly-scoped block
+(guarded by `isPublicInvitationPath()`, matching
+`lib/supabase/route-protection.ts`'s `isProtectedPath()` pattern) —
+dashboard/API requests never receive or need this cookie
+(`path: "/invite"` scoping enforces this at the browser level, not just
+in application logic). `app/invite/[slug]/page.tsx` gained one additional
+`await` sequence (cookie + header reads, then
+`trackPublicInvitationView()`) that cannot affect metadata generation,
+SEO, personalization, or rendering even on total failure. Covered by
+`lib/analytics/session.test.ts` (pure classification/cookie-option unit
+tests), `lib/analytics/validation.test.ts`,
+`lib/analytics/rate-limit.test.ts`,
+`lib/analytics/service.integration.test.ts` (real Supabase DEV: correct
+guestId resolution/cross-event rejection, dedup window behavior, FK
+failure swallowed without throwing), and `e2e/analytics.spec.ts` (a real,
+unauthenticated browser navigation exercising the full
+proxy-cookie-tracking-dashboard chain end-to-end).
+
+## D-049 --- Analytics Dashboard Metrics Reuse Existing Authoritative Data; Gifts Report Active Methods Only, Never a Fabricated Transaction
+
+**Decision:** `lib/analytics/service.ts`'s `getAnalyticsDashboardData()`
+computes every metric from an existing, already-authoritative source —
+never a separate, parallel calculation. RSVP counts reuse the same
+`prisma.rSVP.groupBy(["attendance"])` aggregation shape
+`lib/rsvp/service.ts` already established and its exported
+`calculateResponseRate()` directly (not a re-implementation). Wishes use
+the same "non-`DELETED`" convention wishes moderation already established
+(D-038) for the "total" count, plus a separate `APPROVED` count.
+Check-in uses `CheckIn` row counts directly, never
+`GuestInvitationStatus`. Gifts report only `activeMethods`
+(`GiftMethod.isActive` count) — Phase 9/16 never implemented real gift
+*transactions*, so no amount/revenue/transaction-count metric is
+computed or displayed, per D-037. A new pure function,
+`calculateCheckInProgress(checkedIn, confirmed)`, defines "check-in
+progress" as `checkedIn / confirmed` (confirmed = RSVP `ATTENDING`
+count), clamped at 100% via `Math.min(checkedIn, confirmed)` — this is
+deliberately a *different* metric from Phase 14's own reception-dashboard
+"remaining" (`totalInvited - checkedIn`); the two answer different
+questions ("how much of my confirmed audience has arrived" vs. "how many
+people are still expected at the door") and are not meant to reconcile.
+No third-party analytics provider (Google Analytics, Mixpanel, PostHog,
+etc.) is used or required — `ANALYTICS_PROVIDER`/`ANALYTICS_API_KEY`
+remain unset in `.env.example`; every metric this phase's PRD §35/
+ARCHITECTURE §25 scope requires is computable from first-party data
+already in this database.
+
+**Rationale:** Reusing `calculateResponseRate()` and the RSVP
+`groupBy` shape avoids two independently-maintained definitions of
+"response rate" ever drifting apart. Defining check-in progress against
+`confirmed` (not `totalInvited`) matches this phase's own explicit
+product framing ("RSVP conversion... Attendance... Check-in progress" —
+PRD §35) as a *conversion* metric, distinct from Phase 14's operational
+"who's left to arrive" framing — clamping at 100% is required because
+D-047 already established that a guest can check in without ever RSVPing
+`ATTENDING` (a legitimate walk-in), so `checkedIn` can genuinely exceed
+`confirmed`. Reporting only `activeMethods` for gifts (rather than
+inventing a placeholder "amount raised") follows CLAUDE.md §1.4/§7.4 and
+AGENT_EXECUTION.md §11 directly: never fabricate a payment/transaction
+figure that doesn't exist in the database.
+
+**Impact:** `lib/analytics/types.ts`'s `AnalyticsDashboardData` is the
+one safe DTO the dashboard renders — never a raw Prisma model. Every
+count is a database-side aggregate (`count`/`groupBy`), never loaded row-
+by-row into JavaScript for counting, matching this codebase's existing
+performance conventions. Covered by
+`lib/analytics/service.test.ts` (zero-denominator and clamping cases for
+`calculateCheckInProgress`) and
+`lib/analytics/service.integration.test.ts`'s full aggregation test,
+which seeds real RSVP/Wish/GiftMethod/CheckIn rows (including a walk-in
+check-in that exceeds `confirmed`) and asserts every field of the
+returned DTO against hand-computed expected values.

@@ -3,6 +3,11 @@ import { createServerClient } from "@supabase/ssr";
 
 import { getClientEnv } from "@/lib/env";
 import { isProtectedPath } from "@/lib/supabase/route-protection";
+import {
+  ANALYTICS_SESSION_COOKIE_NAME,
+  getAnalyticsSessionCookieOptions,
+  isPublicInvitationPath,
+} from "@/lib/analytics/session";
 
 /**
  * Refreshes the Supabase auth cookie on every request and blocks
@@ -43,6 +48,27 @@ export async function proxy(request: NextRequest) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(redirectUrl);
+  }
+
+  // Assigns a first-party anonymous analytics session id (never a guest
+  // id, never an invitation token, never PII) the first time a visitor
+  // hits a public invitation — see docs/DECISIONS.md's Phase 15 entry.
+  // Mutating `request.cookies` before rebuilding `response` from it is
+  // what makes the newly-set cookie visible to the Server Component
+  // render for *this same* request, not just the browser's next one —
+  // the same pattern the Supabase block above already relies on.
+  if (
+    isPublicInvitationPath(request.nextUrl.pathname) &&
+    !request.cookies.get(ANALYTICS_SESSION_COOKIE_NAME)
+  ) {
+    const sessionId = crypto.randomUUID();
+    request.cookies.set(ANALYTICS_SESSION_COOKIE_NAME, sessionId);
+    response = NextResponse.next({ request });
+    response.cookies.set(
+      ANALYTICS_SESSION_COOKIE_NAME,
+      sessionId,
+      getAnalyticsSessionCookieOptions(request.nextUrl.protocol === "https:"),
+    );
   }
 
   return response;
