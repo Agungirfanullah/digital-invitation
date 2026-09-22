@@ -1,6 +1,11 @@
 import type { ComponentType } from "react";
 
 import { MinimalElegantTemplate } from "@/components/invitation/templates/minimal-elegant-template";
+import { ModernEditorialTemplate } from "@/components/invitation/templates/modern-editorial-template";
+import { FloralRomanceTemplate } from "@/components/invitation/templates/floral-romance-template";
+import { DarkLuxuryTemplate } from "@/components/invitation/templates/dark-luxury-template";
+import { TraditionalNusantaraTemplate } from "@/components/invitation/templates/traditional-nusantara-template";
+import { SoftRomanticTemplate } from "@/components/invitation/templates/soft-romantic-template";
 import type { PublicInvitation } from "@/lib/invitations/types";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 
@@ -26,17 +31,21 @@ export interface InvitationTemplateProps {
 }
 
 /**
- * Six templates are seeded as `Template` rows (see prisma/seed.ts, matching
- * docs/ROADMAP.md's Phase 3 template names), but only one has a real
- * implementation so far — building five more visually-distinct templates
- * without the editor/theme UI to configure them would just be five
- * reskins pretending to be finished products. Every seeded slug maps here
- * so an event can reference any of them without erroring; unimplemented
- * slugs safely render the default template rather than crashing or
- * showing a blank page.
+ * All six templates seeded as `Template` rows (see prisma/seed.ts,
+ * matching docs/ROADMAP.md's Phase 3 template names) now have a real,
+ * genuinely distinct implementation — see the Phase 3 design audit for
+ * each template's own design brief. Every seeded slug maps here so an
+ * event can reference any of them without erroring; an unknown/removed
+ * slug still safely falls back to the default template rather than
+ * crashing or showing a blank page.
  */
 const TEMPLATE_REGISTRY: Record<string, ComponentType<InvitationTemplateProps>> = {
   "minimal-elegant": MinimalElegantTemplate,
+  "modern-editorial": ModernEditorialTemplate,
+  "floral-romance": FloralRomanceTemplate,
+  "dark-luxury": DarkLuxuryTemplate,
+  "traditional-nusantara": TraditionalNusantaraTemplate,
+  "soft-romantic": SoftRomanticTemplate,
 };
 
 const DEFAULT_TEMPLATE_KEY = "minimal-elegant";

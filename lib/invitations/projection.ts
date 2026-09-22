@@ -2,6 +2,7 @@ import "server-only";
 import { WishStatus, type Prisma } from "@prisma/client";
 
 import { parseTheme } from "@/lib/invitations/theme";
+import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
 import { toSafeHttpUrl } from "@/lib/invitations/url-safety";
 import type { PublicGuestContext, PublicInvitation } from "@/lib/invitations/types";
 
@@ -80,7 +81,10 @@ export function toPublicInvitation(
     title: event.title,
     description: event.description,
     templateKey: event.template?.slug ?? null,
-    theme: parseTheme(event.theme),
+    // Per-field fallback: an owner-set Theme field always wins; a blank
+    // field falls back to *this event's own template's* default palette,
+    // not the generic global one — see docs/DECISIONS.md.
+    theme: parseTheme(event.theme, getTemplateDefaultTheme(event.template?.slug ?? null)),
     weddingProfile: event.weddingProfile
       ? {
           brideFullName: event.weddingProfile.brideFullName,

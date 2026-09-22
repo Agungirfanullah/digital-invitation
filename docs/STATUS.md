@@ -12,10 +12,31 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 15 --- Analytics Foundation
+**Current Phase:** Roadmap Phase 3 (Template System) completion ---
+Five Additional Invitation Templates
 
-**Status:** Phase 0-11, Phase 13, and Phase 14 remain complete and
-passing. Phase 15 implements `docs/ROADMAP.md`'s Phase 15 ("Analytics") —
+**Status:** Following a Roadmap Reconciliation Audit, the one genuine
+product gap found in an otherwise-complete feature set was closed:
+Roadmap Phase 3 ("Template System") originally shipped with only 1 of
+its 6 seeded templates (`minimal-elegant`) actually implemented (see the
+"Phase 3 — Invitation Foundation" section below). All 5 remaining
+templates — Modern Editorial, Floral Romance, Dark Luxury, Traditional
+Nusantara, Soft Romantic — are now real, genuinely distinct
+implementations (not recolors), verified with real automated tests, real
+Supabase DEV integration tests, real-browser Playwright E2E coverage,
+and real screenshot-based visual review. This update also fixed a
+related, previously-undocumented gap: `RsvpForm`/`WishForm` weren't
+theme-aware (they rendered with the dashboard's default colors
+regardless of the invitation's own theme) — now fixed with zero changes
+to those components themselves (D-051), and each template ships its own
+default color/typography palette, verified against real WCAG AA contrast
+math (D-050/D-051). See "Update — Five Additional Templates (completing
+Roadmap Phase 3)" under the "Phase 3 — Invitation Foundation" section
+below for the full detail. No Prisma schema/migration change. Phases
+0-11, 13, 14, and 15 remain complete and passing, unaffected.
+
+**Status (Phase 15, unchanged by this update):** implements
+`docs/ROADMAP.md`'s Phase 15 ("Analytics") —
 first-party, internal invitation-view tracking plus an event-scoped
 analytics dashboard at `/dashboard/events/[eventId]/analytics`. Public
 invitation opens (`/invite/[slug]`) are tracked into the already-existing
@@ -541,15 +562,12 @@ Postgres database. No fake/mocked authorization or projection logic.
     — the only thing the public route needs to call; resolves the
     template component from the registry and renders it.
 -   [x] Template registry (`lib/invitations/templates/registry.ts`) —
-    slug → component map. All 6 seeded `Template` rows (see
+    slug → component map. **Update:** all 6 seeded `Template` rows (see
     `prisma/seed.ts`, matching `docs/ROADMAP.md`'s Phase 3 template names)
-    resolve without error; only `minimal-elegant` has a real
-    implementation so far — an unrecognized or unimplemented slug safely
-    falls back to it rather than crashing or rendering blank. Building
-    five more visually-distinct templates without the editor/theme UI to
-    configure them (Roadmap Phase 5) would just be reskins pretending to
-    be finished products, so that was deliberately not done here — see
-    "What Phase 3 deliberately does not include" below.
+    now have a real, genuinely distinct implementation — see "Update —
+    Five Additional Templates (completing Roadmap Phase 3)" below. An
+    unrecognized/removed slug still safely falls back to Minimal Elegant
+    rather than crashing or rendering blank.
 -   [x] First real template
     (`components/invitation/templates/minimal-elegant-template.tsx`) —
     genuinely renders whatever data the event actually has. Every section
@@ -637,13 +655,16 @@ as designed in Phase 0.
     management UI), so no section was built for them. Adding either now
     would be exactly the "fake section that says it works when it
     doesn't" the phase brief explicitly prohibits.
--   **Five more visually-distinct templates** — see the template registry
-    bullet above.
+-   **Five more visually-distinct templates** — **update: no longer true,
+    see below.** All 6 templates now have real implementations.
 -   **View/open tracking** (`InvitationView`, "track invitation open" per
-    `docs/PRD.md` §18/Roadmap Phase 8) — deliberately not wired up.
-    Writing to the database on every public GET request (personalized or
-    not) without a UI ever consuming that data yet is unnecessary write
-    load and a potential abuse surface for this phase's scope.
+    `docs/PRD.md` §18/Roadmap Phase 8) — deliberately not wired up at the
+    time this phase was written. **Update: superseded by Phase 15
+    (Analytics)**, which wires `InvitationView` up as the authoritative
+    view-tracking source — via a different mechanism than
+    `GuestInvitation.openedAt` (still unused; see the Roadmap
+    Reconciliation Audit's hidden-gap finding on that dead field, not
+    re-litigated here since it's outside this phase's scope).
 -   **Caching of the public invitation page** — not introduced. The route
     already renders dynamically because it reads `searchParams` (the
     `?to=` token), which itself opts a Next.js route out of static/Full
@@ -735,6 +756,184 @@ deliverability entirely.
 event from the dashboard, open `/invite/<slug>` in an incognito window,
 confirm it renders and that unpublishing it makes the same URL 404
 immediately.
+
+### Update --- Five Additional Templates (completing Roadmap Phase 3)
+
+**Status:** Implemented and verified against the real Supabase DEV
+Postgres database plus real-browser Playwright rendering (including
+screenshot-based visual verification — see below). No fake/placeholder
+templates: all 6 seeded slugs now resolve to a genuinely distinct, real
+component. No Prisma schema change — confirmed by inspection before
+starting and by `npx prisma migrate status` after finishing ("Database
+schema is up to date!", 2 migrations total, unchanged).
+
+-   [x] **Modern Editorial, Floral Romance, Dark Luxury, Traditional
+    Nusantara, Soft Romantic** — five new template components under
+    `components/invitation/templates/`, registered in
+    `lib/invitations/templates/registry.ts`. Each has its own genuinely
+    different composition, spacing rhythm, typography hierarchy,
+    decorative language, image treatment, card/container strategy,
+    divider treatment, and closing tone — not a recolored Minimal
+    Elegant. See D-050 for the full design rationale and
+    docs/STATUS.md's linked design audit for the per-template brief each
+    one implements.
+-   [x] Shared RSVP/Wishes form theme fix — `RsvpForm`/`WishForm`/
+    `CopyValueButton` (via the shared shadcn `Button`/`Input`/`Textarea`)
+    now render with the invitation's own theme colors instead of the
+    dashboard's default palette, with **zero changes to those components
+    themselves**. Achieved by extending `themeToCssVars()`
+    (`components/invitation/theme-vars.ts`) to rescope the shared
+    `--primary`/`--background`/`--border`/etc. CSS custom properties to
+    the invitation's theme *within that subtree only* — see D-051.
+-   [x] Per-template default themes — each new template ships its own
+    default color/typography palette (`lib/invitations/templates/
+    default-themes.ts`), applied only when an event has no explicit
+    `Theme` row or leaves a field blank; an owner-set field always wins,
+    field-by-field. No new DTO field, no new Prisma column — the merge
+    happens by passing the template's own default as `parseTheme()`'s
+    fallback parameter (now accepts one, defaulting to the unchanged
+    global `DEFAULT_THEME`) from `lib/invitations/projection.ts`, which
+    already knows the event's `templateKey` at that exact point. See
+    D-051.
+-   [x] WCAG AA contrast — every template's own default `textColor`/
+    `backgroundColor` pairing is verified programmatically (not just
+    visually) against the real WCAG relative-luminance formula
+    (`lib/invitations/color-contrast.ts`, zero new dependency), proven by
+    `lib/invitations/templates/default-themes.test.ts`. The same
+    utility's `resolveReadableForeground()` also picks a guaranteed-
+    readable foreground for buttons rendered against an arbitrary
+    primary/secondary/accent color, rather than relying on a manually
+    guessed pairing per template.
+-   [x] Real visual verification — beyond automated tests, all 5 new
+    templates were screenshotted at both desktop (1280px) and mobile
+    (390×844) with realistic populated data via a temporary Playwright
+    script (not committed) and visually reviewed: each is clearly,
+    immediately distinguishable from the others and from Minimal Elegant,
+    text is legible in every case (including Dark Luxury's dark surface
+    and Soft Romantic's deliberately low-contrast-by-hue aesthetic), and
+    no template showed horizontal overflow at the mobile baseline.
+-   [x] Cultural sensitivity (Traditional Nusantara) — the template's
+    decorative motif is a generic, abstract, repeating geometric pattern,
+    explicitly not attributed to any specific named ethnic group, region,
+    or textile tradition, per this phase's explicit instruction. A more
+    specific, attributed motif remains an open product decision for the
+    owner, not assumed here — see D-050.
+-   [x] Shared behavior never forked — every new template calls the
+    exact same `RsvpForm`, `WishForm`, `GalleryGrid` (including its
+    lightbox), and `CopyValueButton` components Minimal Elegant already
+    used, unchanged; only surrounding markup/layout differs per template.
+    No template touches `lib/rsvp/actions.ts`, `lib/wishes/actions.ts`,
+    or guest-token resolution logic.
+
+### Files changed/added (this update)
+
+-   New: 5 template components
+    (`components/invitation/templates/{modern-editorial,floral-romance,
+    dark-luxury,traditional-nusantara,soft-romantic}-template.tsx`),
+    `lib/invitations/color-contrast.ts`,
+    `lib/invitations/templates/default-themes.ts`,
+    `components/invitation/templates/test-fixtures.ts` (test-only).
+-   Modified: `lib/invitations/templates/registry.ts` (5 new entries),
+    `lib/invitations/theme.ts` (`parseTheme()` gained an optional
+    `fallback` parameter, backward compatible — every existing call site
+    and test is unaffected), `lib/invitations/projection.ts` (passes the
+    event's own template default into `parseTheme()`),
+    `components/invitation/theme-vars.ts` (`themeToCssVars()` now also
+    rescopes the shared shadcn design tokens).
+-   Test-only edits: `lib/editor/service.integration.test.ts` (two
+    pre-existing tests that hardcoded "modern-editorial is unimplemented"
+    updated to seed their own synthetic unregistered-template row
+    instead, since that assumption is no longer true for any real seeded
+    slug — the underlying behavior being tested, "being in the catalog
+    alone isn't sufficient," is unchanged and still verified).
+
+### Tests Added (this update)
+
+Pure unit tests (no database):
+
+-   `lib/invitations/color-contrast.test.ts` (11 tests) — relative
+    luminance, contrast ratio, and readable-foreground selection,
+    including the unparseable-color fallback path.
+-   `lib/invitations/templates/default-themes.test.ts` (6 tests) — every
+    new template has a genuinely distinct palette, every template's own
+    text/background pairing meets WCAG AA (real automated check, not
+    eyeballed), `getTemplateDefaultTheme()` resolution including the
+    unknown/null fallback.
+-   `lib/invitations/templates/registry.test.ts` (+2 tests) — every
+    seeded slug is now genuinely registered (`isKnownTemplateKey`), and
+    resolves to its own distinct component (not the shared fallback).
+-   `lib/invitations/projection.test.ts` (+3 tests) — an event with no
+    Theme row and `dark-luxury` selected gets Dark Luxury's own default
+    palette; an event with no template selected still gets the global
+    default; an owner-set field always overrides the template default,
+    field-by-field.
+-   Per-template render-smoke tests (5 files, 3 tests each = 15 tests) —
+    `components/invitation/templates/{modern-editorial,floral-romance,
+    dark-luxury,traditional-nusantara,soft-romantic}-template.test.tsx`:
+    renders without crashing for a title-only event and for a fully
+    populated one, and shows the resolved guest name when personalized.
+    First use of `@testing-library/react` render tests in this codebase
+    (the infrastructure — jsdom, `@testing-library/jest-dom`— already
+    existed, just unused until now).
+-   `components/invitation/templates/cross-template.test.tsx` (36 tests,
+    `describe.each` across all 6 registered templates) — a non-wedding
+    event with no `WeddingProfile` renders via the title fallback; a
+    150-char event title, a 120-char guest name, a 500-char venue
+    address, and a 500-char wish message all render without crashing; an
+    anonymous (non-personalized) visitor sees the correct RSVP/Wishes
+    explanatory fallback text, never a submittable form.
+
+Integration tests (real Supabase DEV Postgres, no mocks):
+
+-   `lib/invitations/projection.test.ts` (see above — technically a unit
+    test file, but these 3 cases are the authoritative proof of the
+    per-template theme merge, listed here for visibility).
+-   `lib/editor/service.integration.test.ts` (+3 new, +2 updated) — the
+    owner can select each of the 5 new templates through
+    `selectTemplate()`; `listTemplateOptions()` flags every Phase 3
+    seeded template as implemented; a genuinely unregistered template
+    (synthetic row) is still correctly flagged as not implemented and
+    still rejected by `selectTemplate()`.
+
+E2E (real Supabase DEV database, real authenticated sessions — D-022):
+
+-   `e2e/templates.spec.ts` (6 tests) — the editor's template picker
+    shows all 6 templates as selectable (no more "Segera hadir" disabled
+    state) and a new selection persists across reload; each of the 5 new
+    templates, given a real published event with real schedule/venue/
+    profile data and a real personalized guest token, renders correctly
+    in an actual browser with **zero console errors** and **no
+    horizontal overflow at 390×844** (measured via
+    `document.documentElement.scrollWidth`/`clientWidth`, not just
+    visual inspection).
+
+### Known Limitations (this update)
+
+-   **Visual "genuinely different" judgment is inherently partly
+    subjective** — automated tests prove every template renders
+    correctly and passes WCAG AA contrast; the "does it *look*
+    meaningfully different" bar was verified this session via real
+    screenshots (desktop + mobile, all 5 new templates, described above)
+    and reviewed directly, but no automated visual-regression tooling was
+    introduced (explicitly out of scope for this task) to catch future
+    drift.
+-   **Gallery/RSVP/Wishes visual states were not screenshotted with every
+    possible data combination** — the screenshot pass used one
+    representative fully-populated fixture per template (schedule×2,
+    love story, gift method, one approved wish) rather than every
+    permutation in the design audit's full visual-QA checklist (e.g., a
+    10+ image gallery, an anonymous visitor's fallback copy) — those
+    specific states are instead covered by the automated E2E/unit tests
+    above, not by a screenshot.
+-   **Traditional Nusantara's motif remains generic/abstract** —
+    intentionally, per this phase's explicit cultural-sensitivity
+    instruction; a more specific, attributed pattern is a deferred
+    product decision, not an engineering gap.
+-   **Section ordering remains fixed per template** — no event-level
+    configurable section order/visibility was introduced (would need new
+    schema/DTO fields, explicitly out of this update's reuse-the-current-
+    contract scope); each template hard-codes its own section sequence,
+    same as Minimal Elegant already did.
 
 ## Phase 4 --- Editor Foundation
 
@@ -3164,60 +3363,61 @@ See "Remaining Manual Configuration" under Phase 1 above.
 TypeScript:                 PASS
 Lint:                       PASS
 Format check:               PASS
-Unit tests:                 PASS (677/677 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
+Unit tests:                 PASS (753/753 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
                              lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
                              lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
                              lib/gifts/*, lib/wishes/*, lib/storage/*, lib/checkin/*,
-                             lib/analytics/* (new, this phase: 25 pure unit tests + 2
-                             rate-limit unit tests + 12 live-DB integration tests); 227
-                             of the 677 are live-DB integration tests — 15 events, 22
-                             invitations, 43 editor, 41 guests, 36 rsvp, 18 gifts, 18
-                             wishes, 22 check-in, 12 analytics (new) — 0 leftover DB rows
-                             and 0 leftover Storage objects verified after each run)
+                             lib/analytics/*; +76 new this update — 11
+                             lib/invitations/color-contrast.test.ts, 6
+                             lib/invitations/templates/default-themes.test.ts (incl. a
+                             real WCAG-AA contrast-ratio check per template, not
+                             eyeballed), +2 registry.test.ts, +3 projection.test.ts
+                             (per-template default-theme merge), 16 across 5 new
+                             per-template render-smoke test files (first use of
+                             @testing-library/react in this codebase), 36
+                             cross-template.test.tsx (describe.each across all 6
+                             registered templates — non-wedding events, 150-char
+                             titles, 120-char guest names, 500-char addresses/wishes,
+                             anonymous visitors), +2 lib/editor/service.integration.test.ts;
+                             229 of the 753 are live-DB integration tests — 15 events, 22
+                             invitations, 43+2 editor, 41 guests, 36 rsvp, 18 gifts, 18
+                             wishes, 22 check-in, 12 analytics — 0 leftover DB rows and 0
+                             leftover Storage objects verified after each run)
 Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware; all
-                             existing dynamic routes unchanged and correctly dynamic, plus
-                             the new /dashboard/events/[eventId]/analytics route correctly
-                             registered as dynamic; no server/client boundary issue from
-                             the new lib/analytics/* import chain — every server-only
-                             module in lib/analytics/ imports "server-only" and the
-                             production build stayed clean)
-E2E:                        PASS (67/67 — homepage smoke test, auth foundation suite,
+                             existing dynamic routes unchanged and correctly dynamic; no
+                             server/client boundary issue from the 5 new template
+                             components or the extended theme-vars.ts/projection.ts import
+                             chain; production build stayed clean)
+E2E:                        PASS (73/73 — homepage smoke test, auth foundation suite,
                              event-route protection suite, public invitation suite, editor
                              suite, guest management suite, RSVP suite, guest invitation
                              delivery suite, RSVP dashboard suite, gift method dashboard
-                             suite, wishes suite, gallery suite, check-in suite, and
-                             analytics suite (new, 5 tests, including a real
-                             unauthenticated browser navigation whose tracked view is
-                             verified on the dashboard afterward); all database-backed
-                             suites exercise the real Supabase DEV database directly, no
-                             mocks. On a full 5-worker parallel run, 16 tests across
-                             e2e/check-in.spec.ts, e2e/gallery.spec.ts,
-                             e2e/gifts-dashboard.spec.ts, e2e/guest-invitation.spec.ts,
-                             e2e/guests.spec.ts, e2e/rsvp-dashboard.spec.ts, and
-                             e2e/wishes.spec.ts intermittently failed with the generic
-                             "stuck on /login" symptom (51 passed directly) — a higher
-                             count than Phase 14's own full-parallel run (8/62), consistent
-                             with this phase adding 4 more login-dependent tests
-                             (e2e/analytics.spec.ts) to the same shared dev-server/
-                             Supabase-Auth bottleneck under 5-way concurrency, not a new
-                             failure mode. Re-running the same 7 files at reduced
-                             parallelism (`--workers=2`) dropped this to 3 failures (all in
-                             e2e/wishes.spec.ts, 37 passed); running e2e/wishes.spec.ts
-                             fully isolated (`--workers=1`, no other file running
-                             concurrently) passed all 5/5 cleanly. This reproduces the
-                             pre-existing, already-documented D-030 characteristic (login
-                             flakiness scales with parallel load against the dev server/
-                             Supabase Auth), now more pronounced only because the total
-                             login-heavy test count grew — not a Phase 15 code regression:
-                             none of the 16 full-parallel failures were in
-                             e2e/analytics.spec.ts itself, which passed 5/5 both alone and
-                             inside the mixed reduced-parallelism run)
+                             suite, wishes suite, gallery suite, check-in suite, analytics
+                             suite, and template system suite (new, 6 tests — editor
+                             template picker offers and persists all 6 templates; each of
+                             the 5 new templates renders real event data including a
+                             personalized guest, with zero console errors and no
+                             horizontal overflow at 390×844, verified via
+                             document.documentElement.scrollWidth/clientWidth, not just
+                             visual inspection); all database-backed suites exercise the
+                             real Supabase DEV database directly, no mocks. Re-ran
+                             e2e/templates.spec.ts, e2e/editor.spec.ts,
+                             e2e/invitation.spec.ts, e2e/rsvp.spec.ts, e2e/wishes.spec.ts,
+                             and e2e/guest-invitation.spec.ts together (25 tests,
+                             2 workers) specifically to check for regressions from the
+                             shared RsvpForm/WishForm theme-token change — all 25 passed
+                             cleanly, confirming the shared behavior these forms depend on
+                             (seat-quota validation, wish moderation, guest-token
+                             handling) is genuinely unaffected, only their visual styling
+                             changed. The pre-existing, already-documented D-030 "stuck on
+                             /login" full-parallel-load characteristic (see Phase 15's own
+                             entry above) was not re-triggered by this update's own
+                             targeted runs)
 Prisma validate:            PASS
 Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total,
-                             unchanged by this phase; confirmed by inspection that
-                             `InvitationView` already existed in prisma/schema.prisma
-                             since the first migration, so no migration was generated or
-                             needed)
+                             unchanged by this update; no schema/migration change was
+                             needed or made — this was rendering-layer and
+                             theme-resolution work only)
 Vercel deployment:          NOT YET ATTEMPTED
 Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
                              invitation-token, editor/IDOR, guest/IDOR, RSVP token/
@@ -3227,15 +3427,17 @@ Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant 
                              wish submission/moderation/cross-event/public-projection
                              authorization, gallery upload/reorder/delete/cross-event
                              authorization, check-in authorization/duplicate-prevention/
-                             transactional-sync/concurrency proofs, AND analytics
+                             transactional-sync/concurrency proofs, analytics
                              tracking/guest-resolution/cross-event-isolation/dashboard-
-                             authorization/aggregation proofs (new); Storage via the real,
-                             connected Supabase project's `invitation-assets` bucket; Auth
-                             via a real authenticated login in e2e/editor.spec.ts,
-                             e2e/guests.spec.ts, e2e/guest-invitation.spec.ts,
-                             e2e/rsvp-dashboard.spec.ts, e2e/gifts-dashboard.spec.ts,
-                             e2e/wishes.spec.ts, e2e/gallery.spec.ts,
-                             e2e/check-in.spec.ts, and e2e/analytics.spec.ts (new, plus a
+                             authorization/aggregation proofs, AND template
+                             selection/default-theme-resolution proofs (new); Storage via
+                             the real, connected Supabase project's `invitation-assets`
+                             bucket; Auth via a real authenticated login in
+                             e2e/editor.spec.ts, e2e/guests.spec.ts,
+                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
+                             e2e/gifts-dashboard.spec.ts, e2e/wishes.spec.ts,
+                             e2e/gallery.spec.ts, e2e/check-in.spec.ts,
+                             e2e/analytics.spec.ts, and e2e/templates.spec.ts (new, plus a
                              real unauthenticated public-invitation navigation exercising
                              proxy.ts's cookie assignment end-to-end))
 ```

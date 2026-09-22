@@ -274,14 +274,44 @@ describe("selectTemplate (integration)", () => {
     expect(loaded.templateKey).toBe("minimal-elegant");
   });
 
+  it("lets the owner select each of the five new Phase 3 templates", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    const newSlugs = [
+      "modern-editorial",
+      "floral-romance",
+      "dark-luxury",
+      "traditional-nusantara",
+      "soft-romantic",
+    ];
+
+    for (const slug of newSlugs) {
+      const result = await selectTemplate(event.id, owner.id, slug);
+      expect(result.templateKey).toBe(slug);
+    }
+  });
+
   it("rejects a seeded-but-unimplemented template slug", async () => {
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id);
 
-    // Seeded in prisma/seed.ts, but not in the template registry.
-    await expect(selectTemplate(event.id, owner.id, "modern-editorial")).rejects.toThrow(
-      TemplateNotAvailableError,
-    );
+    // All six Phase 3 templates are registered now, so this test seeds
+    // its own synthetic "in the catalog but not in the registry" row
+    // rather than relying on any specific real slug staying unimplemented
+    // forever — proving being in the DB alone is never sufficient, the
+    // registry check is the real gate.
+    const slug = `test-unimplemented-template-${randomUUID()}`;
+    await prisma.template.create({
+      data: { name: "Test Unimplemented Template", slug, category: "wedding", isActive: true },
+    });
+
+    try {
+      await expect(selectTemplate(event.id, owner.id, slug)).rejects.toThrow(
+        TemplateNotAvailableError,
+      );
+    } finally {
+      await prisma.template.delete({ where: { slug } });
+    }
   });
 
   it("rejects a nonexistent template slug", async () => {
@@ -314,13 +344,34 @@ describe("selectTemplate (integration)", () => {
 });
 
 describe("listTemplateOptions (integration)", () => {
-  it("flags minimal-elegant as implemented and others as not", async () => {
+  it("flags every Phase 3 seeded template as implemented", async () => {
     const options = await listTemplateOptions();
-    const minimalElegant = options.find((o) => o.slug === "minimal-elegant");
-    const modernEditorial = options.find((o) => o.slug === "modern-editorial");
+    const seededSlugs = [
+      "minimal-elegant",
+      "modern-editorial",
+      "floral-romance",
+      "dark-luxury",
+      "traditional-nusantara",
+      "soft-romantic",
+    ];
 
-    expect(minimalElegant?.implemented).toBe(true);
-    expect(modernEditorial?.implemented).toBe(false);
+    for (const slug of seededSlugs) {
+      expect(options.find((o) => o.slug === slug)?.implemented, slug).toBe(true);
+    }
+  });
+
+  it("still flags a genuinely unregistered template as not implemented", async () => {
+    const slug = `test-unimplemented-template-${randomUUID()}`;
+    await prisma.template.create({
+      data: { name: "Test Unimplemented Template", slug, category: "wedding", isActive: true },
+    });
+
+    try {
+      const options = await listTemplateOptions();
+      expect(options.find((o) => o.slug === slug)?.implemented).toBe(false);
+    } finally {
+      await prisma.template.delete({ where: { slug } });
+    }
   });
 });
 

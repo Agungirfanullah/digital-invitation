@@ -1272,3 +1272,153 @@ performance conventions. Covered by
 which seeds real RSVP/Wish/GiftMethod/CheckIn rows (including a walk-in
 check-in that exceeds `confirmed`) and asserts every field of the
 returned DTO against hand-computed expected values.
+
+## D-050 --- Five Additional Invitation Templates: Each Owns Its Own Composition, No Shared "Mega-Template" Configuration
+
+**Decision:** Roadmap Phase 3 ("Template System") is completed by adding
+five genuinely distinct template components — Modern Editorial, Floral
+Romance, Dark Luxury, Traditional Nusantara, Soft Romantic — registered
+in `lib/invitations/templates/registry.ts` alongside the existing
+`minimal-elegant`. Each template is its own self-contained React
+component under `components/invitation/templates/`, hand-authoring its
+own composition, spacing rhythm, typography hierarchy, decorative
+language, image treatment, and section presentation — never a shared,
+prop-configurable "mega-template" that toggles between visual modes.
+Every template calls the exact same shared, behavior-bearing pieces
+(`RsvpForm`, `WishForm`, `GalleryGrid`/its lightbox, `CopyValueButton`,
+`themeToCssVars()`) Minimal Elegant already used — none of these were
+forked or duplicated; only each template's own surrounding markup
+differs. Traditional Nusantara's decorative motif is deliberately a
+generic, abstract, repeating geometric pattern, explicitly not
+attributed to any specific named ethnic group, region, or textile
+tradition — a more specific, attributed motif remains an open decision
+for the product owner, not assumed by this implementation.
+
+**Rationale:** A single configurable template driven by a large prop
+surface (colors, spacing tokens, decorative-element toggles, layout
+mode, etc.) was considered and rejected: it would either converge all
+"templates" toward visually similar output (defeating CLAUDE.md §9.2's
+explicit "each template must look genuinely different" requirement) or
+require an unbounded, ever-growing configuration schema to keep chasing
+genuine differentiation — the "universal TemplateShell with dozens of
+visual props" this phase's brief explicitly rejected. Five independently
+hand-built components, by contrast, can each pursue their own design
+brief without being constrained by what a shared abstraction happens to
+support, at the cost of some repeated structural boilerplate (each
+template's own Hero/Schedule/Gallery/etc. section functions) — an
+accepted, deliberate trade-off given this is a fixed set of 6 hand-designed
+templates, not a user-generated or infinitely-extensible template system.
+Reusing the shared RSVP/Wishes/Gallery/Gift components unchanged was
+non-negotiable regardless of this decision: those components carry real
+product behavior (seat-quota validation, guest-token resolution, wish
+moderation state, gallery lightbox interaction) that must never exist in
+more than one place. The Traditional Nusantara motif was kept generic
+specifically because inventing a claim about which specific tradition a
+decorative pattern belongs to — without the product owner's own
+knowledge or explicit direction — risks genuine cultural
+misrepresentation; "Nusantara-inspired," used only as the roadmap's own
+template name already frames it, is the only claim this implementation
+makes.
+
+**Impact:** `lib/invitations/templates/registry.ts`'s `TEMPLATE_REGISTRY`
+now maps all 6 seeded `Template` slugs (`prisma/seed.ts`) to real
+components; the editor's `listTemplateOptions()`/`selectTemplate()`
+(`lib/editor/service.ts`, unchanged) automatically treat all 6 as
+selectable, since both already derived "implemented" from
+`isKnownTemplateKey()` rather than hardcoding a slug list. Adding a
+future 7th template remains additive: one new component, one new
+registry entry, zero changes to the editor, the public route, or any
+shared section/behavior component. Covered by
+`lib/invitations/templates/registry.test.ts` (every seeded slug resolves
+to its own distinct component), five per-template render-smoke test
+files and `cross-template.test.tsx` (36 tests across all 6 templates:
+non-wedding events, long content, anonymous visitors — see
+`docs/STATUS.md`), `lib/editor/service.integration.test.ts` (real
+selection through the authorized service layer), `e2e/templates.spec.ts`
+(real browser rendering, zero console errors, no mobile overflow at
+390×844), and a real screenshot-based visual review (desktop + mobile,
+all 5 new templates) confirming each is genuinely, immediately
+distinguishable from the others and from Minimal Elegant.
+
+## D-051 --- Invitation Forms Become Theme-Aware by Rescoping Shared Design Tokens; Each Template Gets Its Own Default Palette via a `parseTheme()` Fallback Parameter
+
+**Decision:** Two related, pre-existing gaps were fixed as a prerequisite
+for the new templates (Dark Luxury especially): (1) `RsvpForm`/
+`WishForm`/`CopyValueButton` rendered with the dashboard's default
+shadcn color tokens (`--primary`, `--background`, `--border`, etc. from
+`app/globals.css`) instead of the invitation's own theme, because those
+shared UI components read those global CSS custom properties directly
+and nothing previously overrode them inside the invitation subtree. (2)
+`Theme.backgroundColor`/etc. always fell back to one single global
+`DEFAULT_THEME` when an event had no explicit `Theme` row, regardless of
+which template was selected — meaning selecting Dark Luxury without
+manually configuring all 5 colors would render its dark-surface layout
+against the light, neutral default palette designed for Minimal Elegant.
+
+Fix (1): `components/invitation/theme-vars.ts`'s `themeToCssVars()` now
+also emits the shared `--primary`/`--primary-foreground`/`--background`/
+`--foreground`/`--secondary`/`--accent`/`--muted`/`--border`/`--input`/
+`--ring` custom properties, scoped to the same root element every
+template already applies `themeToCssVars()` to. CSS custom properties
+cascade, so this rescopes those tokens *only within the invitation's own
+subtree* — the dashboard elsewhere is completely unaffected. Zero
+changes were made to `RsvpForm`, `WishForm`, `CopyValueButton`, or any
+`components/ui/*` file. `--destructive`/`--destructive-foreground` were
+deliberately left unscoped — an error state should stay recognizable
+regardless of which template's palette is active.
+
+Fix (2): `lib/invitations/theme.ts`'s `parseTheme()` gained an optional
+second parameter, `fallback: PublicTheme = DEFAULT_THEME` (fully
+backward compatible — every pre-existing call site and test is
+unaffected). `lib/invitations/templates/default-themes.ts` (new) defines
+each template's own default `PublicTheme`; `lib/invitations/
+projection.ts`'s `toPublicInvitation()` — which already resolves the
+event's `templateKey` at the exact point it calls `parseTheme()` — now
+passes `getTemplateDefaultTheme(event.template?.slug ?? null)` as that
+fallback. The merge remains genuinely field-by-field, at the same layer
+it already happened at: an owner-set `Theme` column always wins; only a
+genuinely null/invalid column falls back, now to the *selected
+template's* default rather than unconditionally to the global one. No
+new Prisma column, no new DTO field — `PublicTheme`/`PublicInvitation`
+are structurally unchanged.
+
+**Rationale:** Rescoping CSS custom properties at the existing single
+root element (rather than modifying three separate, already-tested,
+production-behavior-critical form components) is the least invasive
+fix available — CLAUDE.md's engineering-judgment ordering explicitly
+prefers minimizing complexity and preserving existing architecture. A
+per-template default theme was necessary, not optional, once Dark Luxury
+existed: without it, the single global `DEFAULT_THEME` (a light, warm,
+neutral palette) would make Dark Luxury's own layout illegible by
+default. Passing the fallback into the already-existing `parseTheme()`
+call, at the point `projection.ts` already resolves `templateKey`, keeps
+the merge logic in exactly one place rather than requiring every
+template component to re-derive "is this field actually owner-set, or
+just the fallback" from an already-collapsed DTO value — an approach
+that was considered and rejected specifically because a `PublicTheme`
+value has no way to distinguish "owner explicitly chose this exact
+string" from "this is just where it fell back to" once constructed,
+making a component-level guess unreliable at the edges (e.g., an owner
+deliberately choosing a color that happens to equal the global default).
+`resolveReadableForeground()` (`lib/invitations/color-contrast.ts`, real
+WCAG relative-luminance math, zero new dependency) automatically picks a
+legible foreground for text rendered against an arbitrary
+primary/secondary/accent color, rather than relying on each template
+author manually guessing a safe pairing — directly de-risking the
+mandatory WCAG AA contrast verification this phase required for Dark
+Luxury, Traditional Nusantara, and Soft Romantic.
+
+**Impact:** Every template — including the untouched Minimal Elegant —
+now renders its RSVP/Wishes forms and any `CopyValueButton` usage in its
+own theme colors automatically, with no per-template opt-in required.
+`lib/invitations/templates/default-themes.test.ts` proves every
+template's own default `textColor`/`backgroundColor` pairing meets WCAG
+AA (4.5:1) via a real, automated contrast-ratio check, not visual
+inspection alone. `lib/invitations/projection.test.ts` proves the
+field-by-field merge directly: a `dark-luxury` event with no `Theme` row
+gets Dark Luxury's own palette; an event with no template selected still
+gets the untouched global default; an owner-set field always overrides
+the template default. `lib/invitations/color-contrast.test.ts` covers
+the contrast/luminance math itself, including its fallback behavior for
+a color format it can't parse (e.g. a named CSS color or `oklch()` an
+owner might type into the free-text theme editor).

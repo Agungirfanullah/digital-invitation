@@ -63,6 +63,50 @@ describe("toPublicInvitation", () => {
     expect(dto.templateKey).toBeNull();
   });
 
+  it("uses the selected template's own default palette when the event has no explicit Theme row (Phase 3)", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({ template: { slug: "dark-luxury" } as never, theme: null }),
+      null,
+    );
+    expect(dto.theme.backgroundColor).toBe("#121110");
+    expect(dto.theme.textColor).toBe("#ece7de");
+  });
+
+  it("still uses the global default palette when there is no template selected at all", () => {
+    const dto = toPublicInvitation(fakeEvent({ template: null, theme: null }), null);
+    expect(dto.theme.backgroundColor).toBe("#fffaf5");
+  });
+
+  it("an owner-set Theme field always overrides the template's own default, field-by-field", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        template: { slug: "dark-luxury" } as never,
+        theme: {
+          id: "theme-1",
+          eventId: "event-1",
+          primaryColor: "#ff00ff",
+          secondaryColor: null,
+          backgroundColor: null,
+          textColor: null,
+          accentColor: null,
+          headingFont: null,
+          bodyFont: null,
+          scriptFont: null,
+          backgroundImageUrl: null,
+          configuration: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as never,
+      }),
+      null,
+    );
+    // The one explicitly-set field wins...
+    expect(dto.theme.primaryColor).toBe("#ff00ff");
+    // ...while every other (unset) field still falls back to Dark Luxury's
+    // own default, not the global one.
+    expect(dto.theme.backgroundColor).toBe("#121110");
+  });
+
   it("includes the guest context only when provided", () => {
     const withGuest = toPublicInvitation(fakeEvent(), { displayName: "Budi" });
     expect(withGuest.guest).toEqual({ displayName: "Budi" });

@@ -36,4 +36,33 @@ describe("template registry", () => {
       expect(() => resolveTemplateComponent(slug)).not.toThrow();
     }
   });
+
+  it("every seeded template slug is genuinely registered (Phase 3 — no more silent fallback)", () => {
+    const seededSlugs = [
+      "minimal-elegant",
+      "modern-editorial",
+      "floral-romance",
+      "dark-luxury",
+      "traditional-nusantara",
+      "soft-romantic",
+    ];
+
+    for (const slug of seededSlugs) {
+      expect(isKnownTemplateKey(slug)).toBe(true);
+    }
+  });
+
+  it("resolves every seeded template slug to its own distinct component, not the fallback", () => {
+    const seededSlugs = [
+      "minimal-elegant",
+      "modern-editorial",
+      "floral-romance",
+      "dark-luxury",
+      "traditional-nusantara",
+      "soft-romantic",
+    ];
+
+    const resolved = seededSlugs.map((slug) => resolveTemplateComponent(slug));
+    expect(new Set(resolved).size).toBe(seededSlugs.length);
+  });
 });
