@@ -3518,8 +3518,10 @@ deliberately unimplemented — see "Remaining Phase 20 Work" below.
     (`'self' https: http: data: blob:`) to match `lib/invitations/
     url-safety.ts`'s existing scheme-only validation (D-041/D-042) exactly
     — narrower would break real owner-pasted invitation/gift-QR images.
-    `worker-src 'self'` preserves `qr-scanner`'s same-origin Web Worker
-    fallback (iOS Safari, which lacks the native `BarcodeDetector` API).
+    `worker-src 'self'` was intended to preserve `qr-scanner`'s Web Worker
+    fallback but in fact blocked it (the worker is a `blob:` URL) —
+    corrected to `worker-src 'self' blob:` in the P0 remediation pass
+    below (D-053).
     `connect-src 'self'` (no client-side Supabase/`fetch()` usage exists).
     `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
     `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN`,
@@ -3608,6 +3610,84 @@ CI workflow YAML: Syntax-validated locally (js-yaml parser) — actual
     upload security review, error-monitoring integration, performance
     optimization, SEO, accessibility, mobile QA, and the "verify
     Vercel/Supabase production connectivity" checklist
+
+## P0 Security & CI Remediation (post-Phase-20 audit)
+
+**Status:** Implemented and verified locally against Supabase DEV; not
+yet run in CI (repository secrets are still missing — see below). Scoped
+strictly to the three verified P0 findings; every other audit finding
+remains open.
+
+-   [x] **Supabase Data API exposure (CRITICAL) — fixed on DEV.** Verified
+    before fixing: all 30 `public` tables had RLS disabled, 0 policies,
+    and full privileges (`arwdDxtm`) for `anon`/`authenticated`;
+    anonymous Data API requests succeeded. Root cause: Supabase's default
+    privileges for `postgres` in `public` + no migration ever enabling
+    RLS. Migration `20260923150000_lock_down_supabase_data_api` enables
+    RLS (no policies) on every table and revokes all Data API role
+    privileges, including future defaults (D-054). Applied to DEV with
+    `prisma migrate deploy`. After: anonymous GET/POST on every probed
+    table → 401. New `lib/db/rls.integration.test.ts` (7 tests, failed
+    4/7 before the migration, 7/7 after). Prisma (owner, `BYPASSRLS`)
+    unaffected — full suite passes.
+-   [x] **CSP blocked the QR scanner's Blob-URL worker — fixed.**
+    `worker-src 'self'` → `worker-src 'self' blob:` (D-053 corrected;
+    its original rationale was factually wrong). Two new tests pin the
+    exact directive and that `blob:` does not leak into other sources.
+    Real-device QR decoding still requires manual QA (headless E2E has no
+    camera).
+-   [x] **CI workflow fixed (code side).** Validate now uses real
+    Supabase secrets (its gallery integration tests use real Storage),
+    both jobs use the real bucket `invitation-assets` (also corrected in
+    `.env.example` and `lib/env.ts`'s default — `invitation-media` never
+    existed), Validate checks all five secrets up front, and a new
+    read-only `prisma migrate status` step fails clearly if the CI
+    database is missing a migration.
+-   [x] **E2E login rate limit — fixed without loosening production.**
+    Measured: the suite performs ~42 logins; a full run hit the 30/10-min
+    limit (22/73 failed, 12 showing the limiter message). New
+    `E2E_AUTH_LOGIN_RATE_LIMIT` override set only on Playwright's dev
+    server. The E2E login rate-limit override is honored only when
+    `NODE_ENV=development`; every other value ignores it (fail-closed,
+    D-055).
+
+**External/manual actions still required:**
+
+-   GitHub → Settings → Secrets and variables → Actions:
+    `CI_DATABASE_URL` (Supabase transaction pooler, port 6543,
+    `?pgbouncer=true&connection_limit=1`), `CI_DIRECT_URL` (session
+    pooler, port 5432), `CI_SUPABASE_URL`, `CI_SUPABASE_ANON_KEY`,
+    `CI_SUPABASE_SERVICE_ROLE_KEY`. Use pooler hosts (IPv4) — GitHub
+    runners cannot reach the IPv6-only direct host.
+-   If CI targets a Supabase project other than DEV: apply all
+    migrations to it (`prisma migrate deploy`) and create the
+    `invitation-assets` bucket there first.
+-   Production does not exist yet; when it does, verify the D-054
+    lockdown there (migrations apply it automatically) — never assume.
+
+**Verification (this update):**
+
+```text
+Prisma validate:     PASS
+Prisma migrate:      PASS (3 migrations; DEV "Database schema is up to date!")
+TypeScript:          PASS
+Lint:                PASS
+Format check:        PASS (changed files)
+Unit + integration:  PASS (777/777, 80 files — incl. 7 new RLS, 2 new CSP,
+                     5 new rate-limit tests; real Supabase DEV DB + Storage)
+Production build:    PASS (all routes dynamic)
+E2E:                 PASS 73/73 at --workers=2 (CI parallelism), 0
+                     rate-limit hits. At 4 local workers, 2 tests
+                     (gifts-dashboard:89, guests:97) intermittently time
+                     out on client navigation in this project directory;
+                     both pass alone, and the identical code (all runtime
+                     changes applied to a clean export) passed 4/4 at 4
+                     workers elsewhere — a local dev-server load/timing
+                     issue, not caused by these changes. Not fixed here.
+Data API (anon):     401 on User, GuestInvitation, Guest, Event, RSVP,
+                     Template, _prisma_migrations (GET) and RSVP (POST)
+CI:                  NOT RUN — secrets missing
+```
 
 ## Update Rules
 

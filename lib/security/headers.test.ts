@@ -4,6 +4,15 @@ import { buildContentSecurityPolicy, buildNonce, getSecurityHeaders } from "@/li
 
 const NONCE = "test-nonce-value";
 
+function parseDirectives(csp: string): Map<string, string[]> {
+  return new Map(
+    csp.split(";").map((directive) => {
+      const [name, ...sources] = directive.trim().split(/\s+/);
+      return [name, sources];
+    }),
+  );
+}
+
 describe("buildContentSecurityPolicy", () => {
   it("includes every required directive", () => {
     const csp = buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true });
@@ -14,11 +23,35 @@ describe("buildContentSecurityPolicy", () => {
     expect(csp).toContain("img-src 'self' https: http: data: blob:");
     expect(csp).toContain("font-src 'self'");
     expect(csp).toContain("connect-src 'self'");
-    expect(csp).toContain("worker-src 'self'");
+    expect(csp).toContain("worker-src 'self' blob:");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain("form-action 'self'");
     expect(csp).toContain("frame-ancestors 'self'");
+  });
+
+  it("allows exactly same-origin and blob: workers (qr-scanner's Blob-URL worker) and nothing broader", () => {
+    const directives = parseDirectives(
+      buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true }),
+    );
+
+    // qr-scanner 1.4.x: new Worker(URL.createObjectURL(new Blob([...])))
+    expect(directives.get("worker-src")).toEqual(["'self'", "blob:"]);
+    for (const broad of ["*", "data:", "https:", "http:", "'unsafe-eval'", "'unsafe-inline'"]) {
+      expect(directives.get("worker-src")).not.toContain(broad);
+    }
+  });
+
+  it("does not let the blob: worker allowance leak into script, frame, or object sources", () => {
+    const directives = parseDirectives(
+      buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true }),
+    );
+
+    expect(directives.get("default-src")).toEqual(["'self'"]);
+    expect(directives.get("script-src")).not.toContain("blob:");
+    expect(directives.get("object-src")).toEqual(["'none'"]);
+    expect(directives.has("child-src")).toBe(false);
+    expect(directives.has("frame-src")).toBe(false);
   });
 
   it("intentionally retains unsafe-inline for style-src (theme inline styles)", () => {

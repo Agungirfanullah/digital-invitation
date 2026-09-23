@@ -38,10 +38,15 @@ export interface SecurityHeaderOptions {
  * client-side Supabase helper (`lib/supabase/client.ts`) has zero callers
  * anywhere — 'self' is sufficient today.
  *
- * worker-src: qr-scanner falls back to a same-origin bundled Web Worker
- * (dynamic `import()`) on browsers without the native BarcodeDetector API
- * (notably iOS Safari) — removing this would silently break check-in
- * scanning on those browsers.
+ * worker-src: on browsers without the native BarcodeDetector API (iOS
+ * Safari, Firefox, desktop Chrome on Windows/Linux) qr-scanner 1.4.x
+ * dynamically imports its worker module (a same-origin chunk, covered by
+ * script-src) which then runs
+ * `new Worker(URL.createObjectURL(new Blob([...])))` — a `blob:` worker,
+ * which `'self'` does not match. `blob:` is the narrowest source that
+ * permits it (workers can't be nonced/hashed), and a blob: URL can only be
+ * minted by script already trusted by script-src. No other scheme/host is
+ * allowed. See docs/DECISIONS.md D-053.
  *
  * font-src: no next/font, no Google Fonts, no @font-face — 'self' only.
  */
@@ -53,7 +58,7 @@ export function buildContentSecurityPolicy({ nonce, isDev }: SecurityHeaderOptio
     `img-src 'self' https: http: data: blob:`,
     `font-src 'self'`,
     `connect-src 'self'`,
-    `worker-src 'self'`,
+    `worker-src 'self' blob:`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

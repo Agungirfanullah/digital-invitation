@@ -73,6 +73,30 @@ Use Supabase services intentionally:
 
 Do not move core relational application data into Supabase-specific JSON structures merely because Supabase supports them.
 
+### Data API lockdown (Row Level Security)
+
+Supabase exposes the `public` schema through its Data API (PostgREST) to
+the `anon` and `authenticated` roles. This application never uses the
+Data API for table access — every table is read/written through Prisma,
+connected as the table-owning `postgres` role, which has `BYPASSRLS`.
+
+Therefore (D-054, migration `20260923150000_lock_down_supabase_data_api`):
+
+- Every `public` table has RLS **enabled with no policies** (deny-all for
+  non-bypass roles).
+- `anon`/`authenticated` hold **no privileges** on any `public` table,
+  sequence or function, and the migration role's default privileges no
+  longer grant them on future objects.
+- Prisma is unaffected (owner + `BYPASSRLS`).
+
+Every migration that creates a table must also
+`ALTER TABLE ... ENABLE ROW LEVEL SECURITY` for it.
+`lib/db/rls.integration.test.ts` enumerates tables from the live catalog
+and fails if any table lacks RLS, any Data API role holds a privilege, or
+any policy exists. Adding a policy or granting Data API access requires a
+new, explicit decision in `docs/DECISIONS.md` — never a broad
+`USING (true)` policy.
+
 ## 0.4 Serverless Connection Safety
 
 The application is deployed on Vercel, so Prisma/Supabase connections must use a deployment-appropriate connection strategy.
@@ -1179,6 +1203,9 @@ Avoid uncontrolled cascading deletes for financially or audit-sensitive entities
 Never manually edit production database schema outside migrations.
 
 Every schema change must create a migration.
+
+Every new table must have RLS enabled in the same migration (see §0.3,
+"Data API lockdown").
 
 After schema changes:
 

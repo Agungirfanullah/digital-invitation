@@ -948,7 +948,10 @@ Do NOT:
   image/gift-QR URLs are a deliberate product feature (D-041/D-042).
 - Tighten `style-src` without first moving theme-variable application off
   React's `style` prop.
-- Remove `worker-src 'self'` — it silently breaks QR check-in scanning on
-  iOS Safari only, easy to miss testing from Chrome alone.
+- Narrow `worker-src 'self' blob:` — `qr-scanner`'s fallback engine is a
+  Blob-URL worker; dropping `blob:` silently breaks QR check-in scanning
+  on every browser without the native `BarcodeDetector` API (iOS Safari,
+  Firefox, desktop Chrome on Windows/Linux), easy to miss testing from a
+  browser that has it (D-053).
 - Add a new statically-rendered page without also opting it into dynamic
   rendering, or its own Next.js hydration script will be blocked by CSP.

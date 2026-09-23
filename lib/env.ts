@@ -9,7 +9,7 @@ const serverEnvSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   DIRECT_URL: z.string().min(1, "DIRECT_URL is required"),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY is required"),
-  SUPABASE_STORAGE_BUCKET: z.string().min(1).default("invitation-media"),
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default("invitation-assets"),
   SUPABASE_AUTH_REDIRECT_URL: z.string().url().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be at least 16 characters").optional(),
 });

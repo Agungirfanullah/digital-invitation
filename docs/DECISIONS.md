@@ -1561,12 +1561,27 @@ copy-pasted:
     and the one client-side Supabase helper (`lib/supabase/client.ts`,
     `createSupabaseBrowserClient()`) has zero callers anywhere in the
     codebase.
--   `worker-src 'self'` — required, not optional: `qr-scanner` (used by
-    `components/checkin/qr-code-scanner.tsx`) falls back to a same-origin
-    bundled Web Worker via dynamic `import()` on browsers without the
-    native `BarcodeDetector` API, notably iOS Safari. Removing this
-    directive would silently break check-in QR scanning on those devices
-    only — an easy regression to miss testing from Chrome alone.
+-   `worker-src 'self' blob:` — required, not optional. **Corrected
+    during the P0 remediation pass:** this entry originally shipped
+    `worker-src 'self'` on the belief that `qr-scanner` (used by
+    `components/checkin/qr-code-scanner.tsx`) spawns a same-origin
+    bundled worker file. It does not: on browsers without the native
+    `BarcodeDetector` API (iOS Safari, Firefox, desktop Chrome on
+    Windows/Linux), `qr-scanner` 1.4.x dynamically imports
+    `qr-scanner-worker.min.js` (a same-origin chunk, covered by
+    `script-src`), whose `createWorker()` runs
+    `new Worker(URL.createObjectURL(new Blob([...])))` — a **`blob:`
+    worker**, which `'self'` does not match. The original directive
+    therefore blocked QR scanning on exactly those browsers (manual search
+    still worked). `blob:` is the narrowest source that permits it —
+    workers cannot be nonced or hashed, and a `blob:` URL can only be
+    minted by script already trusted under `script-src`. The worker body
+    uses no `eval`/`new Function`/WebAssembly/`importScripts`/`fetch`
+    (checked in the installed package), so nothing else is needed. No
+    other scheme/host is allowed; `script-src` does not gain `blob:`.
+    Pinned by `lib/security/headers.test.ts`. The headless E2E suite
+    cannot exercise a real camera decode, so this remains unverified in a
+    real browser until manual device QA.
 -   `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN` — closes a
     previously-open clickjacking gap; the public invitation and dashboard
     have no documented cross-origin embedding requirement.
@@ -1616,3 +1631,112 @@ E2E suite (68 tests across all 15 spec files, including the QR
 check-in/camera path and all 6 invitation templates) with the new headers
 live — see `docs/STATUS.md`'s Phase 20 (Batch 1) entry for the full
 verification record.
+
+## D-054 --- Supabase Data API Lockdown: RLS Enabled With No Policies, Data API Roles Revoked
+
+**Context (found by the post-Phase-20 audit, verified before fixing):**
+every `public` table in the Supabase DEV database had RLS disabled, zero
+policies, and the full privilege set (`arwdDxtm` — SELECT, INSERT,
+UPDATE, DELETE, TRUNCATE, …) granted to `anon` and `authenticated`.
+Anonymous Data API requests succeeded (e.g. `GET /rest/v1/User` → 206
+with a readable row count). Anyone holding the project URL and anon key —
+which Supabase treats as public by design — could read invitation tokens,
+guest phone numbers and user emails, and write rows directly, bypassing
+every application-level check (`getAuthorizedEvent`, token scoping,
+seat-quota rules).
+
+**Root cause:** none of the Prisma migrations ever enabled RLS (Prisma
+does not manage RLS), and Supabase's default privileges for the `postgres`
+role in `public` grant ALL on every newly created table to `anon`,
+`authenticated` and `service_role`. Every table Prisma created therefore
+inherited full Data API access. This was an omission, not a design
+decision — no document ever stated the Data API should be reachable.
+
+**Verified architecture (why deny-all is correct, not a guess):**
+- No browser code queries Supabase tables. `lib/supabase/client.ts`
+  (`createSupabaseBrowserClient`) has zero callers; there are no
+  `.from(...)`/`.rpc(...)` table calls anywhere.
+- Supabase JS is used only server-side: Auth (anon key, `lib/supabase/
+  server.ts`, `proxy.ts`) and Storage (service-role key,
+  `lib/storage/supabase-provider.ts`, `server-only`).
+- E2E fixtures use only the Auth Admin API, never the Data API.
+- Every table read/write goes through Prisma, connected as `postgres` —
+  the table owner, with `BYPASSRLS` — so RLS does not apply to it.
+- No table has a legitimate public-read requirement through the Data API:
+  public invitation data is served by the server-rendered
+  `/invite/[slug]` projection (D-014), never by direct table reads.
+
+**Decision:** migration `20260923150000_lock_down_supabase_data_api`:
+1. `ENABLE ROW LEVEL SECURITY` on all 29 model tables and
+   `_prisma_migrations`, with **no policies** (deny-all for non-bypass
+   roles).
+2. `REVOKE ALL` on all `public` tables, sequences and functions from
+   `anon`/`authenticated` (RLS alone does not cover TRUNCATE/REFERENCES/
+   TRIGGER), plus `ALTER DEFAULT PRIVILEGES ... REVOKE` so future objects
+   created by the migration role do not re-inherit Data API grants.
+   Guarded by role existence so the migration still runs on plain
+   PostgreSQL without Supabase roles.
+
+`service_role` grants are intentionally unchanged: it is server-only,
+already bypasses RLS by Supabase design, and is used for Storage. Storage
+itself (`storage.objects`/`storage.buckets`) already had RLS enabled with
+no policies — only the server-side service role writes; the public bucket
+serves reads via public object URLs. No change there.
+
+**Explicitly rejected:** `USING (true)` policies, per-table "owner" policies
+keyed on `auth.uid()` (nothing would use them — they would only add attack
+surface and a second authorization model to keep in sync with
+`getAuthorizedEvent`), and revoking schema `USAGE` (unnecessary given the
+table-level lockdown, and riskier for Supabase-internal tooling).
+
+**Verification (DEV):** before the migration, `lib/db/rls.integration.
+test.ts` failed 4 of 7 checks; after `prisma migrate deploy`, 7/7 pass.
+Anonymous Data API GET on `User`, `GuestInvitation`, `Guest`, `Event`,
+`RSVP`, `Template`, `_prisma_migrations` and anonymous POST on `RSVP` all
+return 401. The full unit + integration suite (Prisma DB access and real
+Storage upload/delete) passes unchanged.
+
+**Impact / rules going forward:** every migration that creates a table
+must enable RLS on it; the integration test enforces this from the live
+catalog. Introducing any Data API access (a policy or a grant) requires a
+new decision here. Every other environment (staging/production) receives
+this lockdown automatically through `prisma migrate deploy`; production
+must still be verified separately once it exists.
+
+## D-055 --- E2E-Only Login Rate-Limit Ceiling, Honored Only When `NODE_ENV=development`
+
+**Context:** D-030 raised the `login` bucket to 30 per 10 minutes and
+recorded that the next escalation must be "a per-test-run-isolated
+rate-limit store or a test-environment exemption, not another arbitrary
+increase." The E2E suite now submits the login form ~42 times per run
+(38 `login()` helper calls, 3 direct logins in `e2e/editor.spec.ts`, 1
+invalid-credentials attempt in `e2e/auth.spec.ts`), all from one loopback
+address (Next's server fills `x-forwarded-for` from the socket), so they
+share one in-memory bucket. Measured during the P0 remediation pass: a
+full local run took 4.3 minutes and 22 of 73 tests failed, 12 of them
+with the limiter's own "Terlalu banyak percobaan" message in the page
+snapshot — CI (with retries, which add further logins) would fail the
+same way.
+
+**Decision:** `lib/auth/rate-limit.ts` exposes `resolveAuthRateLimit()`,
+which replaces only the `login` bucket's numeric ceiling with
+`E2E_AUTH_LOGIN_RATE_LIMIT` when set to a positive integer, and **honors it
+only when `NODE_ENV === "development"`** — the value `next dev` sets,
+which is what Playwright launches. The guard is fail-closed: every other
+value (`production`, `test`, `staging`, a miscased or non-standard value,
+or unset) ignores the override. This matters because Next's CLI keeps a
+pre-set non-standard `NODE_ENV` rather than forcing `production`, so a
+"not production" check would fail open. `playwright.config.ts` sets the
+variable (500) only on the dev server Playwright launches. The limiter
+still runs during E2E; `register`/`password-reset` limits are unaffected.
+
+**Rejected:** another arbitrary increase of the production limit (D-030
+explicitly ruled that out); spoofing a per-worker `x-forwarded-for` from
+Playwright (implicit, and entrenches the client-IP trust weakness the
+planned durable rate limiter must fix).
+
+**Impact:** pinned by `lib/auth/rate-limit.test.ts`, including the
+fail-closed guard (undefined, `test`, `staging`, `production`,
+`Production` all ignore the override). If a developer runs E2E against an already-running dev
+server (`reuseExistingServer` outside CI), that server needs the variable
+itself.

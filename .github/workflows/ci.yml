@@ -26,13 +26,16 @@ jobs:
       DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       DIRECT_URL: ${{ secrets.CI_DIRECT_URL }}
       NEXT_PUBLIC_APP_URL: http://localhost:3000
-      # Unlike the e2e job below, nothing in `npm run test` makes a real
-      # Supabase Auth call (integration tests create User rows directly via
-      # Prisma) — these three stay inert placeholders on purpose.
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
-      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
-      SUPABASE_STORAGE_BUCKET: invitation-media
+      # `npm run test` makes no Supabase Auth calls, but the gallery
+      # integration tests (lib/editor/service.integration.test.ts) upload
+      # to and delete from REAL Supabase Storage via the service-role
+      # client — so these must be a real, reachable project, not
+      # placeholders. The bucket must exist in that project (it is not
+      # created automatically — see docs/STATUS.md's Phase 11 bucket note).
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_STORAGE_BUCKET: invitation-assets
       PAYMENT_PROVIDER: test
       PAYMENT_API_KEY: ci-placeholder
       PAYMENT_WEBHOOK_SECRET: ci-placeholder
@@ -58,8 +61,11 @@ jobs:
           missing=""
           [ -z "$DATABASE_URL" ] && missing="$missing CI_DATABASE_URL"
           [ -z "$DIRECT_URL" ] && missing="$missing CI_DIRECT_URL"
+          [ -z "$NEXT_PUBLIC_SUPABASE_URL" ] && missing="$missing CI_SUPABASE_URL"
+          [ -z "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && missing="$missing CI_SUPABASE_ANON_KEY"
+          [ -z "$SUPABASE_SERVICE_ROLE_KEY" ] && missing="$missing CI_SUPABASE_SERVICE_ROLE_KEY"
           if [ -n "$missing" ]; then
-            echo "::error::Missing required repository secrets:$missing — integration tests need a real, reachable Postgres database. Configure these in the repository's GitHub Actions secrets."
+            echo "::error::Missing required repository secrets:$missing — integration tests need a real, reachable Supabase Postgres database and Storage bucket. Configure these in the repository's GitHub Actions secrets."
             exit 1
           fi
 
@@ -77,6 +83,13 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+
+      # Read-only. CI never applies migrations itself (CI_DATABASE_URL may
+      # point at a shared DEV database) — a branch adding a migration must
+      # have it applied to that database first. Fails clearly here rather
+      # than as confusing test failures (e.g. lib/db/rls.integration.test.ts).
+      - name: Verify database migrations are applied
+        run: npx prisma migrate status
 
       - name: Typecheck
         run: npm run typecheck
@@ -108,7 +121,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.CI_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.CI_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CI_SUPABASE_SERVICE_ROLE_KEY }}
-      SUPABASE_STORAGE_BUCKET: invitation-media
+      SUPABASE_STORAGE_BUCKET: invitation-assets
       PAYMENT_PROVIDER: test
       PAYMENT_API_KEY: ci-placeholder
       PAYMENT_WEBHOOK_SECRET: ci-placeholder
