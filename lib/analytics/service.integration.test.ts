@@ -97,7 +97,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     expect(rows[0].guestId).toBeNull();
     expect(rows[0].deviceType).toBe("DESKTOP");
     expect(rows[0].referrer).toBe("https://www.google.com");
-  });
+  }, 15000);
 
   it("associates the correct guestId when a valid, event-scoped personalized token is used", async () => {
     const owner = await createTestUser("owner");
@@ -118,7 +118,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     expect(rows).toHaveLength(1);
     expect(rows[0].guestId).toBe(guest.id);
     expect(rows[0].deviceType).toBe("MOBILE");
-  });
+  }, 15000);
 
   it("never assigns a guestId from a token belonging to a different event (cross-event IDOR)", async () => {
     const owner = await createTestUser("owner");
@@ -139,7 +139,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     const rows = await prisma.invitationView.findMany({ where: { eventId: eventA.id } });
     expect(rows).toHaveLength(1);
     expect(rows[0].guestId).toBeNull();
-  });
+  }, 15000);
 
   it("leaves guestId null for a malformed/unknown token", async () => {
     const owner = await createTestUser("owner");
@@ -158,7 +158,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     const rows = await prisma.invitationView.findMany({ where: { eventId: event.id } });
     expect(rows).toHaveLength(1);
     expect(rows[0].guestId).toBeNull();
-  });
+  }, 15000);
 
   it("does not create a row and does not throw when sessionId is missing", async () => {
     const owner = await createTestUser("owner");
@@ -176,7 +176,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     ).resolves.toBeUndefined();
 
     expect(await prisma.invitationView.count({ where: { eventId: event.id } })).toBe(0);
-  });
+  }, 15000);
 
   it("never throws even for a nonexistent eventId (foreign-key failure is swallowed, not surfaced)", async () => {
     await expect(
@@ -189,7 +189,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
         referrer: null,
       }),
     ).resolves.toBeUndefined();
-  });
+  }, 15000);
 
   it("deduplicates repeated views from the same eventId+sessionId within the tracking window", async () => {
     const owner = await createTestUser("owner");
@@ -214,7 +214,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     });
 
     expect(await prisma.invitationView.count({ where: { eventId: event.id } })).toBe(1);
-  });
+  }, 15000);
 
   it("counts a different session for the same event as a separate view (dedup is per-session, not per-event)", async () => {
     const owner = await createTestUser("owner");
@@ -238,7 +238,7 @@ describe("trackPublicInvitationView (integration — live Supabase DEV database)
     });
 
     expect(await prisma.invitationView.count({ where: { eventId: event.id } })).toBe(2);
-  });
+  }, 15000);
 });
 
 describe("getAnalyticsDashboardData (integration — live Supabase DEV database)", () => {
