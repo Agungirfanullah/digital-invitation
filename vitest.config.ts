@@ -19,11 +19,18 @@ export default defineConfig({
     // machine, so the ~10 integration test files that hit the real Supabase
     // DEV database concurrently contend harder for connections/network there
     // than they do locally. This is the same class of flakiness already
-    // documented for Phase 3/15 work, now raised globally (not per-file)
-    // since any of the 10 integration test files can hit it, not just
-    // whichever one happened to tip over first. See docs/DECISIONS.md D-056.
-    testTimeout: 15000,
-    hookTimeout: 15000,
+    // documented for Phase 3/15 work, raised globally (not per-file) since
+    // any of the 10 integration test files can hit it, not just whichever
+    // one happened to tip over first. See docs/DECISIONS.md D-056.
+    //
+    // 15000 wasn't enough headroom: the next CI run still failed, this time
+    // spreading across lib/editor/, lib/rsvp/, and lib/checkin/ — notably
+    // including lib/editor/service.integration.test.ts's real Supabase
+    // Storage upload tests (two sequential real uploads per test), which are
+    // more network-latency-sensitive than a plain Postgres query. Raised
+    // further to 30000 — see docs/DECISIONS.md D-057.
+    testTimeout: 30000,
+    hookTimeout: 30000,
   },
   resolve: {
     alias: {

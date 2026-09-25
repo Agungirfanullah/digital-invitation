@@ -2,13 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // jsdom's global File polyfill in this test environment doesn't implement
 // `arrayBuffer()` (a real browser's File always does), which
-// uploadGalleryImageAction calls. Patching the prototype here — rather
-// than swapping in a different File class — keeps `file instanceof File`
-// in the action's own code working correctly against jsdom's real global
-// class; only the missing method is filled in.
+// uploadGalleryImageAction calls even when validateGalleryImageUpload is
+// mocked (it reads the real file body before handing it off). Patching
+// the prototype here — rather than swapping in a different File class —
+// keeps `file instanceof File` in the action's own code working correctly
+// against jsdom's real global class; only the missing method is filled
+// in, via FileReader (a jsdom-native API) rather than
+// `new Response(this).arrayBuffer()` — the Response/fetch path goes
+// through Node's undici stack, which intermittently failed this call
+// under the heavier concurrent load of a full CI run (never locally),
+// turning a should-succeed test into a false "ok: false". FileReader
+// doesn't touch that stack at all.
 if (typeof File.prototype.arrayBuffer !== "function") {
   File.prototype.arrayBuffer = function arrayBuffer(this: Blob) {
-    return new Response(this).arrayBuffer();
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"));
+      reader.readAsArrayBuffer(this);
+    });
   };
 }
 

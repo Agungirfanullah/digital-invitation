@@ -3689,10 +3689,13 @@ Data API (anon):     401 on User, GuestInvitation, Guest, Event, RSVP,
 CI:                  NOT RUN — secrets missing
 ```
 
-## CI Follow-up --- Global Test Timeout (D-056)
+## CI Follow-up --- Global Test Timeout (D-056, D-057)
 
-**Status:** Fixed and verified locally; awaiting the next CI run for final
-confirmation (CI-level contention isn't fully reproducible locally).
+**Status:** 15000ms (D-056) was not enough — the next CI run still failed,
+across more files. Raised to 30000ms (D-057); a separate, unrelated flaky
+test was also found and fixed in the same pass. Awaiting the next CI run
+for final confirmation (CI-level contention isn't fully reproducible
+locally).
 
 Two consecutive CI runs failed at "Unit and integration tests" (~10 min
 each) with 10 `lib/checkin/service.integration.test.ts` tests timing out
@@ -3703,11 +3706,32 @@ already-marginal transaction-heavy tests over the default. An earlier fix
 attempt bumped timeouts in the wrong file (`lib/analytics/
 service.integration.test.ts`), so the next run failed identically.
 
-Fixed by raising `testTimeout`/`hookTimeout` to `15000` globally in
-`vitest.config.ts` instead of patching per-file (see D-056) — all 10
-integration test files share the same exposure. Verified: `lib/checkin/
-service.integration.test.ts` alone (34/34 with analytics), full suite
-(779/779), typecheck, lint, `prisma validate` all pass locally.
+First fixed by raising `testTimeout`/`hookTimeout` to `15000` globally in
+`vitest.config.ts` instead of patching per-file (D-056) — all 10
+integration test files share the same exposure. Verified locally, but the
+next CI run still failed: 9 timeouts now spread across `lib/rsvp/`,
+`lib/checkin/`, and (worst — 6 failures) `lib/editor/
+service.integration.test.ts`, whose failing tests do real sequential
+Supabase Storage uploads, more latency-sensitive than a plain query. A
+local experiment raising `connection_limit` from 1 to 10 on `DATABASE_URL`
+showed no meaningful speedup (85s vs ~80s), weakening that theory; network
+latency to Supabase from CI (vs local) plus RLS overhead remains the best-
+supported explanation. Raised the global timeout again to `30000` (D-057).
+
+That same CI run also failed one unrelated test — `lib/editor/
+actions.test.ts`'s "passes the authenticated user's id and the validated
+image to the service on success" — with `AssertionError: expected false
+to be true`, not a timeout. Root cause: `uploadGalleryImageAction` always
+calls the real `file.arrayBuffer()` even when the service is mocked; the
+test file's jsdom polyfill for it went through `new
+Response(this).arrayBuffer()` (Node's undici/fetch stack), which
+intermittently failed under CI's heavier concurrent load. Fixed by
+swapping to a `FileReader`-based polyfill (jsdom-native, no fetch stack
+involved) — see D-057.
+
+Verified: full suite (779/779) locally under the new timeout; `lib/editor/
+actions.test.ts` run 3 times individually (16/16 each); typecheck, lint,
+`prisma validate` all pass.
 
 ## Update Rules
 

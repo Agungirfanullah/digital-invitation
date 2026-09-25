@@ -1786,3 +1786,85 @@ changed. Verified: the previously-failing check-in tests and the full
 and `prisma validate` all pass. CI-specific contention cannot be fully
 reproduced locally (fewer cores, different network path to Supabase), so
 this fix's real test is the next CI run, not this local verification.
+
+## D-057 --- Global Timeout Raised Again (15000 → 30000ms); Separate, Unrelated Flaky-Test Root Cause Found and Fixed in `lib/editor/actions.test.ts`
+
+**Context:** D-056's 15000ms global timeout was not enough. The next CI
+run still failed at "Unit and integration tests" (~13 min), this time with
+9 failures spread across three different files instead of one:
+`lib/rsvp/service.integration.test.ts` (1), `lib/checkin/
+service.integration.test.ts` (2), and `lib/editor/
+service.integration.test.ts` (6) — all `Error: Test timed out in 15000ms`
+— plus one unrelated, non-timeout failure in `lib/editor/actions.test.ts`
+(`AssertionError: expected false to be true`).
+
+**Timeout investigation:** a local experiment temporarily raised
+`connection_limit` on `DATABASE_URL` from 1 to 10 (Supabase's
+serverless/PgBouncer convention — `.env.local` carries `connection_limit=1
+&pgbouncer=true`, undocumented anywhere until now) and re-ran the full
+suite: 85.98s vs the usual ~80s — no meaningful difference. This weakens
+(does not fully rule out, since CI's network latency to Supabase is far
+higher than local and could make the same serialization costlier) the
+connection-limit theory as the dominant factor. The more consistent
+explanation: `lib/editor/service.integration.test.ts` is the largest
+integration file (789 lines/45 tests) and several of its failing tests
+perform **real, sequential Supabase Storage uploads** (e.g. "two uploads
+for two different events never collide on object path" — two full
+uploads in one test), which are more network-latency-sensitive than a
+plain Postgres round-trip. Under CI's higher latency to Supabase, the
+heaviest files are the ones most likely to cross any fixed timeout.
+
+**Decision (timeout):** raise `testTimeout`/`hookTimeout` from 15000 to
+30000ms, globally, same rationale as D-056 (any integration test file can
+be next; a single global lever stays reviewable). Not switched to a
+per-file or per-test-type (e.g. "Storage-touching tests get more time")
+scheme — that reintroduces the whack-a-mole pattern D-056 explicitly
+rejected, for a difference (network latency vs. plain query latency) this
+project has no reliable way to measure per-test in advance.
+
+**Separate finding — `lib/editor/actions.test.ts`'s failure is unrelated
+to any of this.** It is a pure mock-based unit test (`uploadGalleryImage`
+is mocked; no real Supabase/database call). Root cause, found by reading
+`uploadGalleryImageAction` (`lib/editor/actions.ts:224-235`): it always
+calls `await file.arrayBuffer()` on the real `File` object before handing
+the result to `validateGalleryImageUpload` — mocking that function does
+not skip this call. The test file's own jsdom polyfill for the missing
+`File.prototype.arrayBuffer` implemented it as `new
+Response(this).arrayBuffer()`, routing through Node's `undici`
+fetch/Response stack. That path intermittently failed under a full CI
+run's heavier concurrent load (never observed locally in dozens of runs),
+which the `try/catch` in `uploadGalleryImageAction` then turned into a
+false `{ ok: false }` instead of the expected success — the same failure
+signature reported.
+
+**Decision (flaky test):** replace the polyfill with a `FileReader`-based
+implementation, a jsdom-native API that never touches the fetch/undici
+stack:
+
+```ts
+File.prototype.arrayBuffer = function arrayBuffer(this: Blob) {
+  return new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error ?? new Error("FileReader failed"));
+    reader.readAsArrayBuffer(this);
+  });
+};
+```
+
+This is the only file in the repository with this polyfill pattern
+(confirmed by search), so no other test file needed the same fix.
+
+**Rejected:** stubbing `file.arrayBuffer` per-test-instance instead of
+fixing the shared polyfill (would leave the same fragile Response-based
+path in place for any future test added to this file that also exercises
+`uploadGalleryImageAction`); disabling/skipping the flaky test (hides a
+real, now-understood, now-fixed bug instead of fixing it).
+
+**Impact:** `vitest.config.ts` (timeout), `lib/editor/actions.test.ts`
+(polyfill swap). No production code changed for either fix. Verified: full
+779-test suite passes locally; `lib/editor/actions.test.ts` run 3
+consecutive times individually, 16/16 each time; typecheck, lint, and
+`prisma validate` all pass. As with D-056, the timeout fix's real test is
+the next CI run — local verification cannot reproduce CI's network/
+resource conditions.
