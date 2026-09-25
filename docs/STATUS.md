@@ -3733,6 +3733,17 @@ Verified: full suite (779/779) locally under the new timeout; `lib/editor/
 actions.test.ts` run 3 times individually (16/16 each); typecheck, lint,
 `prisma validate` all pass.
 
+**Update:** the D-057 push made "Validate" pass in CI for the first time
+in this saga (typecheck, lint, unit/integration tests, production build
+all green). The separate "E2E" job then failed — Playwright's own
+`reporter: "html"` doesn't emit GitHub Actions annotations the way
+Vitest's does, and `ci.yml` had no artifact-upload step, so the failure
+reason was unrecoverable after the run ended (only a generic "exit code
+1"). Added an `actions/upload-artifact` step for `playwright-report/`,
+gated `if: failure()` (diagnostic only — cannot affect test outcome,
+7-day retention) so the next E2E failure is actually debuggable. The
+underlying E2E failure itself is not yet diagnosed — that's next.
+
 ## Update Rules
 
 1.  Do not claim completion without evidence.
