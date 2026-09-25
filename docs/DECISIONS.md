@@ -1740,3 +1740,49 @@ fail-closed guard (undefined, `test`, `staging`, `production`,
 `Production` all ignore the override). If a developer runs E2E against an already-running dev
 server (`reuseExistingServer` outside CI), that server needs the variable
 itself.
+
+## D-056 --- Global `testTimeout`/`hookTimeout` (15000ms) Instead of Per-File Overrides, After CI (Not Local) Timeouts in `lib/checkin/service.integration.test.ts`
+
+**Context:** after D-054's Data API lockdown migration was applied to the
+shared Supabase DEV database, two consecutive CI runs failed identically:
+"Unit and integration tests" ran for ~10 minutes then failed with 10 tests
+in `lib/checkin/service.integration.test.ts` each reporting `Error: Test
+timed out in 5000ms` (vitest's default `testTimeout`). The intervening fix
+attempt (bumping explicit per-test timeouts to `15000` in
+`lib/analytics/service.integration.test.ts`) targeted the wrong file — a
+misdiagnosis, since the actual failing tests were in the check-in file —
+and the next CI run failed the same way.
+
+**Diagnosis:** running `lib/checkin/service.integration.test.ts` alone,
+and the full 779-test suite, both passed cleanly and quickly (79s) on a
+12-core local machine — proving the RLS lockdown did not break check-in's
+authorization or transactional logic. GitHub's hosted `ubuntu-latest`
+runner has far fewer cores, so vitest's file-level parallelism serializes
+more of the ~10 real-database integration test files there than locally;
+combined with the small additional per-query overhead RLS-enabled tables
+now carry (checked even for a bypass role) and ordinary Supabase DEV
+network variance, this occasionally pushes the check-in file's
+transaction-heavy tests past the 5000ms default. This is the same class
+of flakiness already documented for Phase 3/15 work — not new, but not
+previously severe enough to trip the default.
+
+**Decision:** raise `testTimeout` and `hookTimeout` to `15000` globally in
+`vitest.config.ts`, rather than patching individual files as they happen
+to be the one that tips over first. All 10 integration test files hit the
+same real database under the same CI conditions, so any of them — not
+just check-in — could be next. The now-redundant explicit `, 15000`
+arguments added to `lib/analytics/service.integration.test.ts` by the
+prior (mistargeted) fix were removed, since they no longer differ from
+the new global default.
+
+**Rejected:** patching only `lib/checkin/service.integration.test.ts`
+(treats the symptom in whichever file failed most recently, not the
+shared root cause every integration-test file is equally exposed to).
+
+**Impact:** `vitest.config.ts`, `lib/analytics/service.integration.test.ts`
+(revert of the mistargeted per-test overrides). No production code
+changed. Verified: the previously-failing check-in tests and the full
+779-test suite both pass locally under the new config; typecheck, lint,
+and `prisma validate` all pass. CI-specific contention cannot be fully
+reproduced locally (fewer cores, different network path to Supabase), so
+this fix's real test is the next CI run, not this local verification.

@@ -3689,6 +3689,26 @@ Data API (anon):     401 on User, GuestInvitation, Guest, Event, RSVP,
 CI:                  NOT RUN — secrets missing
 ```
 
+## CI Follow-up --- Global Test Timeout (D-056)
+
+**Status:** Fixed and verified locally; awaiting the next CI run for final
+confirmation (CI-level contention isn't fully reproducible locally).
+
+Two consecutive CI runs failed at "Unit and integration tests" (~10 min
+each) with 10 `lib/checkin/service.integration.test.ts` tests timing out
+at vitest's 5000ms default — not a check-in logic regression (79s/779
+passed locally, 12 cores, both isolated and full-suite), but CI's fewer
+cores plus the new RLS-enabled tables' small per-query overhead tipping
+already-marginal transaction-heavy tests over the default. An earlier fix
+attempt bumped timeouts in the wrong file (`lib/analytics/
+service.integration.test.ts`), so the next run failed identically.
+
+Fixed by raising `testTimeout`/`hookTimeout` to `15000` globally in
+`vitest.config.ts` instead of patching per-file (see D-056) — all 10
+integration test files share the same exposure. Verified: `lib/checkin/
+service.integration.test.ts` alone (34/34 with analytics), full suite
+(779/779), typecheck, lint, `prisma validate` all pass locally.
+
 ## Update Rules
 
 1.  Do not claim completion without evidence.
