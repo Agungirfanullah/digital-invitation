@@ -27,16 +27,20 @@ export type AuthRateLimitAction = keyof typeof AUTH_RATE_LIMITS;
 
 /**
  * Test-environment-only exemption for the `login` bucket (D-030's
- * documented next escalation, see docs/DECISIONS.md D-055). The E2E suite
- * performs ~42 real logins per run, all from one address against one
- * in-memory bucket — far past 30 per 10 minutes. `playwright.config.ts`
- * sets `E2E_AUTH_LOGIN_RATE_LIMIT` on the dev server it launches.
+ * documented next escalation, see docs/DECISIONS.md D-055/D-059). The E2E
+ * suite performs ~42 real logins per run, all from one address against
+ * one in-memory bucket — far past 30 per 10 minutes. `playwright.config.ts`
+ * sets both `E2E_TEST_MODE` and `E2E_AUTH_LOGIN_RATE_LIMIT` on the server
+ * it launches (dev locally, a production build in CI — D-059).
  *
- * Fail-closed: honored ONLY when `NODE_ENV === "development"` (what
- * `next dev`, which Playwright launches, sets). Every other value —
- * "production", "test", "staging", a miscased or non-standard value, or
- * unset — ignores the override, so a real deployment cannot loosen the
- * limit even if the variable were set there by mistake. It only replaces
+ * Fail-closed: honored ONLY when `E2E_TEST_MODE === "true"`, a name this
+ * codebase never sets anywhere else and no real deployment would ever set
+ * (unlike `NODE_ENV`, whose "development" value `next start`/CI's
+ * production build no longer sets automatically once E2E runs against a
+ * built app rather than `next dev` — see D-059). Every other value —
+ * unset, "false", a miscased or non-standard value — ignores the
+ * override, so a real deployment cannot loosen the limit even if
+ * `E2E_AUTH_LOGIN_RATE_LIMIT` were set there by mistake. It only replaces
  * the numeric ceiling; the limiter still runs.
  */
 export function resolveAuthRateLimit(
@@ -44,7 +48,7 @@ export function resolveAuthRateLimit(
   env: Record<string, string | undefined> = process.env,
 ): { limit: number; windowMs: number } {
   const config = AUTH_RATE_LIMITS[action];
-  if (action !== "login" || env.NODE_ENV !== "development") return config;
+  if (action !== "login" || env.E2E_TEST_MODE !== "true") return config;
 
   const override = Number(env.E2E_AUTH_LOGIN_RATE_LIMIT);
   if (!Number.isInteger(override) || override < 1) return config;

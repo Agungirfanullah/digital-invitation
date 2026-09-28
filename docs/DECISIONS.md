@@ -1938,3 +1938,101 @@ CI-failing/flaky tests pass locally under the new timeouts.
 logic changed. As with D-056/D-057, local verification cannot reproduce
 CI's actual network latency to Supabase — the next CI run is this fix's
 real test.
+
+## D-059 --- E2E Runs Against a Production Build in CI, Not `next dev`; Login Rate-Limit Override Re-Keyed From `NODE_ENV` to a Dedicated `E2E_TEST_MODE` Flag
+
+**Context:** D-058's timeout increase did not fully resolve E2E
+reliability. The next CI run's uploaded report showed only 2 distinct
+tests still failing (down from 15+2, real progress), but both in a more
+telling shape: `wishes.spec.ts` failed twice with `page.goto: Test
+timeout of 90000ms exceeded` navigating to `/invite/{slug}` — the entire
+raised budget consumed by one navigation — and `gallery.spec.ts` failed
+once the same way on `page.reload()`, and once by actually receiving
+"Undangan tidak ditemukan" (not found) for an event that demonstrably
+existed. A page navigation consuming an entire 90-second budget, and a
+real "not found" for existing data, are not explained by ordinary network
+latency to Supabase — that pattern (values, not just slowness, going
+wrong) is more consistent with request queueing severe enough that a
+concurrent test's own `afterEach` cleanup deleted the row before the
+queued request was finally served.
+
+**Diagnosis:** `playwright.config.ts`'s `webServer.command` has always
+been `npm run dev` — E2E runs against `next dev`, never a production
+build. `next dev` compiles each route on first hit rather than ahead of
+time; CI always starts a completely fresh server, and `fullyParallel:
+true` means many workers hit many different, never-yet-compiled routes
+simultaneously at the start of every run — a "compile storm" competing
+for one dev-compiler process's resources on a CI runner with far fewer
+cores than a dev machine. This is a distinct mechanism from the Supabase-
+latency root cause behind D-056/D-057/D-058 (those remain real — the
+"Unit and integration tests" step alone still takes ~17 minutes in CI
+for a suite that runs in ~80 seconds locally, and that suite never
+touches `next dev` at all) — both are likely compounding in the E2E job
+specifically, since it is the only one that also spins up the Next.js
+server itself.
+
+**Decision:** `playwright.config.ts`'s `webServer.command` now branches on
+`process.env.CI`: `npm run build && npm run start` in CI, unchanged
+`npm run dev` locally (so `reuseExistingServer` keeps local iteration
+exactly as fast as before — most local runs never even execute this
+command). This is standard Playwright/Next.js practice for CI E2E, not
+specific to this project.
+
+**Required accompanying fix — the login rate-limit override could not
+survive this unchanged.** D-055's `resolveAuthRateLimit()` override was
+gated on `NODE_ENV === "development"`, deliberately chosen because
+`next dev` sets that value automatically and a real deployment does not.
+`next start`/`next build` set `NODE_ENV=production` instead, which would
+silently make the override stop applying the moment E2E moved to a
+production build — reintroducing D-030's original shared-bucket
+exhaustion in CI. Re-keyed the check to a new, dedicated
+`E2E_TEST_MODE === "true"` flag instead, set only by `playwright.config.ts`
+`webServer.env` (alongside the existing `E2E_AUTH_LOGIN_RATE_LIMIT`) —
+preserving D-055's exact fail-closed intent (a name no real deployment
+would ever set) without depending on which script started the server.
+`lib/auth/rate-limit.test.ts` updated to match; a new test explicitly
+confirms `NODE_ENV: "development"` alone, without `E2E_TEST_MODE`, no
+longer grants the override — the inverse of what D-055 pinned.
+
+**Verified — audited before implementing, not just assumed:**
+- Grepped every `NODE_ENV` branch in the codebase (4 total): the login
+  override (fixed here), `lib/db/prisma.ts`'s log-verbosity and dev-hot-
+  reload-singleton guards (both already correct for production —
+  no change needed), and `proxy.ts`'s CSP `'unsafe-eval'` toggle (already
+  correctly ties to `isDev`, and *should* be off under a production
+  build — this makes E2E exercise the real, stricter production CSP,
+  which is more correct, not a new risk).
+- No E2E spec depends on dev-only behavior (grepped for `NODE_ENV`/
+  "development" across `e2e/` — the one hit was a comment, not logic).
+- CI's own "Production build" step (in the `validate` job) takes ~24
+  seconds — confirms adding a build to the `e2e` job's `webServer` start
+  is cheap, not a meaningful CI time cost.
+- Built and ran the app via `next start` locally with the exact env vars
+  `playwright.config.ts` now sets (`E2E_TEST_MODE=true`,
+  `E2E_AUTH_LOGIN_RATE_LIMIT=500`): all 73 E2E tests passed, including
+  both previously-failing `wishes`/`gallery` tests, and including a batch
+  of 5 spec files performing 20+ real logins — confirming the rate-limit
+  override actually works under the new production-server path, not just
+  in theory.
+- A direct local dev-vs-prod timing comparison was inconclusive (~40s
+  either way) — expected and disclosed, not hidden: a warm local dev
+  server (already compiled every route from this session's own repeated
+  testing) doesn't reproduce CI's from-scratch "compile storm" scenario.
+  The next CI run remains this fix's real test, same caveat as every
+  other fix in this investigation.
+
+**Rejected:** raising Playwright's timeout further still (D-058 already
+did this once; the evidence — full budgets being consumed, wrong query
+results — points at a request-queueing/compile-contention problem a
+bigger number doesn't fix, only delays hitting); building once and
+sharing the artifact between CI jobs (the `validate` and `e2e` jobs run on
+separate runners with no artifact-passing configured — a real
+future optimization, out of scope here).
+
+**Impact:** `playwright.config.ts`, `lib/auth/rate-limit.ts`,
+`lib/auth/rate-limit.test.ts`. No other production code changed.
+`docs/DECISIONS.md` D-055 is superseded on this one point (its
+`NODE_ENV`-based mechanism) but its underlying rationale (a fail-closed,
+test-only exemption for exactly the `login` bucket) stands unchanged —
+D-055 is left as written, not rewritten, per this project's own rule
+against editing historical decisions.

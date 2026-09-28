@@ -3762,6 +3762,26 @@ login-rate-limit-bucket artifact from reusing one manually-started dev
 server across batches, not a regression; re-run against a fresh server
 with the correct env var: 33/33). Typecheck, lint, format all pass.
 
+**Update:** that CI run's report showed only 2 distinct tests still
+failing (wishes, gallery), but both as a full page navigation alone
+consuming the entire 90s budget, or an outright "not found" for data that
+existed — not ordinary slowness. Root cause: E2E has always run against
+`next dev`, which compiles routes on first hit; CI always starts a fresh
+server, and many parallel workers hitting many never-compiled routes at
+once created real request-queueing contention, on top of the already-
+documented Supabase latency (D-056/D-057/D-058). Fixed (D-059):
+`playwright.config.ts`'s `webServer.command` now runs `npm run build &&
+npm run start` in CI (unchanged `next dev` locally). This broke the E2E
+login rate-limit override (D-055), which was gated on
+`NODE_ENV === "development"` — `next start` sets `NODE_ENV=production`
+instead — so it's re-keyed to a dedicated `E2E_TEST_MODE=true` flag,
+preserving the same fail-closed intent. Verified: built and ran the app
+via `next start` locally with the exact env vars Playwright now sets —
+all 73 E2E tests passed, including a 5-file batch with 20+ real logins
+(confirming the rate-limit override actually works under the new path).
+Audited all 4 `NODE_ENV` branches in the codebase; the other 3 needed no
+change. Typecheck, lint, format all pass.
+
 ## Update Rules
 
 1.  Do not claim completion without evidence.
