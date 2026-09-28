@@ -3744,6 +3744,24 @@ gated `if: failure()` (diagnostic only — cannot affect test outcome,
 7-day retention) so the next E2E failure is actually debuggable. The
 underlying E2E failure itself is not yet diagnosed — that's next.
 
+**Update:** diagnosed and fixed (D-058). The uploaded report's
+`data/*.md` files were read directly (all of them, not a sample) — every
+one of the 15 failed + 2 flaky results was a Playwright default-timeout
+hit, not a logic bug: `expect().toBeVisible()`/`toHaveURL()` at the
+5000ms default after a real mutation hadn't reflected in the UI yet, or
+(3 tests — editor, rsvp-dashboard, wishes) a bare `page.goto`/`page.reload`
+alone exceeding the whole 30000ms per-test budget. Same root cause as the
+Vitest side of this investigation: CI's network path to Supabase DEV is
+slower than local, and neither Playwright default had ever been raised.
+Fixed by setting `expect.timeout: 15_000` and `timeout: 90_000` in
+`playwright.config.ts` (both previously untouched, at their defaults).
+Verified: all 58 previously CI-failing/flaky tests pass locally under the
+new config (25/25 in one batch; the other batch's first attempt hit 11
+unrelated failures — confirmed as the already-documented D-055 shared
+login-rate-limit-bucket artifact from reusing one manually-started dev
+server across batches, not a regression; re-run against a fresh server
+with the correct env var: 33/33). Typecheck, lint, format all pass.
+
 ## Update Rules
 
 1.  Do not claim completion without evidence.

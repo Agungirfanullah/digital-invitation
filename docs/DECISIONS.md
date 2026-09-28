@@ -1868,3 +1868,73 @@ consecutive times individually, 16/16 each time; typecheck, lint, and
 `prisma validate` all pass. As with D-056, the timeout fix's real test is
 the next CI run — local verification cannot reproduce CI's network/
 resource conditions.
+
+## D-058 --- Playwright's Default Timeouts (30000ms test / 5000ms expect) Raised After the First Fully-Green CI Run Still Failed E2E
+
+**Context:** once D-057 made the "Validate" job pass in CI for the first
+time, the separate "E2E" job then failed — 15 failed + 2 flaky out of 73.
+`ci.yml` had no artifact-upload step for Playwright's HTML report, so the
+failure was undiagnosable after the run ended (a follow-up commit added
+`actions/upload-artifact` on `if: failure()`, diagnostic only). The next
+CI run's report was downloaded and its `data/*.md` per-attempt error
+files (bundled in the report, one per failed/flaky attempt) were read
+directly — not just the summary UI — to get the exact error for every
+failure, not a sample.
+
+**Diagnosis:** every one of the 15 failures + 2 flaky results fell into
+exactly three buckets, none a logic bug:
+
+1. `expect(locator).toBeVisible() failed` / `Timeout: 5000ms` (the
+   majority) — the UI hadn't reflected a real mutation yet (search
+   results, an upload, a delete, a regenerated token, an RSVP status) when
+   the assertion's default 5-second window ran out.
+2. `expect(page).toHaveURL(...) failed` / `Timeout: 5000ms` — after a form
+   submit (Server Action), the page was still showing a disabled
+   "Menyimpan..." button when the assertion gave up waiting for the
+   post-submit redirect.
+3. `page.goto`/`page.reload`: `Test timeout of 30000ms exceeded` (editor,
+   rsvp-dashboard, wishes) — a **full page navigation alone** consumed the
+   entire 30-second per-test budget. This is the clearest evidence: these
+   aren't slow assertions on an already-loaded page, they're server-
+   rendered pages (real Prisma queries against Supabase DEV) that
+   sometimes take longer than 30s end-to-end in CI.
+
+All three share one root cause already established for the Vitest side of
+this same investigation (D-056/D-057): CI's network path to Supabase DEV
+is measurably slower than local, and neither of Playwright's two relevant
+defaults — `expect.timeout` (5000ms) nor the per-test `timeout` (30000ms)
+— had ever been raised to account for it. Locally, all 58 of the
+previously CI-failing tests pass cleanly and quickly against the same
+codebase, confirming this is environment latency, not application logic.
+
+**Decision:** raise both in `playwright.config.ts`: `expect: { timeout:
+15_000 }` (3×) and the top-level `timeout: 90_000` (3×) — the same
+multiplier used for D-056's first Vitest fix, applied here for the first
+time (neither had ever been touched before this). `retries: 2` (existing,
+unchanged) still applies on top.
+
+**Rejected:** raising only `expect.timeout` (would leave category 3 — a
+navigation alone exceeding the whole test budget — unfixed, since that
+failure isn't an assertion timeout at all); increasing `retries` instead
+of the timeouts (masks the latency with more attempts rather than giving
+each attempt enough room, and every retry re-runs the full `beforeEach`/
+`afterEach` Supabase fixture setup and teardown, so it's not free).
+
+**Verification method note:** the two spec-file batches run locally to
+confirm this reused one manually-started dev server across both batches
+(to work around this machine's own `npm run dev` subprocess-spawn issue —
+unrelated to Playwright or this fix), which meant `playwright.config.ts`'s
+`webServer.env.E2E_AUTH_LOGIN_RATE_LIMIT` override (D-055) was never
+applied. The first batch's ~25 real logins alone were still under the
+production 30-per-10-minute ceiling, but the second batch pushed the
+shared bucket over it, producing 11 failures that were all the login
+helper landing on `/login` instead of `/dashboard` — the exact D-055
+symptom, not a regression from this fix. Re-run against a freshly started
+server with the same env var Playwright's own `webServer` config sets:
+33/33 passed. Combined with the first batch's 25/25, all 58 previously
+CI-failing/flaky tests pass locally under the new timeouts.
+
+**Impact:** `playwright.config.ts` only. No production code, no test
+logic changed. As with D-056/D-057, local verification cannot reproduce
+CI's actual network latency to Supabase — the next CI run is this fix's
+real test.

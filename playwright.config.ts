@@ -9,6 +9,19 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   reporter: "html",
+  // Both defaults (test: 30_000ms, expect: 5_000ms) were never raised and
+  // were too tight for CI specifically — never observed locally. A CI-only
+  // run's Playwright report showed real page.goto/page.reload calls alone
+  // exceeding the 30s test timeout (editor, rsvp-dashboard, wishes), and
+  // expect().toBeVisible()/toHaveURL() hitting the 5s default after a real
+  // mutation (search, upload, form submit + redirect) — the same "CI's
+  // network path to Supabase is slower than local" root cause already
+  // documented for the Vitest integration-test timeouts (D-056/D-057),
+  // now showing up in E2E too. See docs/DECISIONS.md D-058.
+  timeout: 90_000,
+  expect: {
+    timeout: 15_000,
+  },
   use: {
     baseURL,
     trace: "on-first-retry",
