@@ -2036,3 +2036,49 @@ future optimization, out of scope here).
 test-only exemption for exactly the `login` bucket) stands unchanged —
 D-055 is left as written, not rewritten, per this project's own rule
 against editing historical decisions.
+
+## D-060 --- Removed the One Per-Test Playwright Timeout Override; Global `timeout` (D-058/D-059) Is Now the Only Timeout Authority
+
+**Context:** after D-059 (production-build E2E), the next CI run's report
+had only one distinct failure left, but it repeated on all 3 attempts
+(the original run plus both retries) with an identical signature:
+`gallery.spec.ts`'s heaviest test (two real Supabase Storage uploads,
+five page navigations/reloads — explicitly the most I/O of any single
+test in the suite) failing `page.goto: Test timeout of 60000ms exceeded`
+on its final navigation, every time.
+
+**Root cause — not a new slowness, an old override nobody noticed had
+gone stale:** this test carried its own `testInfo.setTimeout(60_000)`,
+set before D-056 existed, back when the global default was Playwright's
+own 30_000ms and 60s was a deliberate, generous-at-the-time exception. A
+per-test `setTimeout()` call always overrides the global `timeout`
+config, in either direction — so when D-058 raised the global default to
+90_000ms, this one test silently kept its own lower 60_000ms ceiling
+instead of benefiting from the raise. The user asked directly whether
+timeouts could be set "in one place" so this class of failure would stop
+recurring; auditing for the answer surfaced this exact mechanism.
+
+**Decision:** delete the override (and its now-stale comment, and the
+now-unused `testInfo` test fixture parameter) entirely. Confirmed by
+repo-wide search that this was the *only* `setTimeout`/`test.slow()` call
+anywhere under `e2e/` — so removing it, rather than raising its number,
+makes `playwright.config.ts`'s `timeout` the sole authority for every
+spec file, with no silent per-test exception left to go stale again the
+next time the global value changes.
+
+**Rejected:** raising the override's number instead of deleting it (D-058
+already demonstrated that a stale hardcoded number left in place invites
+exactly this bug again the next time the global default moves); raising
+the global default specifically to accommodate this one test (the test
+already had 60s and still needed the global's already-higher 90s instead
+— no evidence a still-higher global number is what closed the gap, versus
+simply inheriting the value D-058/D-059 already established).
+
+**Verified:** built and ran the app via `next start` locally (the same
+production-build path D-059 introduced); the target test individually
+with `--repeat-each=2` (2/2 passed) and the full 73-test suite in a
+single run (73/73 passed, 3.4 minutes). Typecheck, lint, and format all
+pass.
+
+**Impact:** `e2e/gallery.spec.ts` only. No config, no other test file, no
+production code changed.

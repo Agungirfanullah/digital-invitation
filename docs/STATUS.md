@@ -3782,6 +3782,18 @@ all 73 E2E tests passed, including a 5-file batch with 20+ real logins
 Audited all 4 `NODE_ENV` branches in the codebase; the other 3 needed no
 change. Typecheck, lint, format all pass.
 
+**Update:** the next CI run had only 1 distinct failure left, but on all
+3 attempts (D-060). Cause: `gallery.spec.ts`'s heaviest test carried its
+own `testInfo.setTimeout(60_000)`, predating D-058's global raise to
+90_000ms — a per-test override always wins over the global config, so
+this one test silently never got the benefit of the raise. Confirmed via
+repo-wide search this was the only such override under `e2e/`. Deleted
+it (not raised) so `playwright.config.ts`'s `timeout` is the sole
+authority everywhere, with nothing left to go stale the next time it
+changes. Verified: production build locally, the target test 2/2 with
+`--repeat-each=2`, and the full 73-test suite in one run — 73/73 passed
+in 3.4 minutes. Typecheck, lint, format all pass.
+
 ## Update Rules
 
 1.  Do not claim completion without evidence.

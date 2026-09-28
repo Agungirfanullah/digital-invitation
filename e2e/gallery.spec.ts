@@ -106,19 +106,17 @@ test.describe("gallery", () => {
   // persists after reload → delete → absent both in the dashboard and
   // publicly), mirroring e2e/rsvp.spec.ts's and e2e/wishes.spec.ts's
   // combined-flow justification.
+  // This test does meaningfully more real I/O than any other single spec
+  // in the suite — two genuine Supabase Storage uploads plus five page
+  // navigations/reloads against the live DEV database. It deliberately
+  // has no timeout override of its own: a per-test override silently
+  // wins over playwright.config.ts's global `timeout` no matter how high
+  // that's raised, which is exactly what caused this test alone to keep
+  // failing in CI after D-058/D-059 raised the global default — see
+  // docs/DECISIONS.md D-060. It relies entirely on the global value now.
   test("an owner can upload two real images, reorder them, and delete one — every step persists after reload and reflects on the public invitation", async ({
     page,
-  }, testInfo) => {
-    // This test does meaningfully more real I/O than any other single
-    // spec in the suite — two genuine Supabase Storage uploads plus five
-    // page navigations/reloads against the live DEV database — so the
-    // default 30s per-test timeout is legitimately tight under the full
-    // suite's 6-way parallel worker contention (confirmed by re-running
-    // this test alone, repeatedly, with no failures — only the full
-    // concurrent run is affected). Extending it here is honest slack for
-    // real extra work, not a mask for a flaky assertion.
-    testInfo.setTimeout(60_000);
-
+  }) => {
     const owner = await createAuthenticatedTestUser("owner");
     const event = await createTestEvent(owner.userId, "PUBLISHED");
 
