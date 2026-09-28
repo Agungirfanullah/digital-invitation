@@ -12,10 +12,37 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Roadmap Phase 8 (Guest Personalization) reconciliation
---- Invitation Open/Sent Lifecycle State
+**Current Phase:** Roadmap Phase 20 (Production Hardening) — Batch 1
+(Security Headers/CSP) + a CI reliability investigation spanning D-053
+through D-060
 
-**Status:** An audit-first task re-examined the last remaining, previously
+**Status:** Phase 20 Batch 1 shipped nonce-based CSP + baseline security
+headers (`lib/security/headers.ts`, D-053), corrected the CI workflow's
+fake E2E Supabase credentials, and (via a separate post-audit P0 pass)
+closed a **critical** finding — every `public` table was fully readable/
+writable through Supabase's Data API by anyone holding the (public-by-
+design) anon key, with RLS disabled repo-wide (D-054). That same pass also
+found and fixed a real bug the CSP work itself had shipped:
+`worker-src 'self'` silently blocked `qr-scanner`'s Blob-URL fallback
+worker, breaking check-in QR scanning on every browser without the native
+`BarcodeDetector` API (D-053, corrected). What followed was a six-commit
+CI-reliability investigation, each step diagnosed from actual CI logs/
+Playwright reports rather than assumption: Vitest's default timeout was
+too tight for CI's real Supabase latency (raised 5000→15000→30000ms,
+D-056/D-057, alongside an unrelated `File.arrayBuffer()` test flake fixed
+in the same pass); Playwright's own defaults had never been raised either
+(D-058); E2E was found to be running against `next dev` rather than a
+production build, the actual root cause of the worst remaining failures —
+fixed by building in CI (D-059), which required re-keying the E2E login
+rate-limit override off a dedicated flag instead of `NODE_ENV`; and one
+last stale per-test timeout override that pre-dated the global raises was
+removed (D-060). **As of commit `4f8c39f`, both CI jobs (Validate and E2E)
+pass in full** — confirmed via the GitHub Actions API, not assumed. See
+"Phase 20 (Batch 1)", "P0 Security & CI Remediation", and "CI Follow-up"
+below for full detail, and D-053 through D-060 for the complete
+decision-by-decision rationale.
+
+**Status (Phase 8 reconciliation, unchanged by Phase 20):** An audit-first task re-examined the last remaining, previously
 self-documented open question from Phase 7: should
 `GuestInvitation.openedAt`/`status = OPENED` ever be written now that
 Phase 15's `InvitationView` exists? Conclusion: **no — they remain
@@ -3651,19 +3678,27 @@ remains open.
     `NODE_ENV=development`; every other value ignores it (fail-closed,
     D-055).
 
-**External/manual actions still required:**
+**External/manual actions — resolved.** The five GitHub Actions secrets
+listed below were confirmed missing when this section was first written;
+they have since been configured (confirmed indirectly but conclusively —
+CI's `validate` job now passes its "Verify required CI secrets are
+configured" step and successfully exercises real Supabase Storage
+uploads/RLS checks, and the `e2e` job successfully performs real Supabase
+Auth Admin calls, both of which are impossible against unset or fake
+values). Kept here as a record of what was required, not as an open task:
 
--   GitHub → Settings → Secrets and variables → Actions:
-    `CI_DATABASE_URL` (Supabase transaction pooler, port 6543,
+-   `CI_DATABASE_URL` (Supabase transaction pooler, port 6543,
     `?pgbouncer=true&connection_limit=1`), `CI_DIRECT_URL` (session
     pooler, port 5432), `CI_SUPABASE_URL`, `CI_SUPABASE_ANON_KEY`,
-    `CI_SUPABASE_SERVICE_ROLE_KEY`. Use pooler hosts (IPv4) — GitHub
-    runners cannot reach the IPv6-only direct host.
--   If CI targets a Supabase project other than DEV: apply all
-    migrations to it (`prisma migrate deploy`) and create the
-    `invitation-assets` bucket there first.
+    `CI_SUPABASE_SERVICE_ROLE_KEY` — pooler hosts (IPv4), since GitHub
+    runners cannot reach an IPv6-only direct host.
+
+**Still genuinely open (external, unverified from this environment):**
+
 -   Production does not exist yet; when it does, verify the D-054
     lockdown there (migrations apply it automatically) — never assume.
+-   Vercel Preview/production environment variables — a separate system
+    from GitHub Actions secrets, not verifiable from here.
 
 **Verification (this update):**
 
@@ -3686,7 +3721,11 @@ E2E:                 PASS 73/73 at --workers=2 (CI parallelism), 0
                      issue, not caused by these changes. Not fixed here.
 Data API (anon):     401 on User, GuestInvitation, Guest, Event, RSVP,
                      Template, _prisma_migrations (GET) and RSVP (POST)
-CI:                  NOT RUN — secrets missing
+CI:                  NOT RUN at the time this section was first written —
+                     superseded below. See "CI Follow-up" — as of commit
+                     4f8c39f both CI jobs (Validate and E2E) pass in full,
+                     confirming the required secrets were in fact
+                     configured correctly.
 ```
 
 ## CI Follow-up --- Global Test Timeout (D-056, D-057)
@@ -3793,6 +3832,20 @@ authority everywhere, with nothing left to go stale the next time it
 changes. Verified: production build locally, the target test 2/2 with
 `--repeat-each=2`, and the full 73-test suite in one run — 73/73 passed
 in 3.4 minutes. Typecheck, lint, format all pass.
+
+**Final update — resolved.** Commit `4f8c39f` (pushed) was confirmed via
+the GitHub Actions API: **Validate → success, E2E → success.** This is
+the first commit in this entire investigation where both CI jobs passed
+in full. Six commits, each traced to a specific, evidenced cause (never a
+guess) across two genuinely distinct root causes — Supabase network
+latency from CI exceeding both Vitest's and Playwright's never-raised
+default timeouts (D-056/D-057/D-058), and E2E running against `next dev`
+rather than a production build, which independently caused real request-
+queueing failures under CI's parallel workers (D-059/D-060). This CI
+reliability investigation is closed. Remaining Phase 20 work (event/gift
+rate limiting, rate-limiter eviction, `AuditLog` writes, structured
+logging, and the rest of the Phase 20 roadmap checklist) is unaffected
+and still open — see "Phase 20 (Batch 1)" above.
 
 ## Update Rules
 

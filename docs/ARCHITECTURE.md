@@ -929,7 +929,7 @@ script-src   'self' 'nonce-{per-request}' 'strict-dynamic'
 style-src    'self' 'unsafe-inline'   (theme inline styles — see D-050/D-051)
 img-src      'self' https: http: data: blob:  (matches url-safety.ts — D-041/D-042)
 connect-src  'self'
-worker-src   'self'   (qr-scanner's Safari fallback worker)
+worker-src   'self' blob:   (qr-scanner's Blob-URL fallback worker — D-053)
 object-src   'none'
 frame-ancestors 'self'
 ```
