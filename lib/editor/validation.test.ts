@@ -1,17 +1,21 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  coupleIdentitySchema,
   galleryCaptionSchema,
   galleryVideoItemSchema,
   loveStoryItemSchema,
+  parseIdentityProfileInput,
+  personIdentitySchema,
   scheduleFormSchema,
+  sectionOverridesSchema,
   templateSelectionSchema,
   themeSchema,
   toScheduleInput,
-  weddingProfileSchema,
 } from "@/lib/editor/validation";
+import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
 
-describe("weddingProfileSchema", () => {
+describe("coupleIdentitySchema (Wedding/Engagement/Anniversary)", () => {
   const valid = {
     brideFullName: "Ayu Lestari",
     brideNickname: "Ayu",
@@ -23,20 +27,84 @@ describe("weddingProfileSchema", () => {
     groomFather: null,
     groomMother: null,
     groomInstagram: null,
+    yearsTogether: null,
   };
 
   it("accepts valid input with nulls for unset fields", () => {
-    expect(weddingProfileSchema.safeParse(valid).success).toBe(true);
+    expect(coupleIdentitySchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("accepts a partial draft — required names are enforced at publish, not on autosave", () => {
+    expect(
+      coupleIdentitySchema.safeParse({ ...valid, brideFullName: null, groomFullName: null })
+        .success,
+    ).toBe(true);
   });
 
   it("rejects an empty string (client must send null, not '')", () => {
-    const result = weddingProfileSchema.safeParse({ ...valid, brideNickname: "" });
+    const result = coupleIdentitySchema.safeParse({ ...valid, brideNickname: "" });
     expect(result.success).toBe(false);
   });
 
   it("rejects a name exceeding the max length", () => {
-    const result = weddingProfileSchema.safeParse({ ...valid, brideFullName: "a".repeat(121) });
+    const result = coupleIdentitySchema.safeParse({ ...valid, brideFullName: "a".repeat(121) });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects an out-of-range or fractional yearsTogether", () => {
+    for (const yearsTogether of [0, 101, 2.5]) {
+      expect(coupleIdentitySchema.safeParse({ ...valid, yearsTogether }).success).toBe(false);
+    }
+  });
+});
+
+describe("personIdentitySchema (Birthday)", () => {
+  it("rejects a negative or absurd age", () => {
+    const base = { fullName: "Citra", nickname: null, milestone: null, hostedBy: null };
+    for (const age of [-1, 151]) {
+      expect(personIdentitySchema.safeParse({ ...base, instagram: null, age }).success).toBe(false);
+    }
+  });
+});
+
+describe("parseIdentityProfileInput", () => {
+  it.each(Object.entries(IDENTITY_BY_TYPE).filter(([, identity]) => identity.family !== "GENERIC"))(
+    "accepts a well-formed %s identity",
+    (_type, identity) => {
+      const result = parseIdentityProfileInput(identity);
+      expect(result.ok).toBe(true);
+    },
+  );
+
+  it("rejects a GENERIC (OTHER) identity — it has no profile to write", () => {
+    expect(parseIdentityProfileInput({ family: "GENERIC" }).ok).toBe(false);
+  });
+
+  it("keeps field errors keyed by field name for the form", () => {
+    const result = parseIdentityProfileInput({
+      family: "BABY_FAMILY",
+      data: {
+        babyFullName: null,
+        babyNickname: null,
+        fatherName: null,
+        motherName: null,
+        birthDate: "17-08-2026",
+        birthDetails: null,
+      },
+    });
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.fieldErrors.birthDate).toBeDefined();
+  });
+});
+
+describe("sectionOverridesSchema", () => {
+  it("accepts a partial map of known sections", () => {
+    expect(sectionOverridesSchema.safeParse({ rsvp: false, gift: true }).success).toBe(true);
+  });
+
+  it("rejects unknown keys and non-boolean values", () => {
+    expect(sectionOverridesSchema.safeParse({ payments: true }).success).toBe(false);
+    expect(sectionOverridesSchema.safeParse({ rsvp: "false" }).success).toBe(false);
   });
 });
 

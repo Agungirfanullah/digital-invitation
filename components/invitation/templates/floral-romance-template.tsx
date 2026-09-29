@@ -2,12 +2,14 @@ import type { InvitationTemplateProps } from "@/lib/invitations/templates/regist
 import type {
   PublicGallery,
   PublicGiftMethod,
+  PublicIdentity,
   PublicInvitation,
   PublicLoveStory,
   PublicSchedule,
-  PublicWeddingProfile,
   PublicWish,
 } from "@/lib/invitations/types";
+import { getInvitationCopy, type InvitationCopy } from "@/lib/event-types/config";
+import { getHeroHeading } from "@/lib/event-types/identity";
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { GIFT_METHOD_TYPE_LABELS } from "@/lib/gifts/labels";
 import {
@@ -57,17 +59,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function coupleOrTitleHeading(invitation: PublicInvitation): string {
-  const profile = invitation.weddingProfile;
-  if (profile?.groomNickname && profile?.brideNickname) {
-    return `${profile.brideNickname} & ${profile.groomNickname}`;
-  }
-  if (profile?.groomFullName && profile?.brideFullName) {
-    return `${profile.brideFullName} & ${profile.groomFullName}`;
-  }
-  return invitation.title;
-}
-
 function Hero({ invitation }: { invitation: PublicInvitation }) {
   const earliestSchedule = invitation.schedules[0];
 
@@ -84,7 +75,7 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
         className="max-w-md text-3xl text-balance text-[color:var(--ii-primary)] sm:text-4xl"
         style={{ fontFamily: "var(--ii-script-font)" }}
       >
-        {coupleOrTitleHeading(invitation)}
+        {getHeroHeading(invitation)}
       </h1>
       {earliestSchedule && (
         <p className="text-sm text-[color:var(--ii-text)]">
@@ -104,49 +95,42 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
   );
 }
 
-function Couple({ profile }: { profile: PublicWeddingProfile }) {
-  const bride = profile.brideFullName ?? profile.brideNickname;
-  const groom = profile.groomFullName ?? profile.groomNickname;
-  if (!bride && !groom) return null;
-
+function Identity({ identity }: { identity: PublicIdentity }) {
   return (
-    <section aria-labelledby="couple-heading" className="px-6 py-16 text-center">
-      <h2 id="couple-heading" className="sr-only">
-        Mempelai
+    <section aria-labelledby="identity-heading" className="px-6 py-16 text-center">
+      <h2 id="identity-heading" className="sr-only">
+        {identity.heading}
       </h2>
-      <SectionLabel>Mempelai</SectionLabel>
-      <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-12">
-        {bride && (
-          <div className="rounded-[2rem] border border-[color:var(--ii-secondary)] px-8 py-6">
-            <p
-              className="text-2xl text-[color:var(--ii-primary)]"
-              style={{ fontFamily: "var(--ii-script-font)" }}
+      <SectionLabel>{identity.heading}</SectionLabel>
+      {identity.members.length > 0 && (
+        <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-12">
+          {identity.members.map((member, index) => (
+            <div
+              key={`${index}-${member.name}`}
+              className="rounded-[2rem] border border-[color:var(--ii-secondary)] px-8 py-6"
             >
-              {bride}
-            </p>
-            {profile.brideInstagram && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
-                @{profile.brideInstagram}
+              <p
+                className="text-2xl text-[color:var(--ii-primary)]"
+                style={{ fontFamily: "var(--ii-script-font)" }}
+              >
+                {member.name}
               </p>
-            )}
-          </div>
-        )}
-        {groom && (
-          <div className="rounded-[2rem] border border-[color:var(--ii-secondary)] px-8 py-6">
-            <p
-              className="text-2xl text-[color:var(--ii-primary)]"
-              style={{ fontFamily: "var(--ii-script-font)" }}
-            >
-              {groom}
-            </p>
-            {profile.groomInstagram && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
-                @{profile.groomInstagram}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+              {member.instagram && (
+                <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
+                  @{member.instagram}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {identity.details.length > 0 && (
+        <ul className="mx-auto mt-6 max-w-sm space-y-1 text-sm text-[color:var(--ii-text)] opacity-80">
+          {identity.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -201,15 +185,21 @@ function Schedule({ schedules }: { schedules: PublicSchedule[] }) {
   );
 }
 
-function LoveStory({ loveStory }: { loveStory: PublicLoveStory | null }) {
+function LoveStory({
+  loveStory,
+  defaultTitle,
+}: {
+  loveStory: PublicLoveStory | null;
+  defaultTitle: string;
+}) {
   if (!loveStory || loveStory.items.length === 0) return null;
 
   return (
     <section aria-labelledby="love-story-heading" className="px-6 py-16">
       <h2 id="love-story-heading" className="sr-only">
-        {loveStory.title ?? "Kisah Kami"}
+        {loveStory.title ?? defaultTitle}
       </h2>
-      <SectionLabel>{loveStory.title ?? "Kisah Kami"}</SectionLabel>
+      <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
       <ol className="mx-auto mt-8 flex max-w-md flex-col gap-8">
         {loveStory.items.map((item) => (
           <li key={item.id} className="text-center">
@@ -381,15 +371,14 @@ function Wishes({
   );
 }
 
-function Closing() {
+function Closing({ copy }: { copy: InvitationCopy }) {
   return (
     <section aria-label="Penutup" className="flex flex-col items-center px-6 py-16 text-center">
       <p className="mx-auto max-w-sm text-sm text-balance text-[color:var(--ii-text)] opacity-80">
-        Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan
-        hadir dan memberikan doa restu.
+        {copy.closingMessage}
       </p>
       <p className="mt-6 text-sm font-medium text-[color:var(--ii-primary)]">
-        Terima kasih atas perhatiannya.
+        {copy.closingThanks}
       </p>
       <BotanicalFlourish className="mt-6 h-8 w-28" />
     </section>
@@ -397,6 +386,9 @@ function Closing() {
 }
 
 export function FloralRomanceTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
+  const { sections } = invitation;
+  const copy = getInvitationCopy(invitation.type);
+
   return (
     <main
       style={themeToCssVars(invitation.theme)}
@@ -404,14 +396,20 @@ export function FloralRomanceTemplate({ invitation, rsvp, wishGuest }: Invitatio
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
         <Hero invitation={invitation} />
-        {invitation.weddingProfile && <Couple profile={invitation.weddingProfile} />}
-        <Schedule schedules={invitation.schedules} />
-        <LoveStory loveStory={invitation.loveStory} />
+        {sections.identity && invitation.identity && <Identity identity={invitation.identity} />}
+        {sections.schedule && <Schedule schedules={invitation.schedules} />}
+        <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
         <Gallery galleries={invitation.galleries} />
-        <Rsvp eventId={invitation.eventId} rsvp={rsvp ?? null} />
+        {sections.rsvp && <Rsvp eventId={invitation.eventId} rsvp={rsvp ?? null} />}
         <Gift giftMethods={invitation.giftMethods} />
-        <Wishes eventId={invitation.eventId} wishes={invitation.wishes} guest={wishGuest ?? null} />
-        <Closing />
+        {sections.wishes && (
+          <Wishes
+            eventId={invitation.eventId}
+            wishes={invitation.wishes}
+            guest={wishGuest ?? null}
+          />
+        )}
+        <Closing copy={copy} />
       </div>
     </main>
   );

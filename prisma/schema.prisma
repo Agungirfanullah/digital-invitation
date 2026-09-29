@@ -190,7 +190,15 @@ model Event {
   invitationViews  InvitationView[]
   checkIns         CheckIn[]
   theme            Theme?
-  weddingProfile   WeddingProfile?
+
+  // Identity profiles — at most one is meaningful per event, chosen by
+  // `type`'s identity family (lib/event-types/config.ts). OTHER (GENERIC
+  // family) has no profile. See docs/DATABASE.md §42.
+  weddingProfile      WeddingProfile?
+  personProfile       PersonProfile?
+  babyFamilyProfile   BabyFamilyProfile?
+  hostProfile         HostProfile?
+  organizationProfile OrganizationProfile?
 
   @@index([ownerId])
   @@index([status])
@@ -269,7 +277,7 @@ model Guest {
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
   invitations      GuestInvitation[]
-  rsvps             RSVP[]
+  rsvps            RSVP[]
   wishes           Wish[]
   checkIns         CheckIn[]
   giftTransactions GiftTransaction[]
@@ -282,15 +290,15 @@ model Guest {
 }
 
 model GuestInvitation {
-  id        String                 @id @default(cuid())
+  id        String                @id @default(cuid())
   eventId   String
   guestId   String
-  token     String                 @unique
-  status    GuestInvitationStatus  @default(NOT_SENT)
+  token     String                @unique
+  status    GuestInvitationStatus @default(NOT_SENT)
   sentAt    DateTime?
   openedAt  DateTime?
-  createdAt DateTime               @default(now())
-  updatedAt DateTime               @updatedAt
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
 
   // `eventId` previously had no enforced relation to Event — only `guestId`
   // was FK-backed. That left the event scoping of a guest token resting on
@@ -445,14 +453,14 @@ model Wish {
 }
 
 model CheckIn {
-  id            String        @id @default(cuid())
-  eventId       String
-  guestId       String
-  checkedInAt   DateTime      @default(now())
-  checkedInBy   String?
-  method        CheckInMethod @default(MANUAL)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id          String        @id @default(cuid())
+  eventId     String
+  guestId     String
+  checkedInAt DateTime      @default(now())
+  checkedInBy String?
+  method      CheckInMethod @default(MANUAL)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   event           Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
   guest           Guest @relation(fields: [guestId], references: [id], onDelete: Cascade)
@@ -484,18 +492,18 @@ model GiftMethod {
 }
 
 model GiftTransaction {
-  id                    String                 @id @default(cuid())
+  id                    String                @id @default(cuid())
   eventId               String
   guestId               String
   provider              String
   providerTransactionId String?
-  amount                Decimal                @db.Decimal(14, 2)
-  currency              String                 @default("IDR")
-  status                GiftTransactionStatus  @default(PENDING)
+  amount                Decimal               @db.Decimal(14, 2)
+  currency              String                @default("IDR")
+  status                GiftTransactionStatus @default(PENDING)
   paidAt                DateTime?
   metadata              Json?
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
 
   // Financial records: never cascade-delete with their event/guest.
   event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
@@ -578,18 +586,18 @@ model InvitationView {
 // ---------------------------------------------------------------------------
 
 model Plan {
-  id              String           @id @default(cuid())
+  id              String          @id @default(cuid())
   name            String
-  slug            String           @unique
+  slug            String          @unique
   description     String?
-  price           Decimal          @db.Decimal(14, 2)
-  currency        String           @default("IDR")
+  price           Decimal         @db.Decimal(14, 2)
+  currency        String          @default("IDR")
   billingInterval BillingInterval
-  isActive        Boolean          @default(true)
+  isActive        Boolean         @default(true)
   features        Json
   limits          Json
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   subscriptions Subscription[]
 }
@@ -687,22 +695,85 @@ model AuditLog {
 }
 
 // ---------------------------------------------------------------------------
-// Event-type profiles
+// Event-type identity profiles (one table per identity family)
 // ---------------------------------------------------------------------------
 
+// COUPLE family storage: WEDDING, ENGAGEMENT and ANNIVERSARY. The table
+// keeps its original name and bride*/groom* columns (non-destructive);
+// for ENGAGEMENT/ANNIVERSARY they hold "person 1"/"person 2".
 model WeddingProfile {
+  id             String   @id @default(cuid())
+  eventId        String   @unique
+  brideFullName  String?
+  brideNickname  String?
+  brideFather    String?
+  brideMother    String?
+  brideInstagram String?
+  groomFullName  String?
+  groomNickname  String?
+  groomFather    String?
+  groomMother    String?
+  groomInstagram String?
+  // ANNIVERSARY only — rejected for the other COUPLE types.
+  yearsTogether  Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+// PERSON family: BIRTHDAY.
+model PersonProfile {
+  id        String   @id @default(cuid())
+  eventId   String   @unique
+  fullName  String?
+  nickname  String?
+  age       Int?
+  milestone String?
+  hostedBy  String?
+  instagram String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+// BABY_FAMILY family: AQIQAH.
+model BabyFamilyProfile {
+  id           String    @id @default(cuid())
+  eventId      String    @unique
+  babyFullName String?
+  babyNickname String?
+  fatherName   String?
+  motherName   String?
+  birthDate    DateTime? @db.Date
+  birthDetails String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+// HOST_GROUP family: GATHERING.
+model HostProfile {
+  id            String   @id @default(cuid())
+  eventId       String   @unique
+  hostName      String?
+  occasionTheme String?
+  contactInfo   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+// ORGANIZATION family: CORPORATE.
+model OrganizationProfile {
   id               String   @id @default(cuid())
   eventId          String   @unique
-  brideFullName    String?
-  brideNickname    String?
-  brideFather      String?
-  brideMother      String?
-  brideInstagram   String?
-  groomFullName    String?
-  groomNickname    String?
-  groomFather      String?
-  groomMother      String?
-  groomInstagram   String?
+  organizationName String?
+  contactPerson    String?
+  dressCode        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

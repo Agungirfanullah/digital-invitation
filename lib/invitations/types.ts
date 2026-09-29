@@ -1,5 +1,8 @@
 import type { EventType, GalleryItemType, GiftMethodType } from "@prisma/client";
 
+import type { IdentityFamily } from "@/lib/event-types/config";
+import type { InvitationSections } from "@/lib/event-types/sections";
+
 /**
  * Public-safe DTOs for the `/invite/[slug]` rendering pipeline. Nothing
  * here may include owner/member identifiers, payment/subscription data,
@@ -87,13 +90,29 @@ export interface PublicWish {
   createdAt: Date;
 }
 
-export interface PublicWeddingProfile {
-  brideFullName: string | null;
-  brideNickname: string | null;
-  brideInstagram: string | null;
-  groomFullName: string | null;
-  groomNickname: string | null;
-  groomInstagram: string | null;
+export interface PublicIdentityMember {
+  /** e.g. "Mempelai Wanita"; null when the type presents names without a role label. */
+  role: string | null;
+  name: string;
+  instagram: string | null;
+}
+
+/**
+ * Type-aware identity, built only by `buildPublicIdentity()`
+ * (lib/event-types/identity.ts). Deliberately excludes the private-ish
+ * profile fields the public page never showed (e.g. a couple's parents).
+ */
+export interface PublicIdentity {
+  family: IdentityFamily;
+  /** Identity section heading, e.g. "Mempelai", "Yang Berulang Tahun". */
+  heading: string;
+  /** Hero heading; null means "use the event title". */
+  displayName: string | null;
+  members: PublicIdentityMember[];
+  /** Render members as a pair ("A & B"). */
+  pairMembers: boolean;
+  /** Supporting lines, e.g. "Ulang tahun ke-5", "Dress code: Batik". */
+  details: string[];
 }
 
 export interface PublicTheme {
@@ -117,7 +136,9 @@ export interface PublicInvitation {
   /** Raw template slug from the DB, or null. The renderer/registry decides how to interpret an unrecognized value — this DTO just reports what's there. */
   templateKey: string | null;
   theme: PublicTheme;
-  weddingProfile: PublicWeddingProfile | null;
+  identity: PublicIdentity | null;
+  /** Effective section configuration — lib/event-types/sections.ts. Disabled sections' data is already stripped. */
+  sections: InvitationSections;
   schedules: PublicSchedule[];
   loveStory: PublicLoveStory | null;
   galleries: PublicGallery[];

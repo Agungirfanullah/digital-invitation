@@ -1,7 +1,13 @@
 import type { PublicLoveStory } from "@/lib/invitations/types";
 
-/** Only rendered when a LoveStory exists with at least one item. */
-export function LoveStorySection({ loveStory }: { loveStory: PublicLoveStory | null }) {
+/** Only rendered when a LoveStory exists with at least one item. `defaultTitle` is the event type's fallback heading (lib/event-types/config.ts). */
+export function LoveStorySection({
+  loveStory,
+  defaultTitle,
+}: {
+  loveStory: PublicLoveStory | null;
+  defaultTitle: string;
+}) {
   if (!loveStory || loveStory.items.length === 0) return null;
 
   return (
@@ -10,7 +16,7 @@ export function LoveStorySection({ loveStory }: { loveStory: PublicLoveStory | n
         id="love-story-heading"
         className="mb-8 text-center text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase"
       >
-        {loveStory.title ?? "Kisah Kami"}
+        {loveStory.title ?? defaultTitle}
       </h2>
 
       <ol className="mx-auto flex max-w-md flex-col gap-8">

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireAppUser } from "@/lib/auth/session";
-import { getEventForUser } from "@/lib/events/service";
+import { getEventForUser, getPublishReadinessForUser } from "@/lib/events/service";
 import { EventNotFoundError } from "@/lib/events/errors";
 import { EVENT_STATUS_LABELS, EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { Button } from "@/components/ui/button";
@@ -23,8 +23,10 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const user = await requireAppUser();
 
   let event;
+  let readiness;
   try {
     event = await getEventForUser(eventId, user.id);
+    readiness = await getPublishReadinessForUser(eventId, user.id);
   } catch (error) {
     if (error instanceof EventNotFoundError) notFound();
     throw error;
@@ -106,6 +108,23 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           >
             Lihat undangan publik: /invite/{event.slug}
           </Link>
+        )}
+
+        {event.status !== "PUBLISHED" && readiness.missing.length > 0 && (
+          <div className="bg-muted mt-3 rounded-md p-3 text-sm">
+            <p className="font-medium">Lengkapi dulu sebelum dipublikasikan:</p>
+            <ul className="text-muted-foreground mt-1 list-disc pl-5">
+              {readiness.missing.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <Link
+              href={`/dashboard/events/${event.id}/editor`}
+              className="text-foreground mt-2 inline-block underline underline-offset-4"
+            >
+              Buka editor undangan
+            </Link>
+          </div>
         )}
 
         <div className="mt-4">

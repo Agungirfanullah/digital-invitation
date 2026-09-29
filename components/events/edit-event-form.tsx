@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState } from "react";
+import type { EventType } from "@prisma/client";
 
 import { updateEventAction, type EventFormState } from "@/lib/events/actions";
+import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { FormField } from "@/components/forms/form-field";
 import { FormError } from "@/components/forms/form-error";
-import { EventTypeField } from "@/components/events/event-type-field";
 import { EventDescriptionField } from "@/components/events/event-description-field";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +16,7 @@ interface EditEventFormProps {
   eventId: string;
   defaultValues: {
     title: string;
-    type: string;
+    type: EventType;
     slug: string;
     description: string | null;
   };
@@ -38,7 +39,15 @@ export function EditEventForm({ eventId, defaultValues }: EditEventFormProps) {
         error={state.fieldErrors?.title?.[0]}
       />
 
-      <EventTypeField defaultValue={defaultValues.type} error={state.fieldErrors?.type?.[0]} />
+      {/* Read-only on purpose — EventType is immutable after creation and
+          enforced server-side (lib/events/service.ts), not just hidden here. */}
+      <div className="space-y-1.5">
+        <p className="text-sm leading-none font-medium">Jenis acara</p>
+        <p className="text-sm">{EVENT_TYPE_LABELS[defaultValues.type]}</p>
+        <p className="text-muted-foreground text-xs">
+          Jenis acara tidak dapat diubah setelah acara dibuat.
+        </p>
+      </div>
 
       <FormField
         label="Slug undangan"

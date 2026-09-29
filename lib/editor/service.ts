@@ -2,8 +2,22 @@ import "server-only";
 import { EventMemberRole, type Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
+import type { IdentityProfileData } from "@/lib/event-types/identity";
+import { IDENTITY_PROFILE_INCLUDE, toIdentityProfileData } from "@/lib/event-types/identity-record";
+import {
+  findNonToggleableSections,
+  mergeSectionOverrides,
+  parseSectionOverrides,
+  type SectionOverrides,
+} from "@/lib/event-types/sections";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
-import { EventNotFoundError, TemplateNotAvailableError } from "@/lib/editor/errors";
+import {
+  EventNotFoundError,
+  IdentityFamilyMismatchError,
+  SectionNotToggleableError,
+  TemplateNotAvailableError,
+} from "@/lib/editor/errors";
 import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
 import { GalleryStorageDeletionError } from "@/lib/storage/errors";
 import { buildGalleryObjectPath, derivePathFromPublicUrl } from "@/lib/storage/paths";
@@ -11,10 +25,10 @@ import { getStorageProvider } from "@/lib/storage/provider";
 import type { ValidatedGalleryImage } from "@/lib/storage/validation";
 import type {
   GalleryVideoItemInput,
+  IdentityProfileInput,
   LoveStoryItemInput,
   ScheduleInput,
   ThemeInput,
-  WeddingProfileInput,
 } from "@/lib/editor/validation";
 import type {
   EditorEventData,
@@ -27,7 +41,7 @@ import type {
 const EDITOR_EVENT_INCLUDE = {
   template: { select: { slug: true } },
   theme: true,
-  weddingProfile: true,
+  ...IDENTITY_PROFILE_INCLUDE,
   schedules: { orderBy: { sortOrder: "asc" as const }, include: { venue: true } },
   loveStories: {
     orderBy: { sortOrder: "asc" as const },
@@ -141,20 +155,8 @@ export async function getEditorEvent(eventId: string, userId: string): Promise<E
     status: event.status,
     description: event.description,
     templateKey: event.template?.slug ?? null,
-    weddingProfile: event.weddingProfile
-      ? {
-          brideFullName: event.weddingProfile.brideFullName,
-          brideNickname: event.weddingProfile.brideNickname,
-          brideFather: event.weddingProfile.brideFather,
-          brideMother: event.weddingProfile.brideMother,
-          brideInstagram: event.weddingProfile.brideInstagram,
-          groomFullName: event.weddingProfile.groomFullName,
-          groomNickname: event.weddingProfile.groomNickname,
-          groomFather: event.weddingProfile.groomFather,
-          groomMother: event.weddingProfile.groomMother,
-          groomInstagram: event.weddingProfile.groomInstagram,
-        }
-      : null,
+    identity: toIdentityProfileData(event),
+    sectionOverrides: parseSectionOverrides(event.settings),
     theme: event.theme
       ? {
           primaryColor: event.theme.primaryColor,
@@ -189,20 +191,105 @@ export async function listTemplateOptions(): Promise<EditorTemplateOption[]> {
   }));
 }
 
-export async function updateWeddingProfile(
+const NO_PROFILE_RECORDS = {
+  weddingProfile: null,
+  personProfile: null,
+  babyFamilyProfile: null,
+  hostProfile: null,
+  organizationProfile: null,
+} as const;
+
+/**
+ * Upserts the identity profile for the event's own identity family and
+ * returns the canonical identity data. The family is checked against the
+ * STORED event type, never trusted from the client: a profile for the
+ * wrong family (or any profile for OTHER, which has none) is rejected
+ * before anything is written. EventType is immutable after creation
+ * (lib/events/service.ts), so the checked type can't change underneath.
+ */
+export async function updateIdentityProfile(
   eventId: string,
   userId: string,
-  input: WeddingProfileInput,
-) {
-  await requireEditorAccess(eventId, userId);
+  input: IdentityProfileInput,
+): Promise<IdentityProfileData> {
+  const event = await requireEditorAccess(eventId, userId);
+  const { type } = event;
+  if (input.family !== EVENT_TYPE_CONFIG[type].family) throw new IdentityFamilyMismatchError();
 
-  const profile = await prisma.weddingProfile.upsert({
-    where: { eventId },
-    update: input,
-    create: { eventId, ...input },
+  switch (input.family) {
+    case "COUPLE": {
+      if (type !== "ANNIVERSARY" && input.data.yearsTogether !== null) {
+        throw new IdentityFamilyMismatchError();
+      }
+      const weddingProfile = await prisma.weddingProfile.upsert({
+        where: { eventId },
+        update: input.data,
+        create: { eventId, ...input.data },
+      });
+      return toIdentityProfileData({ type, ...NO_PROFILE_RECORDS, weddingProfile });
+    }
+    case "PERSON": {
+      const personProfile = await prisma.personProfile.upsert({
+        where: { eventId },
+        update: input.data,
+        create: { eventId, ...input.data },
+      });
+      return toIdentityProfileData({ type, ...NO_PROFILE_RECORDS, personProfile });
+    }
+    case "BABY_FAMILY": {
+      const data = {
+        ...input.data,
+        birthDate: input.data.birthDate ? dateOnlyToDate(input.data.birthDate) : null,
+      };
+      const babyFamilyProfile = await prisma.babyFamilyProfile.upsert({
+        where: { eventId },
+        update: data,
+        create: { eventId, ...data },
+      });
+      return toIdentityProfileData({ type, ...NO_PROFILE_RECORDS, babyFamilyProfile });
+    }
+    case "HOST_GROUP": {
+      const hostProfile = await prisma.hostProfile.upsert({
+        where: { eventId },
+        update: input.data,
+        create: { eventId, ...input.data },
+      });
+      return toIdentityProfileData({ type, ...NO_PROFILE_RECORDS, hostProfile });
+    }
+    case "ORGANIZATION": {
+      const organizationProfile = await prisma.organizationProfile.upsert({
+        where: { eventId },
+        update: input.data,
+        create: { eventId, ...input.data },
+      });
+      return toIdentityProfileData({ type, ...NO_PROFILE_RECORDS, organizationProfile });
+    }
+  }
+}
+
+/**
+ * Persists owner section overrides into `Event.settings.sections`, merged
+ * with what's already stored. Rejects overrides for sections the type
+ * doesn't let the owner toggle (e.g. identity for OTHER) rather than
+ * persisting a value that would never apply. Returns the stored overrides.
+ */
+export async function updateSectionOverrides(
+  eventId: string,
+  userId: string,
+  overrides: SectionOverrides,
+): Promise<SectionOverrides> {
+  const event = await requireEditorAccess(eventId, userId);
+  if (findNonToggleableSections(event.type, overrides).length > 0) {
+    throw new SectionNotToggleableError();
+  }
+
+  const settings = mergeSectionOverrides(event.settings, overrides);
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { settings: settings as Prisma.InputJsonObject },
   });
 
-  return profile;
+  return settings.sections;
 }
 
 export async function updateTheme(eventId: string, userId: string, input: ThemeInput) {

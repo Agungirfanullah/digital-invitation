@@ -29,6 +29,7 @@ vi.mock("next/cache", () => ({
 }));
 
 import { createEventAction, updateEventAction } from "@/lib/events/actions";
+import { EventTypeImmutableError } from "@/lib/events/errors";
 
 describe("createEventAction — server-side validation", () => {
   beforeEach(() => {
@@ -106,5 +107,31 @@ describe("updateEventAction — server-side validation", () => {
 
     expect(result.fieldErrors?.title).toBeDefined();
     expect(updateEventForUserMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts the edit form's payload, which carries no type field", async () => {
+    updateEventForUserMock.mockResolvedValue({ id: "event-123" });
+    const formData = new FormData();
+    formData.set("title", "Judul Valid");
+    formData.set("slug", "valid-slug");
+
+    await expect(updateEventAction("event-123", {}, formData)).rejects.toThrow("NEXT_REDIRECT");
+    expect(updateEventForUserMock).toHaveBeenCalledWith(
+      "event-123",
+      "user-1",
+      expect.objectContaining({ type: undefined }),
+    );
+  });
+
+  it("forwards a crafted type change to the service, which is what rejects it (not the UI)", async () => {
+    updateEventForUserMock.mockRejectedValue(new EventTypeImmutableError());
+    const formData = new FormData();
+    formData.set("title", "Judul Valid");
+    formData.set("slug", "valid-slug");
+    formData.set("type", "BIRTHDAY");
+
+    const result = await updateEventAction("event-123", {}, formData);
+
+    expect(result.error).toBe("Jenis acara tidak dapat diubah setelah acara dibuat.");
   });
 });

@@ -10,9 +10,11 @@ import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { GUEST_CATEGORY_LABELS } from "@/lib/guests/labels";
 import { toCsv } from "@/lib/guests/csv";
+import { resolveEnabledSections } from "@/lib/event-types/sections";
 import {
   EventNotFoundError,
   InvalidRsvpTokenError,
+  RsvpDisabledError,
   SeatQuotaExceededError,
 } from "@/lib/rsvp/errors";
 import { RSVP_ATTENDANCE_LABELS } from "@/lib/rsvp/labels";
@@ -88,6 +90,8 @@ interface RsvpGuestContext {
   guestId: string;
   guestName: string;
   seatQuota: number;
+  /** Whether the event's RSVP section is enabled (lib/event-types/sections.ts). */
+  rsvpEnabled: boolean;
 }
 
 /**
@@ -110,19 +114,29 @@ async function resolveGuestForRsvp(
     select: {
       id: true,
       status: true,
-      guest: { select: { id: true, eventId: true, name: true, seatQuota: true } },
+      guest: {
+        select: {
+          id: true,
+          eventId: true,
+          name: true,
+          seatQuota: true,
+          event: { select: { type: true, settings: true } },
+        },
+      },
     },
   });
 
   if (!invitation?.guest) return null;
   if (invitation.guest.eventId !== eventId) return null;
 
+  const { type, settings } = invitation.guest.event;
   return {
     invitationId: invitation.id,
     invitationStatus: invitation.status,
     guestId: invitation.guest.id,
     guestName: invitation.guest.name,
     seatQuota: invitation.guest.seatQuota,
+    rsvpEnabled: resolveEnabledSections(type, settings).rsvp,
   };
 }
 
@@ -138,7 +152,7 @@ export async function getRsvpGuestView(
   rawToken: unknown,
 ): Promise<RsvpGuestView | null> {
   const context = await resolveGuestForRsvp(eventId, rawToken);
-  if (!context) return null;
+  if (!context || !context.rsvpEnabled) return null;
 
   const rsvp = await prisma.rSVP.findUnique({
     where: { eventId_guestId: { eventId, guestId: context.guestId } },
@@ -206,6 +220,7 @@ export async function submitRsvpForGuest(
 ): Promise<RsvpAnswer> {
   const context = await resolveGuestForRsvp(eventId, rawToken);
   if (!context) throw new InvalidRsvpTokenError();
+  if (!context.rsvpEnabled) throw new RsvpDisabledError();
 
   const attendeeCount = resolveAttendeeCount(input.attendance, input.attendeeCount);
   if (input.attendance === "ATTENDING" && attendeeCount > context.seatQuota) {

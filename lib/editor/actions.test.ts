@@ -25,7 +25,8 @@ if (typeof File.prototype.arrayBuffer !== "function") {
 }
 
 const requireAppUserMock = vi.fn();
-const updateWeddingProfileMock = vi.fn();
+const updateIdentityProfileMock = vi.fn();
+const updateSectionOverridesMock = vi.fn();
 const updateThemeMock = vi.fn();
 const selectTemplateMock = vi.fn();
 const createScheduleMock = vi.fn();
@@ -41,7 +42,8 @@ vi.mock("@/lib/auth/session", () => ({
 }));
 
 vi.mock("@/lib/editor/service", () => ({
-  updateWeddingProfile: (...args: unknown[]) => updateWeddingProfileMock(...args),
+  updateIdentityProfile: (...args: unknown[]) => updateIdentityProfileMock(...args),
+  updateSectionOverrides: (...args: unknown[]) => updateSectionOverridesMock(...args),
   updateTheme: (...args: unknown[]) => updateThemeMock(...args),
   selectTemplate: (...args: unknown[]) => selectTemplateMock(...args),
   createSchedule: (...args: unknown[]) => createScheduleMock(...args),
@@ -67,8 +69,9 @@ import {
   addGalleryItemAction,
   createScheduleAction,
   moveGalleryItemAction,
+  saveIdentityProfileAction,
+  saveSectionOverridesAction,
   saveThemeAction,
-  saveWeddingProfileAction,
   selectTemplateAction,
   updateGalleryItemCaptionAction,
   uploadGalleryImageAction,
@@ -79,7 +82,8 @@ import {
 // need these mocks reset the same way.
 beforeEach(() => {
   requireAppUserMock.mockReset().mockResolvedValue({ id: "user-1" });
-  updateWeddingProfileMock.mockReset();
+  updateIdentityProfileMock.mockReset();
+  updateSectionOverridesMock.mockReset();
   updateThemeMock.mockReset();
   selectTemplateMock.mockReset();
   createScheduleMock.mockReset();
@@ -91,37 +95,82 @@ beforeEach(() => {
   validateGalleryImageUploadMock.mockReset();
 });
 
+const COUPLE_INPUT = {
+  brideFullName: "Ayu",
+  brideNickname: null,
+  brideFather: null,
+  brideMother: null,
+  brideInstagram: null,
+  groomFullName: null,
+  groomNickname: null,
+  groomFather: null,
+  groomMother: null,
+  groomInstagram: null,
+  yearsTogether: null,
+};
+
 describe("editor actions — server-side validation and authorization", () => {
-  it("saveWeddingProfileAction rejects an invalid payload without checking auth or calling the service", async () => {
-    const result = await saveWeddingProfileAction("event-1", { brideFullName: "" });
+  it("saveIdentityProfileAction rejects an invalid payload without checking auth or calling the service", async () => {
+    const result = await saveIdentityProfileAction("event-1", {
+      family: "COUPLE",
+      data: { ...COUPLE_INPUT, brideFullName: "" },
+    });
 
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.fieldErrors).toBeDefined();
+    if (!result.ok) expect(result.fieldErrors?.brideFullName).toBeDefined();
     expect(requireAppUserMock).not.toHaveBeenCalled();
-    expect(updateWeddingProfileMock).not.toHaveBeenCalled();
+    expect(updateIdentityProfileMock).not.toHaveBeenCalled();
   });
 
-  it("saveWeddingProfileAction requires an authenticated session before calling the service", async () => {
-    updateWeddingProfileMock.mockResolvedValue({ brideFullName: "Ayu" });
+  it("saveIdentityProfileAction rejects the GENERIC family (OTHER has no profile) and unknown families", async () => {
+    for (const family of ["GENERIC", "ALIEN", undefined]) {
+      const result = await saveIdentityProfileAction("event-1", { family, data: {} });
+      expect(result.ok).toBe(false);
+    }
+    expect(updateIdentityProfileMock).not.toHaveBeenCalled();
+  });
 
-    const result = await saveWeddingProfileAction("event-1", {
-      brideFullName: "Ayu",
-      brideNickname: null,
-      brideFather: null,
-      brideMother: null,
-      brideInstagram: null,
-      groomFullName: null,
-      groomNickname: null,
-      groomFather: null,
-      groomMother: null,
-      groomInstagram: null,
+  it("saveIdentityProfileAction validates data against the declared family's schema", async () => {
+    // A bride/groom payload declared as PERSON fails PERSON's schema.
+    const result = await saveIdentityProfileAction("event-1", {
+      family: "PERSON",
+      data: COUPLE_INPUT,
+    });
+    expect(result.ok).toBe(false);
+    expect(updateIdentityProfileMock).not.toHaveBeenCalled();
+  });
+
+  it("saveIdentityProfileAction requires an authenticated session before calling the service", async () => {
+    updateIdentityProfileMock.mockResolvedValue({ family: "COUPLE", data: COUPLE_INPUT });
+
+    const result = await saveIdentityProfileAction("event-1", {
+      family: "COUPLE",
+      data: COUPLE_INPUT,
     });
 
     expect(result.ok).toBe(true);
     expect(requireAppUserMock).toHaveBeenCalledTimes(1);
     // The authenticated user's id — never a client-supplied value — is
     // what gets passed down to the service layer.
-    expect(updateWeddingProfileMock).toHaveBeenCalledWith("event-1", "user-1", expect.anything());
+    expect(updateIdentityProfileMock).toHaveBeenCalledWith("event-1", "user-1", {
+      family: "COUPLE",
+      data: COUPLE_INPUT,
+    });
+  });
+
+  it("saveSectionOverridesAction rejects unknown section keys and non-boolean values", async () => {
+    for (const input of [{ payments: false }, { rsvp: "no" }, "rsvp", null]) {
+      const result = await saveSectionOverridesAction("event-1", input);
+      expect(result.ok).toBe(false);
+    }
+    expect(updateSectionOverridesMock).not.toHaveBeenCalled();
+  });
+
+  it("saveSectionOverridesAction passes a valid override to the service with the session user", async () => {
+    updateSectionOverridesMock.mockResolvedValue({ rsvp: false });
+    const result = await saveSectionOverridesAction("event-1", { rsvp: false });
+    expect(result.ok).toBe(true);
+    expect(updateSectionOverridesMock).toHaveBeenCalledWith("event-1", "user-1", { rsvp: false });
   });
 
   it("saveThemeAction rejects a CSS-injection-shaped color without calling the service", async () => {

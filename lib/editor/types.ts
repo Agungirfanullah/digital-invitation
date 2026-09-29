@@ -1,5 +1,8 @@
 import type { EventStatus, EventType, GalleryItemType } from "@prisma/client";
 
+import type { IdentityProfileData } from "@/lib/event-types/identity";
+import type { SectionOverrides } from "@/lib/event-types/sections";
+
 /**
  * The authenticated owner/editor's view of an event's editable content.
  * Distinct from `PublicInvitation` (lib/invitations/types.ts): this
@@ -8,19 +11,6 @@ import type { EventStatus, EventType, GalleryItemType } from "@prisma/client";
  * the public projection's `parseTheme()`. An empty field here means
  * "genuinely unset," not "render with a neutral default."
  */
-
-export interface EditorWeddingProfile {
-  brideFullName: string | null;
-  brideNickname: string | null;
-  brideFather: string | null;
-  brideMother: string | null;
-  brideInstagram: string | null;
-  groomFullName: string | null;
-  groomNickname: string | null;
-  groomFather: string | null;
-  groomMother: string | null;
-  groomInstagram: string | null;
-}
 
 export interface EditorTheme {
   primaryColor: string | null;
@@ -97,7 +87,10 @@ export interface EditorEventData {
   status: EventStatus;
   description: string | null;
   templateKey: string | null;
-  weddingProfile: EditorWeddingProfile | null;
+  /** Always the event type's own family — lib/event-types/identity-record.ts. */
+  identity: IdentityProfileData;
+  /** Persisted owner section overrides; resolve with lib/event-types/sections.ts. */
+  sectionOverrides: SectionOverrides;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;

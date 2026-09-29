@@ -23,6 +23,22 @@ export class EventDeleteBlockedError extends Error {
   }
 }
 
+/** Thrown when an update tries to change an event's type — immutable after creation (D-063). */
+export class EventTypeImmutableError extends Error {
+  constructor() {
+    super("Event type cannot be changed after creation");
+    this.name = "EventTypeImmutableError";
+  }
+}
+
+/** Thrown when publishing an event whose required type-specific information is missing. `missing` holds user-facing Indonesian labels. */
+export class PublishRequirementsNotMetError extends Error {
+  constructor(public readonly missing: string[]) {
+    super("Event is missing required information for publishing");
+    this.name = "PublishRequirementsNotMetError";
+  }
+}
+
 const GENERIC_MESSAGE = "Terjadi kesalahan. Coba lagi.";
 
 /** Maps a domain/unexpected error to an Indonesian, user-safe message. Logs the raw error for operators. */
@@ -35,6 +51,12 @@ export function mapEventErrorMessage(error: unknown): string {
   }
   if (error instanceof EventNotFoundError) {
     return "Acara tidak ditemukan.";
+  }
+  if (error instanceof EventTypeImmutableError) {
+    return "Jenis acara tidak dapat diubah setelah acara dibuat.";
+  }
+  if (error instanceof PublishRequirementsNotMetError) {
+    return `Lengkapi dulu sebelum mempublikasikan: ${error.missing.join(", ")}.`;
   }
 
   console.error("[events] Unexpected error", error);

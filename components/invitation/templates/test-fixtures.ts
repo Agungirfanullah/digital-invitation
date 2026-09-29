@@ -1,3 +1,11 @@
+import type { EventType } from "@prisma/client";
+
+import {
+  buildPublicIdentity,
+  type CoupleIdentityData,
+  type IdentityProfileData,
+} from "@/lib/event-types/identity";
+import { resolveEnabledSections } from "@/lib/event-types/sections";
 import { DEFAULT_THEME } from "@/lib/invitations/theme";
 import type { PublicInvitation } from "@/lib/invitations/types";
 
@@ -13,7 +21,8 @@ export function buildMinimalInvitation(
     description: null,
     templateKey: null,
     theme: DEFAULT_THEME,
-    weddingProfile: null,
+    identity: null,
+    sections: resolveEnabledSections(overrides.type ?? "WEDDING", null),
     schedules: [],
     loveStory: null,
     galleries: [],
@@ -30,14 +39,9 @@ export function buildFullyPopulatedInvitation(
 ): PublicInvitation {
   return buildMinimalInvitation({
     description: "Deskripsi acara uji coba.",
-    weddingProfile: {
-      brideFullName: "Ayu Lestari",
-      brideNickname: "Ayu",
-      brideInstagram: "ayulestari",
-      groomFullName: "Budi Santoso",
-      groomNickname: "Budi",
-      groomInstagram: "budisantoso",
-    },
+    // Built through the real canonical transformation, not hand-written,
+    // so template tests exercise exactly what production renders.
+    identity: buildPublicIdentity("WEDDING", WEDDING_IDENTITY),
     schedules: [
       {
         id: "sch-1",
@@ -108,6 +112,78 @@ export function buildFullyPopulatedInvitation(
       },
     ],
     guest: { displayName: "Dedi Pratama" },
+    ...overrides,
+  });
+}
+
+const COUPLE_DATA: CoupleIdentityData = {
+  brideFullName: "Ayu Lestari",
+  brideNickname: "Ayu",
+  brideFather: "Bapak Lestari",
+  brideMother: "Ibu Lestari",
+  brideInstagram: "ayulestari",
+  groomFullName: "Budi Santoso",
+  groomNickname: "Budi",
+  groomFather: "Bapak Santoso",
+  groomMother: "Ibu Santoso",
+  groomInstagram: "budisantoso",
+  yearsTogether: null,
+};
+
+export const WEDDING_IDENTITY: IdentityProfileData = { family: "COUPLE", data: COUPLE_DATA };
+
+/** A realistic, fully-filled identity for every event type (OTHER has none). */
+export const IDENTITY_BY_TYPE: Record<EventType, IdentityProfileData> = {
+  WEDDING: WEDDING_IDENTITY,
+  ENGAGEMENT: { family: "COUPLE", data: COUPLE_DATA },
+  ANNIVERSARY: { family: "COUPLE", data: { ...COUPLE_DATA, yearsTogether: 25 } },
+  BIRTHDAY: {
+    family: "PERSON",
+    data: {
+      fullName: "Citra Anindya",
+      nickname: "Citra",
+      age: 17,
+      milestone: "Sweet Seventeen",
+      hostedBy: "Keluarga Bapak Andi",
+      instagram: "citra.a",
+    },
+  },
+  AQIQAH: {
+    family: "BABY_FAMILY",
+    data: {
+      babyFullName: "Muhammad Rafa Alfarizi",
+      babyNickname: "Rafa",
+      fatherName: "Rizky Pratama",
+      motherName: "Nadia Putri",
+      birthDate: "2026-08-17",
+      birthDetails: "Anak pertama",
+    },
+  },
+  GATHERING: {
+    family: "HOST_GROUP",
+    data: {
+      hostName: "Keluarga Besar Wiryo",
+      occasionTheme: "Nuansa Putih",
+      contactInfo: "0812-0000-0000",
+    },
+  },
+  CORPORATE: {
+    family: "ORGANIZATION",
+    data: { organizationName: "PT Maju Bersama", contactPerson: "Dewi (HR)", dressCode: "Batik" },
+  },
+  OTHER: { family: "GENERIC" },
+};
+
+/** A fully-populated invitation for `type`, with that type's own identity. */
+export function buildInvitationForType(
+  type: EventType,
+  overrides: Partial<PublicInvitation> = {},
+): PublicInvitation {
+  return buildFullyPopulatedInvitation({
+    type,
+    title: `Acara ${type}`,
+    identity: buildPublicIdentity(type, IDENTITY_BY_TYPE[type]),
+    sections: resolveEnabledSections(type, null),
     ...overrides,
   });
 }

@@ -1,23 +1,39 @@
 "use client";
 
+import type { EventType } from "@prisma/client";
+
+import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
 import { cn } from "@/lib/utils";
 
 export type EditorSectionKey =
-  "couple" | "schedule" | "loveStory" | "gallery" | "theme" | "template";
+  "identity" | "schedule" | "story" | "gallery" | "sections" | "theme" | "template";
 
-const SECTIONS: { key: EditorSectionKey; label: string }[] = [
-  { key: "couple", label: "Mempelai" },
-  { key: "schedule", label: "Jadwal Acara" },
-  { key: "loveStory", label: "Kisah Cinta" },
-  { key: "gallery", label: "Galeri" },
-  { key: "theme", label: "Tema" },
-  { key: "template", label: "Template" },
-];
+/**
+ * Type-aware navigation: labels come from the event type's configuration,
+ * and the identity entry is omitted entirely for a type with no identity
+ * form (OTHER) — the editor never offers an irrelevant form.
+ */
+export function getEditorSections(type: EventType): { key: EditorSectionKey; label: string }[] {
+  const config = EVENT_TYPE_CONFIG[type];
+  return [
+    ...(config.identityNavLabel
+      ? [{ key: "identity" as const, label: config.identityNavLabel }]
+      : []),
+    { key: "schedule", label: "Jadwal Acara" },
+    { key: "story", label: config.storyNavLabel },
+    { key: "gallery", label: "Galeri" },
+    { key: "sections", label: "Bagian Undangan" },
+    { key: "theme", label: "Tema" },
+    { key: "template", label: "Template" },
+  ];
+}
 
 export function EditorSidebar({
+  type,
   active,
   onChange,
 }: {
+  type: EventType;
   active: EditorSectionKey;
   onChange: (section: EditorSectionKey) => void;
 }) {
@@ -26,7 +42,7 @@ export function EditorSidebar({
       aria-label="Bagian undangan"
       className="flex gap-1 overflow-x-auto p-2 lg:w-48 lg:flex-col lg:overflow-visible"
     >
-      {SECTIONS.map((section) => (
+      {getEditorSections(type).map((section) => (
         <button
           key={section.key}
           type="button"

@@ -37,6 +37,14 @@ export class WishLimitExceededError extends Error {
   }
 }
 
+/** Thrown when the event owner has turned the wishes section off (lib/event-types/sections.ts) — enforced server-side, not just hidden in the template. */
+export class WishesDisabledError extends Error {
+  constructor() {
+    super("Wishes are disabled for this event");
+    this.name = "WishesDisabledError";
+  }
+}
+
 const GENERIC_MESSAGE = "Terjadi kesalahan. Coba lagi.";
 export const WISH_RATE_LIMIT_MESSAGE =
   "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.";
@@ -51,6 +59,9 @@ export function mapWishErrorMessage(error: unknown): string {
   }
   if (error instanceof WishNotFoundError) {
     return "Ucapan tidak ditemukan.";
+  }
+  if (error instanceof WishesDisabledError) {
+    return "Pengiriman ucapan tidak tersedia untuk acara ini.";
   }
   if (error instanceof EventNotFoundError) {
     return mapEventErrorMessage(error);

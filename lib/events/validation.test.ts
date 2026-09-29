@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createEventSchema, slugSchema } from "@/lib/events/validation";
+import { createEventSchema, slugSchema, updateEventSchema } from "@/lib/events/validation";
 
 describe("createEventSchema", () => {
   const valid = {
@@ -30,6 +30,20 @@ describe("createEventSchema", () => {
   it("rejects a description longer than 500 characters", () => {
     const result = createEventSchema.safeParse({ ...valid, description: "a".repeat(501) });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("updateEventSchema", () => {
+  const valid = { title: "Pernikahan Raka & Nadia", slug: "raka-dan-nadia" };
+
+  it("accepts an update without a type — the edit form no longer sends one (type is immutable)", () => {
+    expect(updateEventSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("still parses a submitted type so the service can reject a change explicitly", () => {
+    const result = updateEventSchema.safeParse({ ...valid, type: "BIRTHDAY" });
+    expect(result.success).toBe(true);
+    if (result.success) expect(result.data.type).toBe("BIRTHDAY");
   });
 });
 

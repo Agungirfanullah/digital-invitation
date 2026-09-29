@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, useTransition } from "react";
+import type { EventType } from "@prisma/client";
 
 import {
   addLoveStoryItemAction,
@@ -9,6 +10,7 @@ import {
   updateLoveStoryItemAction,
 } from "@/lib/editor/actions";
 import type { EditorLoveStory, EditorLoveStoryItem } from "@/lib/editor/types";
+import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
 import { useAutosave, type SaveStatus } from "@/components/editor/use-autosave";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/forms/form-field";
@@ -16,12 +18,21 @@ import { FormError } from "@/components/forms/form-error";
 
 interface LoveStoryFormProps {
   eventId: string;
+  type: EventType;
   value: EditorLoveStory | null;
   onChange: (value: EditorLoveStory) => void;
   onStatusChange?: (status: SaveStatus, error?: string) => void;
 }
 
-export function LoveStoryForm({ eventId, value, onChange, onStatusChange }: LoveStoryFormProps) {
+/** The story/content section — its heading and wording follow the event type (lib/event-types/config.ts). */
+export function LoveStoryForm({
+  eventId,
+  type,
+  value,
+  onChange,
+  onStatusChange,
+}: LoveStoryFormProps) {
+  const config = EVENT_TYPE_CONFIG[type];
   const items = value?.items ?? [];
   const [title, setTitle] = useState(value?.title ?? "");
   const [editingId, setEditingId] = useState<string | "new" | null>(null);
@@ -78,17 +89,15 @@ export function LoveStoryForm({ eventId, value, onChange, onStatusChange }: Love
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Kisah Cinta</h2>
-        <p className="text-muted-foreground text-sm">
-          Perjalanan kisah kalian, dari awal bertemu hingga menikah.
-        </p>
+        <h2 className="text-lg font-semibold tracking-tight">{config.storyNavLabel}</h2>
+        <p className="text-muted-foreground text-sm">{config.storyDescription}</p>
       </div>
 
       <FormField
         label="Judul bagian"
         name="loveStoryTitle"
         type="text"
-        placeholder="Kisah Kami"
+        placeholder={config.storyDefaultTitle}
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />

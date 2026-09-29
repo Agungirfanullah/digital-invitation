@@ -12,7 +12,7 @@ export function EventTypeField({ defaultValue, error }: { defaultValue?: string;
         name="type"
         defaultValue={defaultValue ?? "WEDDING"}
         aria-invalid={!!error}
-        aria-describedby={error ? "type-error" : undefined}
+        aria-describedby={error ? "type-error" : "type-hint"}
       >
         {EVENT_TYPE_OPTIONS.map((option) => (
           <option key={option.value} value={option.value}>
@@ -20,9 +20,13 @@ export function EventTypeField({ defaultValue, error }: { defaultValue?: string;
           </option>
         ))}
       </Select>
-      {error && (
+      {error ? (
         <p id="type-error" className="text-destructive text-xs">
           {error}
+        </p>
+      ) : (
+        <p id="type-hint" className="text-muted-foreground text-xs">
+          Menentukan isi identitas dan istilah di undangan. Tidak dapat diubah setelah acara dibuat.
         </p>
       )}
     </div>

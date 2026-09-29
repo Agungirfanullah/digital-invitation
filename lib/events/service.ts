@@ -2,10 +2,14 @@ import "server-only";
 import { EventMemberRole, EventStatus, Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
+import { getMissingPublishRequirements } from "@/lib/event-types/identity";
+import { IDENTITY_PROFILE_INCLUDE, toIdentityProfileData } from "@/lib/event-types/identity-record";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import {
   EventDeleteBlockedError,
   EventNotFoundError,
+  EventTypeImmutableError,
+  PublishRequirementsNotMetError,
   SlugConflictError,
 } from "@/lib/events/errors";
 import type { CreateEventInput, UpdateEventInput } from "@/lib/events/validation";
@@ -71,17 +75,22 @@ export async function createEventForUser(userId: string, input: CreateEventInput
   }
 }
 
-/** Throws `EventNotFoundError` if not authorized at EDITOR level or above, `SlugConflictError` on a slug collision. */
+/**
+ * Throws `EventNotFoundError` if not authorized at EDITOR level or above,
+ * `SlugConflictError` on a slug collision, and `EventTypeImmutableError` if
+ * `input.type` differs from the stored type. `type` is never written here —
+ * EventType is immutable after creation (D-063).
+ */
 export async function updateEventForUser(eventId: string, userId: string, input: UpdateEventInput) {
   const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.EDITOR);
   if (!event) throw new EventNotFoundError();
+  if (input.type !== undefined && input.type !== event.type) throw new EventTypeImmutableError();
 
   try {
     return await prisma.event.update({
       where: { id: eventId },
       data: {
         title: input.title,
-        type: input.type,
         slug: input.slug,
         description: input.description ?? null,
       },
@@ -92,10 +101,38 @@ export async function updateEventForUser(eventId: string, userId: string, input:
   }
 }
 
-/** Throws `EventNotFoundError` if not authorized at EDITOR level or above. Sets `publishedAt` on every publish (acts as "last published at"). */
+/** The type-specific information still missing before `eventId` can be published — see `getMissingPublishRequirements()`. */
+async function findMissingPublishRequirements(eventId: string): Promise<string[]> {
+  const record = await prisma.event.findUniqueOrThrow({
+    where: { id: eventId },
+    include: { ...IDENTITY_PROFILE_INCLUDE, _count: { select: { schedules: true } } },
+  });
+  return getMissingPublishRequirements(
+    record.type,
+    toIdentityProfileData(record),
+    record._count.schedules,
+  );
+}
+
+/** VIEWER-and-above — what the event detail page shows before the owner publishes. */
+export async function getPublishReadinessForUser(eventId: string, userId: string) {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
+  if (!event) throw new EventNotFoundError();
+  return { missing: await findMissingPublishRequirements(eventId) };
+}
+
+/**
+ * Throws `EventNotFoundError` if not authorized at EDITOR level or above,
+ * and `PublishRequirementsNotMetError` if the event type's required
+ * identity/date information is missing (docs/PRD.md §13–§13.7). Sets
+ * `publishedAt` on every publish (acts as "last published at").
+ */
 export async function publishEventForUser(eventId: string, userId: string) {
   const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.EDITOR);
   if (!event) throw new EventNotFoundError();
+
+  const missing = await findMissingPublishRequirements(eventId);
+  if (missing.length > 0) throw new PublishRequirementsNotMetError(missing);
 
   return prisma.event.update({
     where: { id: eventId },

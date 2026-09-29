@@ -1,7 +1,11 @@
 import "server-only";
 import { WishStatus, type Prisma } from "@prisma/client";
 
+import { buildPublicIdentity } from "@/lib/event-types/identity";
+import { IDENTITY_PROFILE_INCLUDE, toIdentityProfileData } from "@/lib/event-types/identity-record";
+import { resolveEnabledSections } from "@/lib/event-types/sections";
 import { parseTheme } from "@/lib/invitations/theme";
+import { stripDisabledSectionContent } from "@/lib/invitations/visibility";
 import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
 import { toSafeHttpUrl } from "@/lib/invitations/url-safety";
 import type { PublicGuestContext, PublicInvitation } from "@/lib/invitations/types";
@@ -15,7 +19,7 @@ import type { PublicGuestContext, PublicInvitation } from "@/lib/invitations/typ
 export const PUBLIC_EVENT_INCLUDE = {
   template: { select: { slug: true } },
   theme: true,
-  weddingProfile: true,
+  ...IDENTITY_PROFILE_INCLUDE,
   schedules: {
     orderBy: { sortOrder: "asc" },
     include: { venue: true },
@@ -74,7 +78,7 @@ export function toPublicInvitation(
   event: PublicEventRecord,
   guest: PublicGuestContext | null,
 ): PublicInvitation {
-  return {
+  return stripDisabledSectionContent({
     eventId: event.id,
     slug: event.slug,
     type: event.type,
@@ -85,16 +89,8 @@ export function toPublicInvitation(
     // field falls back to *this event's own template's* default palette,
     // not the generic global one — see docs/DECISIONS.md.
     theme: parseTheme(event.theme, getTemplateDefaultTheme(event.template?.slug ?? null)),
-    weddingProfile: event.weddingProfile
-      ? {
-          brideFullName: event.weddingProfile.brideFullName,
-          brideNickname: event.weddingProfile.brideNickname,
-          brideInstagram: event.weddingProfile.brideInstagram,
-          groomFullName: event.weddingProfile.groomFullName,
-          groomNickname: event.weddingProfile.groomNickname,
-          groomInstagram: event.weddingProfile.groomInstagram,
-        }
-      : null,
+    identity: buildPublicIdentity(event.type, toIdentityProfileData(event)),
+    sections: resolveEnabledSections(event.type, event.settings),
     schedules: event.schedules.map((schedule) => ({
       id: schedule.id,
       title: schedule.title,
@@ -152,5 +148,5 @@ export function toPublicInvitation(
       createdAt: wish.createdAt,
     })),
     guest,
-  };
+  });
 }

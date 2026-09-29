@@ -2,12 +2,14 @@ import type { InvitationTemplateProps } from "@/lib/invitations/templates/regist
 import type {
   PublicGallery,
   PublicGiftMethod,
+  PublicIdentity,
   PublicInvitation,
   PublicLoveStory,
   PublicSchedule,
-  PublicWeddingProfile,
   PublicWish,
 } from "@/lib/invitations/types";
+import { getInvitationCopy, type InvitationCopy } from "@/lib/event-types/config";
+import { getHeroHeading } from "@/lib/event-types/identity";
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { GIFT_METHOD_TYPE_LABELS } from "@/lib/gifts/labels";
 import {
@@ -42,17 +44,6 @@ function Rule() {
   return <hr className="border-t border-[color:var(--ii-secondary)]" />;
 }
 
-function coupleOrTitleHeading(invitation: PublicInvitation): string {
-  const profile = invitation.weddingProfile;
-  if (profile?.groomNickname && profile?.brideNickname) {
-    return `${profile.brideNickname} & ${profile.groomNickname}`;
-  }
-  if (profile?.groomFullName && profile?.brideFullName) {
-    return `${profile.brideFullName} & ${profile.groomFullName}`;
-  }
-  return invitation.title;
-}
-
 function Hero({ invitation }: { invitation: PublicInvitation }) {
   const earliestSchedule = invitation.schedules[0];
 
@@ -66,7 +57,7 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
         className="max-w-3xl text-5xl leading-[1.05] font-semibold text-balance text-[color:var(--ii-primary)] sm:text-7xl"
         style={{ fontFamily: "var(--ii-heading-font)" }}
       >
-        {coupleOrTitleHeading(invitation)}
+        {getHeroHeading(invitation)}
       </h1>
       <Rule />
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -88,39 +79,34 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
   );
 }
 
-function Couple({ profile }: { profile: PublicWeddingProfile }) {
-  const bride = profile.brideFullName ?? profile.brideNickname;
-  const groom = profile.groomFullName ?? profile.groomNickname;
-  if (!bride && !groom) return null;
-
+function Identity({ identity }: { identity: PublicIdentity }) {
   return (
-    <section aria-labelledby="couple-heading" className="mx-auto max-w-5xl px-6 py-16 sm:px-10">
-      <Eyebrow index="01">Mempelai</Eyebrow>
-      <h2 id="couple-heading" className="sr-only">
-        Mempelai
+    <section aria-labelledby="identity-heading" className="mx-auto max-w-5xl px-6 py-16 sm:px-10">
+      <Eyebrow index="01">{identity.heading}</Eyebrow>
+      <h2 id="identity-heading" className="sr-only">
+        {identity.heading}
       </h2>
-      <div className="mt-8 grid gap-8 sm:grid-cols-2">
-        {bride && (
-          <div>
-            <p className="text-3xl font-medium text-[color:var(--ii-primary)]">{bride}</p>
-            {profile.brideInstagram && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
-                @{profile.brideInstagram}
-              </p>
-            )}
-          </div>
-        )}
-        {groom && (
-          <div className="sm:text-right">
-            <p className="text-3xl font-medium text-[color:var(--ii-primary)]">{groom}</p>
-            {profile.groomInstagram && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
-                @{profile.groomInstagram}
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+      {identity.members.length > 0 && (
+        <div className="mt-8 grid gap-8 sm:grid-cols-2">
+          {identity.members.map((member, index) => (
+            <div key={`${index}-${member.name}`} className={index % 2 === 1 ? "sm:text-right" : ""}>
+              <p className="text-3xl font-medium text-[color:var(--ii-primary)]">{member.name}</p>
+              {member.instagram && (
+                <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
+                  @{member.instagram}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {identity.details.length > 0 && (
+        <ul className="mt-6 space-y-1 text-sm tracking-wide text-[color:var(--ii-text)] opacity-80">
+          {identity.details.map((detail) => (
+            <li key={detail}>{detail}</li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
@@ -176,14 +162,20 @@ function Schedule({ schedules }: { schedules: PublicSchedule[] }) {
   );
 }
 
-function LoveStory({ loveStory }: { loveStory: PublicLoveStory | null }) {
+function LoveStory({
+  loveStory,
+  defaultTitle,
+}: {
+  loveStory: PublicLoveStory | null;
+  defaultTitle: string;
+}) {
   if (!loveStory || loveStory.items.length === 0) return null;
 
   return (
     <section aria-labelledby="love-story-heading" className="mx-auto max-w-5xl px-6 py-16 sm:px-10">
-      <Eyebrow index="03">{loveStory.title ?? "Kisah Kami"}</Eyebrow>
+      <Eyebrow index="03">{loveStory.title ?? defaultTitle}</Eyebrow>
       <h2 id="love-story-heading" className="sr-only">
-        {loveStory.title ?? "Kisah Kami"}
+        {loveStory.title ?? defaultTitle}
       </h2>
       <ol className="mt-8 grid gap-10 sm:grid-cols-2">
         {loveStory.items.map((item, index) => (
@@ -355,22 +347,24 @@ function Wishes({
   );
 }
 
-function Closing() {
+function Closing({ copy }: { copy: InvitationCopy }) {
   return (
     <section aria-label="Penutup" className="mx-auto max-w-5xl px-6 py-24 sm:px-10">
       <Rule />
       <p className="mt-10 max-w-2xl text-3xl leading-tight font-medium text-balance text-[color:var(--ii-primary)] sm:text-4xl">
-        Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i berkenan
-        hadir dan memberikan doa restu.
+        {copy.closingMessage}
       </p>
       <p className="mt-6 text-sm tracking-widest text-[color:var(--ii-text)] uppercase opacity-70">
-        Terima kasih atas perhatiannya.
+        {copy.closingThanks}
       </p>
     </section>
   );
 }
 
 export function ModernEditorialTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
+  const { sections } = invitation;
+  const copy = getInvitationCopy(invitation.type);
+
   return (
     <main
       style={themeToCssVars(invitation.theme)}
@@ -378,14 +372,20 @@ export function ModernEditorialTemplate({ invitation, rsvp, wishGuest }: Invitat
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
         <Hero invitation={invitation} />
-        {invitation.weddingProfile && <Couple profile={invitation.weddingProfile} />}
-        <Schedule schedules={invitation.schedules} />
-        <LoveStory loveStory={invitation.loveStory} />
+        {sections.identity && invitation.identity && <Identity identity={invitation.identity} />}
+        {sections.schedule && <Schedule schedules={invitation.schedules} />}
+        <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
         <Gallery galleries={invitation.galleries} />
-        <Rsvp eventId={invitation.eventId} rsvp={rsvp ?? null} />
+        {sections.rsvp && <Rsvp eventId={invitation.eventId} rsvp={rsvp ?? null} />}
         <Gift giftMethods={invitation.giftMethods} />
-        <Wishes eventId={invitation.eventId} wishes={invitation.wishes} guest={wishGuest ?? null} />
-        <Closing />
+        {sections.wishes && (
+          <Wishes
+            eventId={invitation.eventId}
+            wishes={invitation.wishes}
+            guest={wishGuest ?? null}
+          />
+        )}
+        <Closing copy={copy} />
       </div>
     </main>
   );

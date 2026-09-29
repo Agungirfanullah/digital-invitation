@@ -180,7 +180,43 @@ describe("getPublicInvitationBySlug (integration — live Supabase DEV database)
     expect(invitation.loveStory?.items[0].title).toBe("Pertama Bertemu");
     expect(invitation.galleries[0].items[0].url).toBe("https://example.com/photo.jpg");
     // Optional data this event genuinely doesn't have — must not crash.
-    expect(invitation.weddingProfile).toBeNull();
+    expect(invitation.identity).toBeNull();
+  });
+
+  it("Wedding regression: a real existing WeddingProfile row renders as the couple identity", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id);
+    await prisma.weddingProfile.create({
+      data: { eventId: event.id, brideNickname: "Ayu", groomNickname: "Budi" },
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.identity?.displayName).toBe("Ayu & Budi");
+    expect(invitation.identity?.heading).toBe("Mempelai");
+  });
+
+  it("renders a non-wedding type from its own profile table", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id, { type: "CORPORATE", title: "Rapat Tahunan" });
+    await prisma.organizationProfile.create({
+      data: { eventId: event.id, organizationName: "PT Maju", dressCode: "Batik" },
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.identity?.members[0].name).toBe("PT Maju");
+    expect(invitation.identity?.details).toContain("Dress code: Batik");
+  });
+
+  it("strips a disabled section's data from the real public projection", async () => {
+    const userA = await createTestUser("a");
+    const event = await createTestEvent(userA.id, { settings: { sections: { gift: false } } });
+    await prisma.giftMethod.create({
+      data: { eventId: event.id, type: "BANK", accountNumber: "9876543210" },
+    });
+
+    const invitation = await getPublicInvitationBySlug(event.slug);
+    expect(invitation.sections.gift).toBe(false);
+    expect(JSON.stringify(invitation)).not.toContain("9876543210");
   });
 
   it("O: a malformed theme value on a real row falls back safely instead of crashing", async () => {

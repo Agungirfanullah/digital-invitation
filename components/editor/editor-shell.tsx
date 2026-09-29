@@ -7,11 +7,16 @@ import type { EditorEventData, EditorTemplateOption } from "@/lib/editor/types";
 import { buildPreviewInvitation } from "@/lib/editor/preview";
 import { EVENT_STATUS_LABELS } from "@/lib/events/labels";
 import { Button } from "@/components/ui/button";
-import { EditorSidebar, type EditorSectionKey } from "@/components/editor/editor-sidebar";
+import {
+  EditorSidebar,
+  getEditorSections,
+  type EditorSectionKey,
+} from "@/components/editor/editor-sidebar";
 import { EditorPreview } from "@/components/editor/editor-preview";
 import { SaveStatusIndicator } from "@/components/editor/save-status";
 import type { SaveStatus } from "@/components/editor/use-autosave";
-import { CoupleForm } from "@/components/editor/sections/couple-form";
+import { IdentityForm } from "@/components/editor/sections/identity-form";
+import { SectionsForm } from "@/components/editor/sections/sections-form";
 import { ThemeForm } from "@/components/editor/sections/theme-form";
 import { TemplateForm } from "@/components/editor/sections/template-form";
 import { ScheduleForm } from "@/components/editor/sections/schedule-form";
@@ -25,10 +30,13 @@ export function EditorShell({
   initialEvent: EditorEventData;
   templates: EditorTemplateOption[];
 }) {
-  const { eventId } = initialEvent;
+  const { eventId, type } = initialEvent;
 
-  const [activeSection, setActiveSection] = useState<EditorSectionKey>("couple");
-  const [weddingProfile, setWeddingProfile] = useState(initialEvent.weddingProfile);
+  const [activeSection, setActiveSection] = useState<EditorSectionKey>(
+    () => getEditorSections(type)[0].key,
+  );
+  const [identity, setIdentity] = useState(initialEvent.identity);
+  const [sectionOverrides, setSectionOverrides] = useState(initialEvent.sectionOverrides);
   const [theme, setTheme] = useState(initialEvent.theme);
   const [templateKey, setTemplateKey] = useState(initialEvent.templateKey);
   const [schedules, setSchedules] = useState(initialEvent.schedules);
@@ -59,13 +67,14 @@ export function EditorShell({
         title: initialEvent.title,
         description: initialEvent.description,
         templateKey,
-        weddingProfile,
+        identity,
+        sectionOverrides,
         theme,
         schedules,
         loveStory,
         gallery,
       }),
-    [initialEvent, templateKey, weddingProfile, theme, schedules, loveStory, gallery],
+    [initialEvent, templateKey, identity, sectionOverrides, theme, schedules, loveStory, gallery],
   );
 
   return (
@@ -98,23 +107,25 @@ export function EditorShell({
       </header>
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        <EditorSidebar active={activeSection} onChange={changeSection} />
+        <EditorSidebar type={type} active={activeSection} onChange={changeSection} />
 
         <main className="flex-1 border-t p-4 lg:border-t-0 lg:border-r lg:p-6">
-          {activeSection === "couple" && (
-            <CoupleForm
+          {activeSection === "identity" && identity.family !== "GENERIC" && (
+            <IdentityForm
               eventId={eventId}
-              value={weddingProfile}
-              onSaved={setWeddingProfile}
+              type={type}
+              value={identity}
+              onSaved={setIdentity}
               onStatusChange={reportStatus}
             />
           )}
           {activeSection === "schedule" && (
             <ScheduleForm eventId={eventId} items={schedules} onChange={setSchedules} />
           )}
-          {activeSection === "loveStory" && (
+          {activeSection === "story" && (
             <LoveStoryForm
               eventId={eventId}
+              type={type}
               value={loveStory}
               onChange={setLoveStory}
               onStatusChange={reportStatus}
@@ -122,6 +133,14 @@ export function EditorShell({
           )}
           {activeSection === "gallery" && (
             <GalleryForm eventId={eventId} value={gallery} onChange={setGallery} />
+          )}
+          {activeSection === "sections" && (
+            <SectionsForm
+              eventId={eventId}
+              type={type}
+              value={sectionOverrides}
+              onSaved={setSectionOverrides}
+            />
           )}
           {activeSection === "theme" && (
             <ThemeForm

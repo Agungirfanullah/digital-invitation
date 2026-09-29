@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { EventType } from "@prisma/client";
 
+import { buildPreviewInvitation } from "@/lib/editor/preview";
+import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
+import { buildPublicIdentity } from "@/lib/event-types/identity";
+import { toIdentityProfileData } from "@/lib/event-types/identity-record";
 import { toPublicInvitation, type PublicEventRecord } from "@/lib/invitations/projection";
 
 function fakeEvent(overrides: Partial<PublicEventRecord> = {}): PublicEventRecord {
@@ -20,6 +25,10 @@ function fakeEvent(overrides: Partial<PublicEventRecord> = {}): PublicEventRecor
     template: null,
     theme: null,
     weddingProfile: null,
+    personProfile: null,
+    babyFamilyProfile: null,
+    hostProfile: null,
+    organizationProfile: null,
     schedules: [],
     loveStories: [],
     galleries: [],
@@ -29,6 +38,182 @@ function fakeEvent(overrides: Partial<PublicEventRecord> = {}): PublicEventRecor
 
   return { ...base, ...overrides } as unknown as PublicEventRecord;
 }
+
+const timestamps = { id: "p-1", eventId: "event-1", createdAt: new Date(), updatedAt: new Date() };
+
+const WEDDING_ROW = {
+  ...timestamps,
+  brideFullName: "Ayu Lestari",
+  brideNickname: "Ayu",
+  brideFather: "Bapak Lestari",
+  brideMother: "Ibu Lestari",
+  brideInstagram: "ayulestari",
+  groomFullName: "Budi Santoso",
+  groomNickname: "Budi",
+  groomFather: "Bapak Santoso",
+  groomMother: "Ibu Santoso",
+  groomInstagram: "budisantoso",
+  yearsTogether: null,
+};
+
+/** One realistic stored profile row per event type, keyed by the relation that holds it. */
+const PROFILE_ROWS: Record<EventType, Partial<PublicEventRecord>> = {
+  WEDDING: { weddingProfile: WEDDING_ROW },
+  ENGAGEMENT: { weddingProfile: WEDDING_ROW },
+  ANNIVERSARY: { weddingProfile: { ...WEDDING_ROW, yearsTogether: 10 } },
+  BIRTHDAY: {
+    personProfile: {
+      ...timestamps,
+      fullName: "Citra Anindya",
+      nickname: "Citra",
+      age: 17,
+      milestone: null,
+      hostedBy: null,
+      instagram: null,
+    },
+  },
+  AQIQAH: {
+    babyFamilyProfile: {
+      ...timestamps,
+      babyFullName: "Muhammad Rafa",
+      babyNickname: "Rafa",
+      fatherName: "Rizky",
+      motherName: "Nadia",
+      birthDate: new Date("2026-08-17T00:00:00Z"),
+      birthDetails: null,
+    },
+  },
+  GATHERING: {
+    hostProfile: {
+      ...timestamps,
+      hostName: "Keluarga Wiryo",
+      occasionTheme: null,
+      contactInfo: null,
+    },
+  },
+  CORPORATE: {
+    organizationProfile: {
+      ...timestamps,
+      organizationName: "PT Maju",
+      contactPerson: null,
+      dressCode: "Batik",
+    },
+  },
+  OTHER: {},
+};
+
+describe("toPublicInvitation — identity", () => {
+  it("Wedding regression: an existing WeddingProfile row renders the same couple as before", () => {
+    const dto = toPublicInvitation(fakeEvent({ weddingProfile: WEDDING_ROW }), null);
+    expect(dto.identity).toEqual({
+      family: "COUPLE",
+      heading: "Mempelai",
+      displayName: "Ayu & Budi",
+      members: [
+        { role: "Mempelai Wanita", name: "Ayu Lestari", instagram: "ayulestari" },
+        { role: "Mempelai Pria", name: "Budi Santoso", instagram: "budisantoso" },
+      ],
+      pairMembers: true,
+      details: [],
+    });
+    // Parents were never part of the public payload and still aren't.
+    expect(JSON.stringify(dto)).not.toContain("Bapak Lestari");
+  });
+
+  it("falls back to both full names when only one nickname is set (unchanged Wedding rule)", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({ weddingProfile: { ...WEDDING_ROW, groomNickname: null } }),
+      null,
+    );
+    expect(dto.identity?.displayName).toBe("Ayu Lestari & Budi Santoso");
+  });
+
+  it.each(Object.keys(PROFILE_ROWS) as EventType[])(
+    "projects %s through the canonical identity — identical to the editor preview's result",
+    (type) => {
+      const record = fakeEvent({ type, ...PROFILE_ROWS[type] });
+      const dto = toPublicInvitation(record, null);
+      const expected = buildPublicIdentity(type, toIdentityProfileData(record));
+
+      expect(dto.identity).toEqual(expected);
+      expect(dto.identity?.family ?? "GENERIC").toBe(EVENT_TYPE_CONFIG[type].family);
+
+      // Preview/public parity: the editor preview, fed the same canonical
+      // identity, must produce exactly the same public identity.
+      const preview = buildPreviewInvitation({
+        eventId: record.id,
+        slug: record.slug,
+        type,
+        title: record.title,
+        description: record.description,
+        templateKey: null,
+        identity: toIdentityProfileData(record),
+        sectionOverrides: {},
+        theme: null,
+        schedules: [],
+        loveStory: null,
+        gallery: null,
+      });
+      expect(preview.identity).toEqual(dto.identity);
+    },
+  );
+
+  it("OTHER has no identity at all", () => {
+    expect(toPublicInvitation(fakeEvent({ type: "OTHER" }), null).identity).toBeNull();
+  });
+
+  it("ignores a profile row that belongs to another family (never renders bride/groom for a Birthday)", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({ type: "BIRTHDAY", weddingProfile: WEDDING_ROW }),
+      null,
+    );
+    expect(dto.identity).toBeNull();
+    expect(JSON.stringify(dto)).not.toContain("Ayu Lestari");
+  });
+});
+
+describe("toPublicInvitation — section configuration", () => {
+  const giftMethod = {
+    id: "gift-1",
+    type: "BANK",
+    providerName: "Bank Contoh",
+    accountName: "Budi",
+    accountNumber: "1234567890",
+    qrImageUrl: null,
+    instructions: null,
+  };
+
+  it("defaults every section to enabled when nothing is configured (backward compatible)", () => {
+    const dto = toPublicInvitation(fakeEvent({ settings: null }), null);
+    expect(Object.values(dto.sections).every(Boolean)).toBe(true);
+  });
+
+  it("strips a disabled section's data from the public payload, not just the markup", () => {
+    const dto = toPublicInvitation(
+      fakeEvent({
+        settings: { sections: { gift: false, wishes: false } },
+        giftMethods: [giftMethod] as never,
+        wishes: [{ id: "w", name: "A", message: "B", createdAt: new Date() }] as never,
+      }),
+      null,
+    );
+    expect(dto.sections.gift).toBe(false);
+    expect(dto.giftMethods).toEqual([]);
+    expect(dto.wishes).toEqual([]);
+    expect(JSON.stringify(dto)).not.toContain("1234567890");
+  });
+
+  it("fails safe on malformed settings JSON — falls back to defaults instead of throwing", () => {
+    for (const settings of ["garbage", [1, 2], { sections: "x" }, { sections: { gift: "no" } }]) {
+      const dto = toPublicInvitation(
+        fakeEvent({ settings, giftMethods: [giftMethod] as never }),
+        null,
+      );
+      expect(dto.sections.gift).toBe(true);
+      expect(dto.giftMethods).toHaveLength(1);
+    }
+  });
+});
 
 describe("toPublicInvitation", () => {
   it("maps core event fields", () => {
@@ -235,7 +420,7 @@ describe("toPublicInvitation", () => {
     expect(() => toPublicInvitation(fakeEvent(), null)).not.toThrow();
 
     const dto = toPublicInvitation(fakeEvent(), null);
-    expect(dto.weddingProfile).toBeNull();
+    expect(dto.identity).toBeNull();
     expect(dto.loveStory).toBeNull();
     expect(dto.galleries).toEqual([]);
     expect(dto.giftMethods).toEqual([]);

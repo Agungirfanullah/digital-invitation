@@ -1,7 +1,8 @@
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
+import { getInvitationCopy } from "@/lib/event-types/config";
 import { themeToCssVars } from "@/components/invitation/theme-vars";
 import { HeroSection } from "@/components/invitation/sections/hero-section";
-import { CoupleSection } from "@/components/invitation/sections/couple-section";
+import { IdentitySection } from "@/components/invitation/sections/identity-section";
 import { ScheduleSection } from "@/components/invitation/sections/schedule-section";
 import { LoveStorySection } from "@/components/invitation/sections/love-story-section";
 import { GallerySection } from "@/components/invitation/sections/gallery-section";
@@ -13,11 +14,15 @@ import { ClosingSection } from "@/components/invitation/sections/closing-section
 /**
  * The first real, working template. Genuinely renders whatever data the
  * event actually has — every section beyond Hero/Closing is conditional
- * on real backing data existing (see each section's own guard), so an
- * event with only a title still renders a complete, honest page instead
- * of empty placeholders.
+ * on real backing data existing (see each section's own guard) and on the
+ * event's section configuration (`invitation.sections`), so an event with
+ * only a title still renders a complete, honest page instead of empty
+ * placeholders.
  */
 export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
+  const { sections } = invitation;
+  const copy = getInvitationCopy(invitation.type);
+
   return (
     <main
       style={themeToCssVars(invitation.theme)}
@@ -25,18 +30,22 @@ export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: Invitati
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
         <HeroSection invitation={invitation} />
-        {invitation.weddingProfile && <CoupleSection profile={invitation.weddingProfile} />}
-        <ScheduleSection schedules={invitation.schedules} />
-        <LoveStorySection loveStory={invitation.loveStory} />
+        {sections.identity && invitation.identity && (
+          <IdentitySection identity={invitation.identity} />
+        )}
+        {sections.schedule && <ScheduleSection schedules={invitation.schedules} />}
+        <LoveStorySection loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
         <GallerySection galleries={invitation.galleries} />
-        <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />
+        {sections.rsvp && <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />}
         <GiftSection giftMethods={invitation.giftMethods} />
-        <WishesSection
-          eventId={invitation.eventId}
-          wishes={invitation.wishes}
-          guest={wishGuest ?? null}
-        />
-        <ClosingSection />
+        {sections.wishes && (
+          <WishesSection
+            eventId={invitation.eventId}
+            wishes={invitation.wishes}
+            guest={wishGuest ?? null}
+          />
+        )}
+        <ClosingSection type={invitation.type} />
       </div>
     </main>
   );

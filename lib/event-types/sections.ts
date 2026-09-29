@@ -1,0 +1,149 @@
+import type { EventType } from "@prisma/client";
+
+import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
+
+/**
+ * Invitation section configuration (docs/PRD.md §15/§15.1,
+ * docs/DATABASE.md §32). Persisted owner overrides live in
+ * `Event.settings.sections`; this module is the single resolver from
+ * `EventType + persisted settings` to the effective configuration, used by
+ * the public projection, the editor preview, and server-side submission
+ * guards alike. Client-safe: no server imports.
+ *
+ * Hero/cover and closing are structural and always rendered — they are not
+ * configurable sections.
+ */
+
+export const INVITATION_SECTION_KEYS = [
+  "identity",
+  "schedule",
+  "story",
+  "gallery",
+  "rsvp",
+  "gift",
+  "wishes",
+] as const;
+
+export type InvitationSectionKey = (typeof INVITATION_SECTION_KEYS)[number];
+
+/** Effective on/off per section — what renderers and guards consume. */
+export type InvitationSections = Record<InvitationSectionKey, boolean>;
+
+/** Persisted owner overrides. Absent key = use the type's default. */
+export type SectionOverrides = Partial<Record<InvitationSectionKey, boolean>>;
+
+export interface SectionState {
+  /** The capability exists for this event type. */
+  supported: boolean;
+  defaultEnabled: boolean;
+  /** The owner may change the default. */
+  toggleable: boolean;
+  /** The effective value after applying any owner override. */
+  enabled: boolean;
+}
+
+export function isInvitationSectionKey(value: unknown): value is InvitationSectionKey {
+  return (
+    typeof value === "string" && (INVITATION_SECTION_KEYS as readonly string[]).includes(value)
+  );
+}
+
+/**
+ * Per-type capability defaults. Every section is Supported, Default Enabled
+ * and Owner Toggleable for every type — docs/PRD.md §15.1 forbids inventing
+ * per-type restrictions, and leaves per-type default on/off states as an
+ * open product decision. "All enabled" is exactly the pre-configuration
+ * behavior, so existing events render unchanged. The one structural
+ * exception is identity for OTHER, which has no identity profile at all
+ * (docs/PRD.md §13.7).
+ */
+function sectionDefault(type: EventType, key: InvitationSectionKey) {
+  const supported = !(key === "identity" && EVENT_TYPE_CONFIG[type].family === "GENERIC");
+  return { supported, defaultEnabled: supported, toggleable: supported };
+}
+
+/**
+ * Reads owner overrides out of the untyped `Event.settings` JSON. Fails
+ * safe: anything that isn't a plain object of known-key booleans is
+ * ignored (falls back to defaults), never thrown.
+ */
+export function parseSectionOverrides(settings: unknown): SectionOverrides {
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) return {};
+  const sections = (settings as Record<string, unknown>).sections;
+  if (!sections || typeof sections !== "object" || Array.isArray(sections)) return {};
+
+  const overrides: SectionOverrides = {};
+  for (const [key, value] of Object.entries(sections)) {
+    if (isInvitationSectionKey(key) && typeof value === "boolean") overrides[key] = value;
+  }
+  return overrides;
+}
+
+export function resolveSectionStates(
+  type: EventType,
+  settings: unknown,
+): Record<InvitationSectionKey, SectionState> {
+  const overrides = parseSectionOverrides(settings);
+  const states = {} as Record<InvitationSectionKey, SectionState>;
+
+  for (const key of INVITATION_SECTION_KEYS) {
+    const base = sectionDefault(type, key);
+    const override = base.toggleable ? overrides[key] : undefined;
+    states[key] = { ...base, enabled: base.supported && (override ?? base.defaultEnabled) };
+  }
+
+  return states;
+}
+
+export function resolveEnabledSections(type: EventType, settings: unknown): InvitationSections {
+  const states = resolveSectionStates(type, settings);
+  const enabled = {} as InvitationSections;
+  for (const key of INVITATION_SECTION_KEYS) enabled[key] = states[key].enabled;
+  return enabled;
+}
+
+/**
+ * Keys in `overrides` that the type doesn't allow the owner to change.
+ * Used server-side to reject a crafted request instead of silently
+ * persisting an override that would never apply.
+ */
+export function findNonToggleableSections(
+  type: EventType,
+  overrides: SectionOverrides,
+): InvitationSectionKey[] {
+  return (Object.keys(overrides) as InvitationSectionKey[]).filter(
+    (key) => !sectionDefault(type, key).toggleable,
+  );
+}
+
+/** Merges new overrides into existing `Event.settings`, preserving any unrelated keys. */
+export function mergeSectionOverrides(
+  settings: unknown,
+  overrides: SectionOverrides,
+): { sections: SectionOverrides } & Record<string, unknown> {
+  const base =
+    settings && typeof settings === "object" && !Array.isArray(settings)
+      ? (settings as Record<string, unknown>)
+      : {};
+  return { ...base, sections: { ...parseSectionOverrides(settings), ...overrides } };
+}
+
+export function getSectionLabel(type: EventType, key: InvitationSectionKey): string {
+  const config = EVENT_TYPE_CONFIG[type];
+  switch (key) {
+    case "identity":
+      return config.identityHeading;
+    case "schedule":
+      return "Jadwal Acara";
+    case "story":
+      return config.storyNavLabel;
+    case "gallery":
+      return "Galeri";
+    case "rsvp":
+      return "Konfirmasi Kehadiran (RSVP)";
+    case "gift":
+      return "Kirim Hadiah";
+    case "wishes":
+      return "Ucapan & Doa";
+  }
+}

@@ -10,10 +10,17 @@
  */
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
-import { EventMemberRole } from "@prisma/client";
+import { EventMemberRole, type EventType } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
-import { EventNotFoundError, TemplateNotAvailableError } from "@/lib/editor/errors";
+import {
+  EventNotFoundError,
+  IdentityFamilyMismatchError,
+  SectionNotToggleableError,
+  TemplateNotAvailableError,
+} from "@/lib/editor/errors";
+import type { IdentityProfileData } from "@/lib/event-types/identity";
+import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
 import {
   addGalleryItem,
   addLoveStoryItem,
@@ -30,8 +37,9 @@ import {
   updateLoveStoryItem,
   updateLoveStoryTitle,
   updateSchedule,
+  updateIdentityProfile,
+  updateSectionOverrides,
   updateTheme,
-  updateWeddingProfile,
   uploadGalleryImage,
 } from "@/lib/editor/service";
 import { getStorageProvider } from "@/lib/storage/provider";
@@ -39,7 +47,11 @@ import { derivePathFromPublicUrl } from "@/lib/storage/paths";
 import { validateGalleryImageUpload } from "@/lib/storage/validation";
 import { createSupabaseServiceClient } from "@/lib/supabase/server";
 import { getServerEnv } from "@/lib/env";
-import type { ScheduleInput } from "@/lib/editor/validation";
+import type {
+  CoupleIdentityInput,
+  IdentityProfileInput,
+  ScheduleInput,
+} from "@/lib/editor/validation";
 
 /** A real, valid 1x1 transparent PNG — used to exercise the actual upload/storage path, not a mocked buffer. */
 const TINY_PNG_BASE64 =
@@ -81,11 +93,11 @@ async function createTestUser(label: string) {
   return user;
 }
 
-async function createTestEvent(ownerId: string) {
+async function createTestEvent(ownerId: string, type: EventType = "WEDDING") {
   const event = await prisma.event.create({
     data: {
       ownerId,
-      type: "WEDDING",
+      type,
       title: "Pernikahan Editor Uji Coba",
       slug: `test-editor-slug-${randomUUID()}`,
       status: "DRAFT",
@@ -158,44 +170,97 @@ describe("getEditorEvent (integration — live Supabase DEV database)", () => {
   });
 });
 
-describe("updateWeddingProfile (integration)", () => {
-  const profileInput = {
-    brideFullName: "Ayu Lestari",
-    brideNickname: "Ayu",
-    brideFather: null,
-    brideMother: null,
-    brideInstagram: null,
-    groomFullName: "Budi Santoso",
-    groomNickname: "Budi",
-    groomFather: null,
-    groomMother: null,
-    groomInstagram: null,
-  };
+/** Narrows a fixture identity to the writable (non-GENERIC) input shape. */
+function asInput(identity: IdentityProfileData): IdentityProfileInput {
+  if (identity.family === "GENERIC") throw new Error("GENERIC has no writable identity");
+  return identity;
+}
 
-  it("lets the owner create then update the wedding profile", async () => {
+const WEDDING_INPUT = asInput(IDENTITY_BY_TYPE.WEDDING);
+
+describe("updateIdentityProfile (integration)", () => {
+  it("Wedding regression: the owner creates then updates the couple profile in WeddingProfile", async () => {
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id);
 
-    const created = await updateWeddingProfile(event.id, owner.id, profileInput);
-    expect(created.brideNickname).toBe("Ayu");
+    const created = await updateIdentityProfile(event.id, owner.id, WEDDING_INPUT);
+    expect(created).toEqual(IDENTITY_BY_TYPE.WEDDING);
 
-    const updated = await updateWeddingProfile(event.id, owner.id, {
-      ...profileInput,
-      brideNickname: "Ayu Baru",
-    });
-    expect(updated.brideNickname).toBe("Ayu Baru");
+    const renamed = {
+      family: "COUPLE" as const,
+      data: { ...(WEDDING_INPUT.data as CoupleIdentityInput), brideNickname: "Ayu Baru" },
+    };
+    await updateIdentityProfile(event.id, owner.id, renamed);
 
+    const row = await prisma.weddingProfile.findUniqueOrThrow({ where: { eventId: event.id } });
+    expect(row.brideNickname).toBe("Ayu Baru");
     const loaded = await getEditorEvent(event.id, owner.id);
-    expect(loaded.weddingProfile?.brideNickname).toBe("Ayu Baru");
+    expect(loaded.identity).toEqual(renamed);
   });
 
-  it("lets an EDITOR-role member update the wedding profile", async () => {
+  it.each(
+    (Object.keys(IDENTITY_BY_TYPE) as EventType[]).filter(
+      (type) => IDENTITY_BY_TYPE[type].family !== "GENERIC",
+    ),
+  )("persists and reloads a %s identity in its own family's table", async (type) => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, type);
+
+    const saved = await updateIdentityProfile(event.id, owner.id, asInput(IDENTITY_BY_TYPE[type]));
+    expect(saved).toEqual(IDENTITY_BY_TYPE[type]);
+
+    const loaded = await getEditorEvent(event.id, owner.id);
+    expect(loaded.identity).toEqual(IDENTITY_BY_TYPE[type]);
+  });
+
+  it("starts every type from its own family's empty identity, and OTHER from GENERIC", async () => {
+    const owner = await createTestUser("owner");
+    for (const type of ["BIRTHDAY", "OTHER"] as const) {
+      const event = await createTestEvent(owner.id, type);
+      const loaded = await getEditorEvent(event.id, owner.id);
+      expect(loaded.identity.family).toBe(type === "OTHER" ? "GENERIC" : "PERSON");
+    }
+  });
+
+  it("rejects a wrong-family write (bride/groom for a Birthday) and writes nothing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
+
+    await expect(updateIdentityProfile(event.id, owner.id, WEDDING_INPUT)).rejects.toThrow(
+      IdentityFamilyMismatchError,
+    );
+    expect(await prisma.weddingProfile.count({ where: { eventId: event.id } })).toBe(0);
+  });
+
+  it("rejects any identity write for OTHER, which has no profile", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    for (const input of [WEDDING_INPUT, asInput(IDENTITY_BY_TYPE.CORPORATE)]) {
+      await expect(updateIdentityProfile(event.id, owner.id, input)).rejects.toThrow(
+        IdentityFamilyMismatchError,
+      );
+    }
+  });
+
+  it("rejects the Anniversary-only yearsTogether field on a Wedding", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "WEDDING");
+
+    await expect(
+      updateIdentityProfile(event.id, owner.id, asInput(IDENTITY_BY_TYPE.ANNIVERSARY)),
+    ).rejects.toThrow(IdentityFamilyMismatchError);
+  });
+
+  it("lets an EDITOR-role member update the identity", async () => {
     const owner = await createTestUser("owner");
     const editorUser = await createTestUser("editor");
     const event = await createTestEvent(owner.id);
     await addMember(event.id, editorUser.id, EventMemberRole.EDITOR);
 
-    await expect(updateWeddingProfile(event.id, editorUser.id, profileInput)).resolves.toBeTruthy();
+    await expect(
+      updateIdentityProfile(event.id, editorUser.id, WEDDING_INPUT),
+    ).resolves.toBeTruthy();
   });
 
   it("rejects a VIEWER-role member", async () => {
@@ -204,19 +269,66 @@ describe("updateWeddingProfile (integration)", () => {
     const event = await createTestEvent(owner.id);
     await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
 
-    await expect(updateWeddingProfile(event.id, viewer.id, profileInput)).rejects.toThrow(
+    await expect(updateIdentityProfile(event.id, viewer.id, WEDDING_INPUT)).rejects.toThrow(
       EventNotFoundError,
     );
   });
 
-  it("prevents another user (no relationship) from updating the wedding profile (IDOR)", async () => {
+  it("prevents another user (no relationship) from writing a profile — authorization runs before the family check (IDOR)", async () => {
     const owner = await createTestUser("owner");
     const stranger = await createTestUser("stranger");
-    const event = await createTestEvent(owner.id);
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
 
-    await expect(updateWeddingProfile(event.id, stranger.id, profileInput)).rejects.toThrow(
-      EventNotFoundError,
+    // Both a matching and a mismatching family look identical to a stranger.
+    for (const input of [asInput(IDENTITY_BY_TYPE.BIRTHDAY), WEDDING_INPUT]) {
+      await expect(updateIdentityProfile(event.id, stranger.id, input)).rejects.toThrow(
+        EventNotFoundError,
+      );
+    }
+    expect(await prisma.personProfile.count({ where: { eventId: event.id } })).toBe(0);
+  });
+});
+
+describe("updateSectionOverrides (integration)", () => {
+  it("persists owner overrides into Event.settings, merged with existing keys", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.event.update({
+      where: { id: event.id },
+      data: { settings: { unrelated: "kept", sections: { gift: false } } },
+    });
+
+    const stored = await updateSectionOverrides(event.id, owner.id, { rsvp: false });
+    expect(stored).toEqual({ gift: false, rsvp: false });
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toEqual({ unrelated: "kept", sections: { gift: false, rsvp: false } });
+    expect((await getEditorEvent(event.id, owner.id)).sectionOverrides).toEqual(stored);
+  });
+
+  it("rejects toggling identity for OTHER (not supported) without writing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    await expect(updateSectionOverrides(event.id, owner.id, { identity: false })).rejects.toThrow(
+      SectionNotToggleableError,
     );
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toBeNull();
+  });
+
+  it("rejects a VIEWER-role member and a stranger (IDOR)", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
+
+    for (const userId of [viewer.id, stranger.id]) {
+      await expect(updateSectionOverrides(event.id, userId, { rsvp: false })).rejects.toThrow(
+        EventNotFoundError,
+      );
+    }
   });
 });
 

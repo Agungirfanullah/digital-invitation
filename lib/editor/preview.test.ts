@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { EventType } from "@prisma/client";
 
 import { buildPreviewInvitation, type PreviewSource } from "@/lib/editor/preview";
+import { buildPublicIdentity, emptyIdentityFor } from "@/lib/event-types/identity";
+import { resolveEnabledSections } from "@/lib/event-types/sections";
+import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
 
 function baseSource(overrides: Partial<PreviewSource> = {}): PreviewSource {
   return {
@@ -10,7 +14,8 @@ function baseSource(overrides: Partial<PreviewSource> = {}): PreviewSource {
     title: "Pernikahan Uji Coba",
     description: null,
     templateKey: null,
-    weddingProfile: null,
+    identity: emptyIdentityFor("WEDDING"),
+    sectionOverrides: {},
     theme: null,
     schedules: [],
     loveStory: null,
@@ -57,21 +62,37 @@ describe("buildPreviewInvitation", () => {
     expect(invitation.theme.primaryColor).toBe("#123456");
   });
 
-  it("passes through the wedding profile unchanged", () => {
-    const profile = {
-      brideFullName: "Ayu",
-      brideNickname: "Ayu",
-      brideFather: null,
-      brideMother: null,
-      brideInstagram: null,
-      groomFullName: "Budi",
-      groomNickname: "Budi",
-      groomFather: null,
-      groomMother: null,
-      groomInstagram: null,
+  it.each(Object.keys(IDENTITY_BY_TYPE) as EventType[])(
+    "builds the %s identity through the same canonical transformation as the public projection",
+    (type) => {
+      const invitation = buildPreviewInvitation(
+        baseSource({ type, identity: IDENTITY_BY_TYPE[type] }),
+      );
+      expect(invitation.identity).toEqual(buildPublicIdentity(type, IDENTITY_BY_TYPE[type]));
+    },
+  );
+
+  it("never renders another family's unsaved identity under this type's terminology", () => {
+    const invitation = buildPreviewInvitation(
+      baseSource({ type: "BIRTHDAY", identity: IDENTITY_BY_TYPE.WEDDING }),
+    );
+    expect(invitation.identity).toBeNull();
+  });
+
+  it("applies unsaved section overrides with the same resolver and stripping as production", () => {
+    const loveStory = {
+      id: "story-1",
+      title: null,
+      items: [{ id: "i", dateLabel: null, title: "Momen", description: null, imageUrl: null }],
     };
-    const invitation = buildPreviewInvitation(baseSource({ weddingProfile: profile }));
-    expect(invitation.weddingProfile).toEqual(profile);
+    const invitation = buildPreviewInvitation(
+      baseSource({ loveStory, sectionOverrides: { story: false, rsvp: false } }),
+    );
+    expect(invitation.sections).toEqual(
+      resolveEnabledSections("WEDDING", { sections: { story: false, rsvp: false } }),
+    );
+    expect(invitation.sections.story).toBe(false);
+    expect(invitation.loveStory).toBeNull();
   });
 
   it("passes through schedules unchanged", () => {

@@ -63,13 +63,21 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
   // (`invitation.guest === null`), so the RSVP lookup only ever runs for
   // a request that's already personalized — no separate validation
   // needed here to decide whether to attempt it.
-  const rsvpView = to && invitation.guest ? await getRsvpGuestView(invitation.eventId, to) : null;
+  // A disabled section (owner section configuration) skips its lookup
+  // entirely; the submit paths reject it server-side as well.
+  const personalized = Boolean(to && invitation.guest);
+  const rsvpView =
+    to && personalized && invitation.sections.rsvp
+      ? await getRsvpGuestView(invitation.eventId, to)
+      : null;
   const rsvp = rsvpView && to ? { token: to, view: rsvpView } : null;
 
   // No second lookup needed — invitation.guest already resolved the
   // display name from the same token (see docs/DECISIONS.md D-039).
   const wishGuest =
-    to && invitation.guest ? { token: to, guestName: invitation.guest.displayName } : null;
+    to && invitation.guest && invitation.sections.wishes
+      ? { token: to, guestName: invitation.guest.displayName }
+      : null;
 
   // Never awaited into the render path in a way that could block it on
   // failure — `trackPublicInvitationView()` catches everything internally
@@ -80,7 +88,7 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
   await trackPublicInvitationView({
     eventId: invitation.eventId,
     guestToken: to ?? null,
-    hasPersonalizationContext: Boolean(to && invitation.guest),
+    hasPersonalizationContext: personalized,
     sessionId: cookieStore.get(ANALYTICS_SESSION_COOKIE_NAME)?.value,
     userAgent: headerList.get("user-agent"),
     referrer: headerList.get("referer"),

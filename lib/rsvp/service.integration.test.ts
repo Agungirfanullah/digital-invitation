@@ -17,6 +17,7 @@ import { prisma } from "@/lib/db/prisma";
 import {
   EventNotFoundError,
   InvalidRsvpTokenError,
+  RsvpDisabledError,
   SeatQuotaExceededError,
 } from "@/lib/rsvp/errors";
 import {
@@ -142,6 +143,35 @@ describe("getRsvpGuestView (integration — live Supabase DEV database)", () => 
     const { invitation } = await createTestGuest(eventA.id);
 
     expect(await getRsvpGuestView(eventB.id, invitation.token)).toBeNull();
+  });
+});
+
+describe("RSVP section configuration (integration)", () => {
+  it("rejects a submission when the owner has turned RSVP off, and stores nothing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.event.update({
+      where: { id: event.id },
+      data: { settings: { sections: { rsvp: false } } },
+    });
+    const { guest, invitation } = await createTestGuest(event.id, 4);
+
+    await expect(submitRsvpForGuest(event.id, invitation.token, attending)).rejects.toThrow(
+      RsvpDisabledError,
+    );
+    expect(await getRsvpGuestView(event.id, invitation.token)).toBeNull();
+    expect(await prisma.rSVP.count({ where: { eventId: event.id, guestId: guest.id } })).toBe(0);
+  });
+
+  it("works for a non-wedding event type by default (shared capability)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.event.update({ where: { id: event.id }, data: { type: "CORPORATE" } });
+    const { invitation } = await createTestGuest(event.id, 4);
+
+    await expect(submitRsvpForGuest(event.id, invitation.token, attending)).resolves.toMatchObject({
+      attendance: "ATTENDING",
+    });
   });
 });
 

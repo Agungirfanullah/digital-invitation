@@ -22,7 +22,9 @@ export interface EventFormState {
 function parseEventFormData(formData: FormData) {
   return {
     title: formData.get("title"),
-    type: formData.get("type"),
+    // Absent on the edit form (EventType is immutable, D-063); a crafted
+    // edit request that does send it is rejected by the service on mismatch.
+    type: formData.get("type") ?? undefined,
     slug: formData.get("slug"),
     // A missing/empty field resolves to `null`/`""` from FormData, but the
     // schema's optional description only accepts `undefined` — squash both

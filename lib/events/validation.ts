@@ -34,7 +34,13 @@ export const createEventSchema = z.object({
   description,
 });
 
-export const updateEventSchema = createEventSchema;
+/**
+ * EventType is immutable after creation (docs/DECISIONS.md D-063): it
+ * decides the identity family, profile storage and terminology, so a
+ * change could strand an incompatible profile. `type` is accepted only so
+ * the service can reject a mismatch explicitly instead of silently dropping it.
+ */
+export const updateEventSchema = createEventSchema.extend({ type: eventTypeSchema.optional() });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;

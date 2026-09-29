@@ -17,20 +17,139 @@ const safeHttpUrl = (max: number, message = "URL harus berupa tautan http/https 
 
 const nullableSafeHttpUrl = (max: number, message?: string) => safeHttpUrl(max, message).nullable();
 
-export const weddingProfileSchema = z.object({
-  brideFullName: nullableString(120, "Nama lengkap maksimal 120 karakter."),
-  brideNickname: nullableString(60, "Nama panggilan maksimal 60 karakter."),
+const fullNameField = nullableString(120, "Nama lengkap maksimal 120 karakter.");
+const nicknameField = nullableString(60, "Nama panggilan maksimal 60 karakter.");
+const instagramField = nullableString(60, "Instagram maksimal 60 karakter.");
+
+const nullableInt = (min: number, max: number, message: string) =>
+  z.number({ error: message }).int(message).min(min, message).max(max, message).nullable();
+
+/**
+ * Identity profile schemas, one per identity family (docs/PRD.md §13–§13.7).
+ * Every field is optional here on purpose: the editor autosaves partial
+ * drafts. Required identity information is enforced at publish time by
+ * `getMissingPublishRequirements()` (lib/event-types/identity.ts).
+ */
+export const coupleIdentitySchema = z.object({
+  brideFullName: fullNameField,
+  brideNickname: nicknameField,
   brideFather: nullableString(120),
   brideMother: nullableString(120),
-  brideInstagram: nullableString(60),
-  groomFullName: nullableString(120, "Nama lengkap maksimal 120 karakter."),
-  groomNickname: nullableString(60, "Nama panggilan maksimal 60 karakter."),
+  brideInstagram: instagramField,
+  groomFullName: fullNameField,
+  groomNickname: nicknameField,
   groomFather: nullableString(120),
   groomMother: nullableString(120),
-  groomInstagram: nullableString(60),
+  groomInstagram: instagramField,
+  yearsTogether: nullableInt(1, 100, "Jumlah tahun harus antara 1 dan 100."),
 });
 
-export type WeddingProfileInput = z.infer<typeof weddingProfileSchema>;
+export const personIdentitySchema = z.object({
+  fullName: fullNameField,
+  nickname: nicknameField,
+  age: nullableInt(0, 150, "Usia harus antara 0 dan 150."),
+  milestone: nullableString(120, "Keterangan maksimal 120 karakter."),
+  hostedBy: nullableString(120, "Nama penyelenggara maksimal 120 karakter."),
+  instagram: instagramField,
+});
+
+export const babyFamilyIdentitySchema = z.object({
+  babyFullName: fullNameField,
+  babyNickname: nicknameField,
+  fatherName: nullableString(120, "Nama ayah maksimal 120 karakter."),
+  motherName: nullableString(120, "Nama ibu maksimal 120 karakter."),
+  birthDate: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal lahir tidak valid.")
+    .refine(
+      (value) => !Number.isNaN(Date.parse(`${value}T00:00:00Z`)),
+      "Tanggal lahir tidak valid.",
+    )
+    .nullable(),
+  birthDetails: nullableString(200, "Keterangan maksimal 200 karakter."),
+});
+
+export const hostIdentitySchema = z.object({
+  hostName: nullableString(120, "Nama tuan rumah maksimal 120 karakter."),
+  occasionTheme: nullableString(120, "Tema maksimal 120 karakter."),
+  contactInfo: nullableString(120, "Kontak maksimal 120 karakter."),
+});
+
+export const organizationIdentitySchema = z.object({
+  organizationName: nullableString(150, "Nama organisasi maksimal 150 karakter."),
+  contactPerson: nullableString(120, "Narahubung maksimal 120 karakter."),
+  dressCode: nullableString(120, "Dress code maksimal 120 karakter."),
+});
+
+export const IDENTITY_SCHEMAS = {
+  COUPLE: coupleIdentitySchema,
+  PERSON: personIdentitySchema,
+  BABY_FAMILY: babyFamilyIdentitySchema,
+  HOST_GROUP: hostIdentitySchema,
+  ORGANIZATION: organizationIdentitySchema,
+} as const;
+
+/** Families that can be written. GENERIC (OTHER) has no profile, so it is not accepted at all. */
+export const writableIdentityFamilySchema = z.enum([
+  "COUPLE",
+  "PERSON",
+  "BABY_FAMILY",
+  "HOST_GROUP",
+  "ORGANIZATION",
+]);
+
+export type CoupleIdentityInput = z.infer<typeof coupleIdentitySchema>;
+export type PersonIdentityInput = z.infer<typeof personIdentitySchema>;
+export type BabyFamilyIdentityInput = z.infer<typeof babyFamilyIdentitySchema>;
+export type HostIdentityInput = z.infer<typeof hostIdentitySchema>;
+export type OrganizationIdentityInput = z.infer<typeof organizationIdentitySchema>;
+
+export type IdentityProfileInput =
+  | { family: "COUPLE"; data: CoupleIdentityInput }
+  | { family: "PERSON"; data: PersonIdentityInput }
+  | { family: "BABY_FAMILY"; data: BabyFamilyIdentityInput }
+  | { family: "HOST_GROUP"; data: HostIdentityInput }
+  | { family: "ORGANIZATION"; data: OrganizationIdentityInput };
+
+export type IdentityParseResult =
+  { ok: true; value: IdentityProfileInput } | { ok: false; fieldErrors: Record<string, string[]> };
+
+/**
+ * Two-step parse of `{ family, data }`: the family first, then `data`
+ * against that family's schema — so field errors stay keyed by field name
+ * (`ZodError.flatten()` only reports one level deep) for the form to map
+ * back. Whether the family matches the event's type is checked by the
+ * service, which is the only place that knows the stored type.
+ */
+export function parseIdentityProfileInput(input: unknown): IdentityParseResult {
+  const envelope = z
+    .object({ family: writableIdentityFamilySchema, data: z.unknown() })
+    .safeParse(input);
+  if (!envelope.success) {
+    return { ok: false, fieldErrors: { family: ["Jenis identitas tidak valid."] } };
+  }
+
+  const { family, data } = envelope.data;
+  const parsed = IDENTITY_SCHEMAS[family].safeParse(data);
+  if (!parsed.success) return { ok: false, fieldErrors: parsed.error.flatten().fieldErrors };
+
+  return { ok: true, value: { family, data: parsed.data } as IdentityProfileInput };
+}
+
+/** Owner section overrides: known keys only, boolean values only. */
+export const sectionOverridesSchema = z
+  .object({
+    identity: z.boolean(),
+    schedule: z.boolean(),
+    story: z.boolean(),
+    gallery: z.boolean(),
+    rsvp: z.boolean(),
+    gift: z.boolean(),
+    wishes: z.boolean(),
+  })
+  .partial()
+  .strict();
 
 const colorField = z
   .string()

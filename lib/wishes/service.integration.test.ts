@@ -16,6 +16,7 @@ import { prisma } from "@/lib/db/prisma";
 import {
   EventNotFoundError,
   InvalidWishTokenError,
+  WishesDisabledError,
   WishLimitExceededError,
   WishNotFoundError,
 } from "@/lib/wishes/errors";
@@ -98,6 +99,21 @@ describe("submitWishForGuest (integration — live Supabase DEV database)", () =
     expect(stored[0].status).toBe(WishStatus.PENDING);
     expect(stored[0].name).toBe("Ayu Lestari");
     expect(stored[0].message).toBe("Selamat menempuh hidup baru!");
+  });
+
+  it("rejects a wish when the owner has turned the wishes section off, and stores nothing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+    await prisma.event.update({
+      where: { id: event.id },
+      data: { settings: { sections: { wishes: false } } },
+    });
+    const { invitation } = await createTestGuest(event.id);
+
+    await expect(submitWishForGuest(event.id, invitation.token, validWish)).rejects.toThrow(
+      WishesDisabledError,
+    );
+    expect(await prisma.wish.count({ where: { eventId: event.id } })).toBe(0);
   });
 
   it("rejects a malformed token without creating a wish", async () => {

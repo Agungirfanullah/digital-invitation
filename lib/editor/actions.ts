@@ -9,12 +9,15 @@ import {
   galleryVideoItemSchema,
   loveStoryItemSchema,
   loveStoryTitleSchema,
+  parseIdentityProfileInput,
   scheduleFormSchema,
+  sectionOverridesSchema,
   templateSelectionSchema,
   themeSchema,
   toScheduleInput,
-  weddingProfileSchema,
 } from "@/lib/editor/validation";
+import type { IdentityProfileData } from "@/lib/event-types/identity";
+import type { SectionOverrides } from "@/lib/event-types/sections";
 import { GALLERY_UPLOAD_RATE_LIMIT_MESSAGE, mapStorageErrorMessage } from "@/lib/storage/errors";
 import { validateGalleryImageUpload } from "@/lib/storage/validation";
 import type { ActionResult } from "@/lib/editor/types";
@@ -35,15 +38,28 @@ function invalidInput(fieldErrors: Record<string, string[]>): ActionResult<never
   return { ok: false, error: "Periksa kembali data yang kamu masukkan.", fieldErrors };
 }
 
-export async function saveWeddingProfileAction(
+/** Saves the event's identity profile. `input` is `{ family, data }`; the family is re-checked against the stored event type by the service. */
+export async function saveIdentityProfileAction(
   eventId: string,
   input: unknown,
-): Promise<ActionResult<Awaited<ReturnType<typeof editorService.updateWeddingProfile>>>> {
-  const parsed = weddingProfileSchema.safeParse(input);
+): Promise<ActionResult<IdentityProfileData>> {
+  const parsed = parseIdentityProfileInput(input);
+  if (!parsed.ok) return invalidInput(parsed.fieldErrors);
+
+  return withEditorAuth((userId) =>
+    editorService.updateIdentityProfile(eventId, userId, parsed.value),
+  );
+}
+
+export async function saveSectionOverridesAction(
+  eventId: string,
+  input: unknown,
+): Promise<ActionResult<SectionOverrides>> {
+  const parsed = sectionOverridesSchema.safeParse(input);
   if (!parsed.success) return invalidInput(parsed.error.flatten().fieldErrors);
 
   return withEditorAuth((userId) =>
-    editorService.updateWeddingProfile(eventId, userId, parsed.data),
+    editorService.updateSectionOverrides(eventId, userId, parsed.data),
   );
 }
 

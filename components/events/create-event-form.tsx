@@ -25,7 +25,7 @@ export function CreateEventForm() {
         label="Judul acara"
         name="title"
         type="text"
-        placeholder="Pernikahan Raka & Nadia"
+        placeholder="mis. Pernikahan Raka & Nadia, Ulang Tahun Citra ke-17"
         required
         error={state.fieldErrors?.title?.[0]}
         onChange={(event) => {

@@ -3,9 +3,11 @@ import { EventMemberRole, Prisma, WishStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
+import { resolveEnabledSections } from "@/lib/event-types/sections";
 import {
   EventNotFoundError,
   InvalidWishTokenError,
+  WishesDisabledError,
   WishLimitExceededError,
   WishNotFoundError,
 } from "@/lib/wishes/errors";
@@ -27,6 +29,8 @@ export const WISH_PER_GUEST_LIMIT = 3;
 interface WishGuestContext {
   guestId: string;
   guestName: string;
+  /** Whether the event's wishes section is enabled (lib/event-types/sections.ts). */
+  wishesEnabled: boolean;
 }
 
 /**
@@ -47,14 +51,26 @@ async function resolveGuestForWish(
   const invitation = await prisma.guestInvitation.findUnique({
     where: { token: parsed.data },
     select: {
-      guest: { select: { id: true, eventId: true, name: true } },
+      guest: {
+        select: {
+          id: true,
+          eventId: true,
+          name: true,
+          event: { select: { type: true, settings: true } },
+        },
+      },
     },
   });
 
   if (!invitation?.guest) return null;
   if (invitation.guest.eventId !== eventId) return null;
 
-  return { guestId: invitation.guest.id, guestName: invitation.guest.name };
+  const { type, settings } = invitation.guest.event;
+  return {
+    guestId: invitation.guest.id,
+    guestName: invitation.guest.name,
+    wishesEnabled: resolveEnabledSections(type, settings).wishes,
+  };
 }
 
 /**
@@ -71,6 +87,7 @@ export async function submitWishForGuest(
 ): Promise<void> {
   const context = await resolveGuestForWish(eventId, rawToken);
   if (!context) throw new InvalidWishTokenError();
+  if (!context.wishesEnabled) throw new WishesDisabledError();
 
   const existingCount = await prisma.wish.count({
     where: { eventId, guestId: context.guestId, status: { not: WishStatus.DELETED } },

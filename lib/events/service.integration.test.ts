@@ -13,11 +13,17 @@ import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { prisma } from "@/lib/db/prisma";
-import { EventNotFoundError, SlugConflictError } from "@/lib/events/errors";
+import {
+  EventNotFoundError,
+  EventTypeImmutableError,
+  PublishRequirementsNotMetError,
+  SlugConflictError,
+} from "@/lib/events/errors";
 import {
   createEventForUser,
   deleteEventForUser,
   getEventForUser,
+  getPublishReadinessForUser,
   listEventsForUser,
   publishEventForUser,
   unpublishEventForUser,
@@ -56,6 +62,13 @@ async function createTestUser(label: string) {
 function trackEvent<T extends { id: string }>(event: T): T {
   createdEventIds.push(event.id);
   return event;
+}
+
+/** The two names a Wedding needs before it can be published. */
+async function addCoupleNames(eventId: string) {
+  await prisma.weddingProfile.create({
+    data: { eventId, brideNickname: "Ayu", groomNickname: "Budi" },
+  });
 }
 
 function validInput(overrides: Partial<CreateEventInput> = {}): CreateEventInput {
@@ -183,6 +196,7 @@ describe("event service (integration — live Supabase DEV database)", () => {
     const userA = await createTestUser("a");
     const event = trackEvent(await createEventForUser(userA.id, validInput()));
     expect(event.status).toBe("DRAFT");
+    await addCoupleNames(event.id);
 
     const published = await publishEventForUser(event.id, userA.id);
     expect(published.status).toBe("PUBLISHED");
@@ -207,6 +221,7 @@ describe("event service (integration — live Supabase DEV database)", () => {
     const userA = await createTestUser("a");
     const userB = await createTestUser("b");
     const event = trackEvent(await createEventForUser(userA.id, validInput()));
+    await addCoupleNames(event.id);
     await publishEventForUser(event.id, userA.id);
 
     await expect(unpublishEventForUser(event.id, userB.id)).rejects.toThrow(EventNotFoundError);
@@ -221,5 +236,122 @@ describe("event service (integration — live Supabase DEV database)", () => {
 
     await expect(publishEventForUser(missingId, userA.id)).rejects.toThrow(EventNotFoundError);
     await expect(unpublishEventForUser(missingId, userA.id)).rejects.toThrow(EventNotFoundError);
+  });
+});
+
+describe("EventType immutability (integration)", () => {
+  it("rejects changing WEDDING → BIRTHDAY and leaves the stored type and profile untouched", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+    await addCoupleNames(event.id);
+
+    await expect(
+      updateEventForUser(event.id, userA.id, {
+        ...validInput({ slug: event.slug }),
+        type: "BIRTHDAY",
+      }),
+    ).rejects.toThrow(EventTypeImmutableError);
+
+    const stored = await prisma.event.findUniqueOrThrow({
+      where: { id: event.id },
+      include: { weddingProfile: true },
+    });
+    expect(stored.type).toBe("WEDDING");
+    expect(stored.weddingProfile?.brideNickname).toBe("Ayu");
+  });
+
+  it("accepts an update that omits the type or repeats the same type", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+
+    const withoutType = { title: "Tanpa Tipe", slug: event.slug, description: undefined };
+    await expect(updateEventForUser(event.id, userA.id, withoutType)).resolves.toMatchObject({
+      title: "Tanpa Tipe",
+      type: "WEDDING",
+    });
+    await expect(
+      updateEventForUser(event.id, userA.id, validInput({ slug: event.slug, type: "WEDDING" })),
+    ).resolves.toMatchObject({ type: "WEDDING" });
+  });
+
+  it("a stranger's type-change attempt is an IDOR not-found, not a type error", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+
+    await expect(
+      updateEventForUser(event.id, userB.id, {
+        ...validInput({ slug: event.slug }),
+        type: "OTHER",
+      }),
+    ).rejects.toThrow(EventNotFoundError);
+  });
+});
+
+describe("publish readiness (integration)", () => {
+  it("blocks publishing a Wedding without both couple names, listing what's missing", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+
+    const error = await publishEventForUser(event.id, userA.id).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(PublishRequirementsNotMetError);
+    expect((error as PublishRequirementsNotMetError).missing).toEqual([
+      "Nama Mempelai Wanita",
+      "Nama Mempelai Pria",
+    ]);
+
+    const stillDraft = await getEventForUser(event.id, userA.id);
+    expect(stillDraft.status).toBe("DRAFT");
+  });
+
+  it("requires the celebrant and a date for a Birthday, then publishes once both exist", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(
+      await createEventForUser(userA.id, validInput({ type: "BIRTHDAY", title: "Ulang Tahun" })),
+    );
+
+    expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([
+      "Nama yang berulang tahun",
+      "Tanggal acara (tambahkan minimal satu jadwal)",
+    ]);
+
+    await prisma.personProfile.create({ data: { eventId: event.id, fullName: "Citra" } });
+    await prisma.eventSchedule.create({
+      data: {
+        eventId: event.id,
+        title: "Pesta",
+        date: new Date("2026-12-12T00:00:00Z"),
+        startTime: new Date("1970-01-01T18:00:00Z"),
+        endTime: new Date("1970-01-01T21:00:00Z"),
+      },
+    });
+
+    expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([]);
+    await expect(publishEventForUser(event.id, userA.id)).resolves.toMatchObject({
+      status: "PUBLISHED",
+    });
+  });
+
+  it("does not let a stale profile of another family satisfy the requirement", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(
+      await createEventForUser(userA.id, validInput({ type: "CORPORATE", title: "Rapat" })),
+    );
+    // A couple profile row (e.g. inserted out-of-band) never counts for CORPORATE.
+    await addCoupleNames(event.id);
+
+    await expect(publishEventForUser(event.id, userA.id)).rejects.toThrow(
+      PublishRequirementsNotMetError,
+    );
+  });
+
+  it("readiness is VIEWER-and-above and IDOR-safe", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+
+    await expect(getPublishReadinessForUser(event.id, userB.id)).rejects.toThrow(
+      EventNotFoundError,
+    );
   });
 });
