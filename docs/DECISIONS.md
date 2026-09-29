@@ -2082,3 +2082,88 @@ pass.
 
 **Impact:** `e2e/gallery.spec.ts` only. No config, no other test file, no
 production code changed.
+
+## D-061 --- Identity Storage: Reuse `WeddingProfile` for the COUPLE Family, One New Typed Table per Other Family
+
+**Context:** Phase 0.9 made all eight `EventType`s first-class. Only
+`WeddingProfile` existed (Phase 0.8, K1). Options: one generic profile
+table, JSON on `Event`, one table per type, or one table per identity
+family.
+
+**Decision:** one table per identity family, reusing what exists.
+COUPLE (Wedding, Engagement, Anniversary) keeps using `WeddingProfile` —
+its bride/groom + parents + Instagram columns already match PRD §13.1/§13.4
+exactly — with one additive nullable `yearsTogether` column
+(Anniversary-only). New 1:1 tables: `PersonProfile`, `BabyFamilyProfile`,
+`HostProfile`, `OrganizationProfile`. OTHER has no profile (PRD §13.7).
+The application works on one canonical identity shape
+(`lib/event-types/identity.ts`); the table choice is hidden behind
+`toIdentityProfileData()`.
+
+**Rejected:** a single generic profile table (a wide table of mostly-null
+columns whose meaning depends on the type — weak typing, easy misuse);
+JSON on `Event` (DATABASE.md §33 — identity is core content); a table per
+type (duplicates the couple shape three times); renaming `WeddingProfile`
+or its columns (destructive/churn for no functional gain).
+
+**Data safety:** migration `20260928120000_add_event_type_identity_profiles`
+is purely additive; existing `WeddingProfile` rows are untouched and
+render exactly as before (regression-tested). Note: that migration's
+header comment references "D-060" — it was written before this entry was
+numbered, and an applied migration file must not be edited (Prisma
+checksums it); this entry is the one it means.
+
+**Impact:** schema + migration, `lib/event-types/`, editor service/actions,
+public projection, editor preview, all six templates.
+
+## D-062 --- Section Configuration in `Event.settings`, All Sections Default Enabled
+
+**Context:** PRD §15/§15.1 require per-section enable/disable with the
+Supported / Default Enabled / Default Disabled / Owner Toggleable model.
+Section visibility was purely data-driven; RSVP and Wishes always
+rendered. `Event.settings Json?` existed unused.
+
+**Decision:** store owner overrides as `Event.settings.sections`
+(DATABASE.md §32 prescribes JSON on Event for MVP). One resolver
+(`lib/event-types/sections.ts`) turns `EventType + settings` into the
+effective configuration for the projection, the preview, and the RSVP /
+wish submission guards. Every section is Supported, Default Enabled and
+Owner Toggleable for every type — except identity for OTHER, which has
+no identity. A disabled section's data is stripped from the public
+payload, and RSVP/wish submissions are rejected server-side.
+
+**Why "all enabled":** PRD §15.1 forbids inventing per-type restrictions
+and leaves per-type default on/off states as an open product decision.
+"All enabled" equals the pre-existing behavior, so existing events render
+unchanged. **Open product decision:** per-type defaults (e.g. whether
+Gift should default off for Corporate) — a one-line change in
+`sectionDefault()` once decided.
+
+**Not implemented:** section reordering (PRD §15 "Reorder").
+
+## D-063 --- EventType Is Immutable After Creation
+
+**Context:** `updateEventSchema` was `createEventSchema`, so the type
+could be changed at any time. Type now decides the identity family,
+profile table, validation, terminology and publish requirements; a change
+would strand an incompatible profile.
+
+**Decision:** immutable after creation, enforced in
+`updateEventForUser` — a submitted type that differs from the stored one
+throws `EventTypeImmutableError` ("Jenis acara tidak dapat diubah setelah
+acara dibuat."); `type` is never written on update. The edit form shows
+the type read-only. Authorization runs first, so a stranger's attempt is
+an ordinary IDOR not-found.
+
+**Rejected:** allowing changes within the same family (Wedding ↔
+Engagement ↔ Anniversary) — possible later, but not needed for MVP and
+adds a rule surface to test; allowing any change and discarding the old
+profile (silent data loss).
+
+**Also decided with it — publish readiness:** PRD §13–§13.7 mark core
+identity (and date) REQUIRED. Because the editor autosaves partial
+drafts, requiredness is enforced at publish (`publishEventForUser`), with
+the missing items shown on the event page. Wedding requires both couple
+names but, to keep the Wedding baseline's existing behavior, not a
+schedule; every other type also requires at least one schedule (the
+date). Already-published events are not retroactively unpublished.

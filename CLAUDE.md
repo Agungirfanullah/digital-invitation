@@ -1840,6 +1840,54 @@ Do not declare a feature complete until it satisfies its Definition of Done.
 
 Build the product as if real customers will use it tomorrow.
 
+# 47. PRODUCT SCOPE AUTHORITY (Human-Approved)
+
+The following are human-approved product-scope decisions. They override
+any prior inferred assumption, previous audit suggestion, or ambiguity
+between documents. Agents must treat them as settled unless a future,
+explicitly-recorded decision changes them.
+
+1. `docs/PRD.md` §45 is the authoritative definition of MVP product
+   scope. `docs/ROADMAP.md`'s P0/P1/P2/P3 labels are implementation
+   priority and delivery sequencing — they are a separate axis, not the
+   definition of what is in MVP.
+2. A feature phased P1/P2 in the roadmap is not automatically outside MVP
+   scope. Check `docs/PRD.md` §45 for scope; check `docs/ROADMAP.md` for
+   when it is scheduled to be built.
+3. All eight `EventType` values (Wedding, Engagement, Birthday, Aqiqah,
+   Anniversary, Gathering, Corporate, Other) are MVP scope per
+   `docs/PRD.md` §11.
+4. Event types must use one shared invitation engine, not eight
+   independent systems. Type-specific differences are identity/content,
+   terminology, and default section configuration — not duplicated
+   architecture (`docs/ARCHITECTURE.md` §37).
+5. Identity families (COUPLE, PERSON, BABY_FAMILY, HOST_GROUP,
+   ORGANIZATION, GENERIC — `docs/ARCHITECTURE.md` §37) are
+   product/architecture grouping concepts. They do not, by themselves,
+   mandate specific database models — see `docs/DATABASE.md` §42 for the
+   current schema gap and non-binding direction.
+6. Shared capabilities (Schedule, Venue, Guest, RSVP, Gallery, Wishes,
+   Gift, QR, Check-in, Analytics) should prefer configuration
+   (Supported / Default Enabled / Default Disabled / Owner Toggleable —
+   `docs/PRD.md` §15.1) over building separate implementations per event
+   type. Do not hard-code a capability as forbidden for a type unless a
+   specific PRD section says so explicitly.
+7. Homepage (`docs/PRD.md` §7-8) and Onboarding (`docs/PRD.md` §10) are
+   MVP/launch scope, not deferred marketing features.
+8. Agents must not silently redefine product scope. If a document is
+   ambiguous or silent on scope, that is a decision for the human, not an
+   inference for the agent to make and proceed on.
+9. "Not yet implemented" and "not MVP" are different facts. Do not treat
+   an unbuilt MVP feature as out-of-scope merely because it hasn't been
+   built yet — check `docs/STATUS.md` for implementation status
+   separately from `docs/PRD.md` §45 for scope.
+10. Human-approved product decisions (this section, and future entries
+    recorded in `docs/DECISIONS.md`) override an agent's own inferred
+    assumptions about product direction.
+
+Every other rule in this document (security, testing, development
+workflow, git safety, etc.) remains in force unchanged.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

@@ -12,11 +12,72 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Roadmap Phase 20 (Production Hardening) — Batch 1
-(Security Headers/CSP) + a CI reliability investigation spanning D-053
-through D-060
+**Current Phase:** Phase 0.9 — Generalize Invitation Engine for All 8 MVP
+Event Types (core engine done; onboarding/homepage/opening still open)
 
-**Status:** Phase 20 Batch 1 shipped nonce-based CSP + baseline security
+**Status (Phase 0.9):**
+
+- **Implemented:** type-aware identity for all eight types (four new
+  additive identity tables + `WeddingProfile` for the couple family,
+  D-061); one canonical identity transformation shared by the public
+  projection and the editor preview; all six templates render type-aware
+  identity, story title and closing copy (no wedding wording outside
+  Wedding/Engagement); type-aware editor navigation and a single
+  data-driven identity form (OTHER has none); section configuration in
+  `Event.settings` with server-side enforcement (D-062); EventType
+  immutable after creation (D-063); per-type publish requirements with a
+  checklist on the event page. See `docs/ARCHITECTURE.md` §37.1.
+- **Verified:** typecheck, lint, format, build, `prisma validate`,
+  `migrate status` (migration applied to DEV, checksum matches); Vitest
+  82 files / 973 tests; Playwright 76/76 against a production build
+  (new `e2e/event-types.spec.ts`). One earlier full E2E run had 7
+  transient failures in untouched specs from Supabase connection
+  exhaustion (`P2028`); they passed in isolation and on a full re-run.
+- **Not implemented yet (MVP scope, still open):** onboarding route
+  (PRD §10), launch homepage (PRD §7-8), invitation opening/reveal
+  (PRD §17), section reordering (PRD §15).
+- **Open product decision:** per-type default on/off state of sections
+  (currently all on — D-062).
+
+**Status (Phase 0.7B, documentation-only; the implementation status
+below it is superseded by Phase 0.9 above):**
+
+**PRODUCT SCOPE (documentation-only change — see below for what this does
+and does not mean):**
+
+- `docs/PRD.md` §45 is now the explicit, authoritative MVP-scope
+  definition; `docs/ROADMAP.md`'s P0/P1/P2 labels are now explicitly
+  documented as priority/sequencing, a separate axis from MVP membership
+  (`docs/ROADMAP.md` §2).
+- All eight `EventType` values are now explicitly documented as MVP scope
+  (`docs/PRD.md` §11, §45), grouped into six identity families
+  (`docs/ARCHITECTURE.md` §37): COUPLE (Wedding/Engagement/Anniversary),
+  PERSON (Birthday), BABY_FAMILY (Aqiqah), HOST_GROUP (Gathering),
+  ORGANIZATION (Corporate), GENERIC (Other). Per-type product
+  specifications were added at `docs/PRD.md` §13.1–§13.7.
+- Homepage (`docs/PRD.md` §7-8) and Onboarding (`docs/PRD.md` §10) are now
+  explicitly documented as MVP/launch scope, not deferred marketing work.
+
+**IMPLEMENTATION STATUS (unchanged by this update — this was a
+documentation-only phase; nothing below was built here):**
+
+- Wedding remains the only event type with an actual data model
+  (`WeddingProfile`) and working editor/template behavior. The other
+  seven types remain enum-level/cosmetic only — selectable at event
+  creation, but the editor and templates do not yet branch on
+  `event.type` anywhere. `docs/DATABASE.md` §42 records this as a
+  documented schema gap, not a design.
+- Homepage (`app/page.tsx`) remains the Phase-0 placeholder stub. No
+  onboarding route exists.
+- No code, schema, migration, test, or configuration file was touched in
+  this phase.
+
+**VERIFICATION STATUS:** N/A for this phase — no code changed, so no
+build/test/typecheck verification applies. The six documentation files
+listed above were checked for internal consistency after editing (see the
+phase's own final report for the pass/fail result).
+
+**Status (Phase 20, unchanged by this reconciliation):** Phase 20 Batch 1 shipped nonce-based CSP + baseline security
 headers (`lib/security/headers.ts`, D-053), corrected the CI workflow's
 fake E2E Supabase credentials, and (via a separate post-audit P0 pass)
 closed a **critical** finding — every `public` table was fully readable/

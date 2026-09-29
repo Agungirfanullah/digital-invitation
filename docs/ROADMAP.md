@@ -33,6 +33,16 @@ P2 = Monetization / advanced product
 P3 = Future
 ```
 
+**P0/P1/P2/P3 describe implementation/delivery priority and sequencing —
+they are not the definition of MVP product scope.** `docs/PRD.md` §45 is
+the authoritative definition of what is in MVP scope. A feature phased
+here as P1 or P2 is still part of MVP scope if `PRD.md` §45 lists it; the
+priority label only says when it is scheduled to be built, not whether it
+belongs in the product. Conversely, a feature already implemented ahead
+of its phase (e.g., a P1/P2 phase delivered before all P0 phases are
+fully complete) does not retroactively become P0/MVP-defining — see
+`docs/STATUS.md` for what is actually implemented versus scheduled.
+
 ---
 
 # 3. Phase 0 — Repository & Foundation
@@ -100,6 +110,8 @@ The agent must configure the repository so a developer can work with the hosted 
 - Create base layout
 - Create design tokens
 - Create `.env.example`
+- Create homepage (public marketing entry point — `docs/PRD.md` §7-8; MVP
+  scope per `docs/PRD.md` §45)
 
 ## Acceptance Criteria
 
@@ -130,12 +142,15 @@ P0
 - Password hashing
 - Password reset architecture
 - Email verification architecture
+- Onboarding flow (post-registration — `docs/PRD.md` §10; MVP scope per
+  `docs/PRD.md` §45)
 
 ## Acceptance Criteria
 
 A user can:
 
 Register
+→ Onboarding
 → Login
 → Access Dashboard
 → Logout
@@ -160,6 +175,9 @@ P0
 - Event dashboard
 - Event status
 - Event type
+- Event-type identity/profile for all eight types — `docs/PRD.md`
+  §13, §13.1–§13.7; identity families per `docs/ARCHITECTURE.md` §37
+  (implemented in Phase 0.9 — D-061 to D-063; see `docs/STATUS.md`)
 - Publish state
 
 ## Acceptance Criteria
@@ -173,6 +191,10 @@ Raka & Nadia
 ```
 
 and see the event in their dashboard.
+
+The same flow must also produce a genuinely type-appropriate invitation
+(not wedding-shaped content) for the other seven event types, per
+`docs/PRD.md` §13.1–§13.7.
 
 ---
 

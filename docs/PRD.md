@@ -221,6 +221,11 @@ The user should always be able to resume an unfinished event.
 
 # 7. Marketing Website
 
+Part of MVP/launch scope (§45) — not a post-MVP marketing feature. The
+homepage is the primary public entry point into the acquisition/
+onboarding flow (Homepage → CTA/Sign Up → Authentication → Onboarding →
+Create Event → Choose Event Type).
+
 ## Homepage
 
 The homepage must communicate the product value immediately.
@@ -288,6 +293,8 @@ Authentication must be production-safe.
 
 # 10. Onboarding
 
+Part of MVP/launch scope (§45) — not a deferred marketing feature.
+
 After registration:
 
 Display:
@@ -308,7 +315,8 @@ Create a draft event immediately after onboarding.
 
 # 11. Event Types
 
-MVP:
+MVP (all eight are in-scope product experiences, not enum values to be
+filled in later — see §45 for the authoritative MVP-scope statement):
 
 - Wedding
 - Engagement
@@ -320,6 +328,25 @@ MVP:
 - Other
 
 The invitation engine must not be hardcoded exclusively for weddings.
+
+Each event type belongs to one of six conceptual **identity families**
+(see `docs/ARCHITECTURE.md` §37 for the architecture-level description):
+
+```text
+COUPLE        → Wedding, Engagement, Anniversary
+PERSON        → Birthday
+BABY_FAMILY   → Aqiqah
+HOST_GROUP    → Gathering
+ORGANIZATION  → Corporate
+GENERIC       → Other
+```
+
+An identity family is a **product/architecture grouping concept**, not a
+database model — types sharing a family may share underlying
+implementation, but each type still gets its own explicit product
+specification. Per-type requirements for the seven non-Wedding types are
+defined in §13.1–§13.7. §13 (Wedding Information) remains the reference
+baseline; it is not redesigned by this addition.
 
 ---
 
@@ -361,6 +388,142 @@ Wedding events support:
 - Father
 - Mother
 - Instagram
+
+This remains the reference/baseline implementation for the COUPLE
+identity family. It is not redesigned by §13.1–§13.8 below.
+
+---
+
+# 13.1 Engagement Information
+
+Identity family: COUPLE.
+
+Core identity (REQUIRED):
+
+- Person 1 — full name
+- Person 2 — full name
+
+Core event information (REQUIRED): date, time, venue.
+
+Optional supporting information: parents/family, social media (Instagram),
+story/introduction.
+
+Terminology may adapt to "Engagement," "Lamaran," or "Tunangan" in place of
+wedding-specific labels. The experience reuses the shared invitation flow
+and sections — this is not a separate invitation architecture.
+
+---
+
+# 13.2 Birthday Information
+
+Identity family: PERSON.
+
+Core identity (REQUIRED): celebrant full name.
+
+Core event information (REQUIRED): date, time, venue.
+
+Optional: age/milestone, host/organizer (e.g., parents, for a child's
+party), message/story, social media.
+
+Not applicable: couple-oriented fields (bride/groom, Person 1/Person 2).
+
+The public invitation must present as a birthday invitation, not a
+couple/wedding invitation.
+
+---
+
+# 13.3 Aqiqah Information
+
+Identity family: BABY_FAMILY.
+
+Core identity (REQUIRED): baby's name, parent/family identity.
+
+Core event information (REQUIRED): date, time, venue.
+
+Optional: birth date, additional birth details, family message.
+
+Terminology uses family/baby-oriented language, not couple terminology.
+
+Support/default configuration for RSVP, Wishes, and Gift follow the
+shared capability model (§15.1) — none of these three is forbidden or
+assumed by default for this type without a separate, explicit product
+decision.
+
+---
+
+# 13.4 Anniversary Information
+
+Identity family: COUPLE.
+
+Core identity (REQUIRED): Person 1 full name, Person 2 full name.
+
+Core event information (REQUIRED): date, time, venue.
+
+Optional: years together/anniversary number, story, photos, family
+message.
+
+May reuse the same couple-identity concept used by Wedding and Engagement
+(exact data-model relationship between the three COUPLE types is a
+product/architecture decision, not specified here). Public presentation
+must use anniversary-oriented terminology, not wedding-specific
+terminology.
+
+---
+
+# 13.5 Gathering Information
+
+Identity family: HOST_GROUP.
+
+Core identity (REQUIRED): host/organizer/group name.
+
+Core event information (REQUIRED): event title/purpose, date, time,
+venue.
+
+Optional: theme, description, host message, contact information.
+
+Not applicable: couple-identity or single-celebrant semantics.
+
+Examples: family gathering, reunion, community gathering, social
+gathering.
+
+---
+
+# 13.6 Corporate Information
+
+Identity family: ORGANIZATION.
+
+Core identity (REQUIRED): organization/company name, event purpose/title.
+
+Core event information (REQUIRED): date, time, venue.
+
+Optional: contact person, dress code, event description, organization
+message, registration/attendance information.
+
+Examples: company gathering, seminar, workshop, internal event, formal
+organization event.
+
+QR/check-in may be especially relevant for this type but remains
+represented through the shared capability model (§15.1), not a
+type-exclusive feature. Wishes and Gift are not automatically forbidden
+for this type — their availability follows §15.1 unless a separate,
+explicit product decision restricts them.
+
+---
+
+# 13.7 Other Information
+
+Identity family: GENERIC.
+
+Core identity: none beyond the event's own generic title/description.
+
+Core event information (REQUIRED): event title, date, time, venue.
+
+Optional: description, host, additional information.
+
+For MVP, `Other` must be functional using only generic event information
+and the shared invitation capabilities, without a dedicated identity
+profile of its own. `Other` must not become an arbitrary custom page
+builder or a route to inventing a new subsystem per event.
 
 ---
 
@@ -425,6 +588,27 @@ Owner can:
 - Disable
 - Reorder
 - Edit
+
+---
+
+# 15.1 Shared Capability Model (Cross-Event-Type)
+
+Capabilities — Schedule, Venue, Guest, RSVP, Gallery, Wishes/Guestbook,
+Gift, QR, Check-in, Analytics — remain shared across all eight event
+types. Event types differ in **configuration**, not in duplicated
+implementations. For each capability, per event type, distinguish:
+
+- **Supported** — the capability exists and can be used by this type.
+- **Default Enabled** / **Default Disabled** — whether it is switched on
+  by default when the owner picks this type.
+- **Owner Toggleable** — whether the owner can change the default.
+
+Do not hard-code a capability as forbidden for a type (e.g., "Corporate
+cannot have Wishes") unless a specific section of this document says so
+explicitly. Absent an explicit statement, a capability is Supported and
+Owner Toggleable for every event type; only its *default* on/off state
+may reasonably vary by type, and that default is a product decision, not
+specified further here.
 
 ---
 
@@ -1044,11 +1228,24 @@ Implement:
 
 # 45. MVP Scope
 
+**This section is the authoritative definition of MVP product scope.**
+`ROADMAP.md`'s P0/P1/P2 labels describe implementation/delivery priority
+and sequencing — they do not define MVP membership. A feature listed here
+is in MVP scope regardless of which priority label the roadmap assigns to
+its implementation phase, and a feature's roadmap phase being scheduled
+after another's does not remove it from MVP scope (see
+`docs/ROADMAP.md` §2 for the corresponding priority-vs-scope
+clarification).
+
 MVP includes:
 
 Authentication
 
-Event creation
+Homepage (public marketing entry point — see §7-8)
+
+Onboarding (post-registration flow — see §10)
+
+Event creation, across all eight event types (§11, §13, §13.1–§13.7)
 
 Templates
 
@@ -1081,6 +1278,13 @@ SEO metadata
 ---
 
 # 46. Post-MVP
+
+Everything in this section is, by definition, outside the MVP scope
+defined by §45 — this is a scope classification, not a build-order
+restriction. A team may implement a Post-MVP item before some MVP items
+are finished (several already are, per `docs/STATUS.md`); doing so does
+not move that item into MVP scope, and does not excuse an MVP item
+remaining unbuilt.
 
 Phase 2:
 

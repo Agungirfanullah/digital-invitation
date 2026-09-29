@@ -955,3 +955,124 @@ Do NOT:
   browser that has it (D-053).
 - Add a new statically-rendered page without also opting it into dynamic
   rendering, or its own Next.js hydration script will be blocked by CSP.
+
+---
+
+# 37. Event Type Identity Families
+
+All eight `EventType` values (`docs/PRD.md` §11) are MVP product scope.
+They are **not** eight independent invitation systems — the product uses
+one shared invitation engine, with event types differing primarily in
+identity/content, terminology, and default section configuration, not in
+duplicated architecture.
+
+```text
+Event
+ ├── Event Type
+ ├── Identity/Profile Family
+ ├── Event Information (Schedule, Venue — already generic)
+ ├── Section Configuration
+ ├── Template
+ └── Published Invitation
+```
+
+Six conceptual identity families group the eight types:
+
+```text
+COUPLE        → Wedding, Engagement, Anniversary
+PERSON        → Birthday
+BABY_FAMILY   → Aqiqah
+HOST_GROUP    → Gathering
+ORGANIZATION  → Corporate
+GENERIC       → Other
+```
+
+An identity family is a product/architecture grouping concept, not a
+database model by itself — see `docs/DATABASE.md` §42 for how it maps
+onto the schema (decided in `docs/DECISIONS.md` D-061).
+
+Prefer composition/configuration over duplicated systems: shared
+capabilities (Schedule, Venue, Guest, RSVP, Gallery, Wishes, Gift, QR,
+Check-in, Analytics — `docs/PRD.md` §15.1) remain single implementations
+used by every event type; only their per-type default on/off state and
+presentation terminology should vary.
+
+## 37.1 Implementation (Phase 0.9)
+
+All type-specific behavior lives in `lib/event-types/` — nothing else
+branches on `EventType`:
+
+```text
+lib/event-types/config.ts          EventType → family, terminology, copy, requiresDate
+lib/event-types/identity.ts        canonical identity data (per family),
+                                   buildPublicIdentity(), getHeroHeading(),
+                                   getMissingPublishRequirements()
+lib/event-types/identity-record.ts (server) Prisma profile rows → canonical identity
+lib/event-types/identity-fields.ts editor field definitions per type
+lib/event-types/sections.ts        section configuration resolver
+```
+
+Identity pipeline — one transformation, two callers, so the editor preview
+and the public invitation cannot drift:
+
+```text
+Prisma rows ──toIdentityProfileData()──┐
+                                        ├─ buildPublicIdentity(type, …) → PublicInvitation.identity
+Editor state (unsaved) ─────────────────┘
+lib/invitations/projection.ts (public)     lib/editor/preview.ts (preview)
+```
+
+Templates render `PublicInvitation.identity` (heading, display name,
+members, details) and `getInvitationCopy(type)` (story fallback title,
+closing message); none of the six templates hard-codes wedding wording.
+
+Section configuration (D-062): `EventType + Event.settings.sections` →
+`resolveEnabledSections()` → `PublicInvitation.sections`. Both the
+projection and the preview apply `stripDisabledSectionContent()`, so a
+disabled section's data is never serialized to the browser; RSVP and
+wish submission re-check the section server-side. Hero and closing are
+structural and always rendered.
+
+Server-side guards:
+
+- Identity writes (`updateIdentityProfile`) are checked against the
+  **stored** event type's family after authorization; a wrong family, any
+  profile for OTHER, or the Anniversary-only field on another couple type
+  is rejected.
+- EventType is immutable after creation (D-063), enforced in
+  `updateEventForUser`.
+- Publishing requires each type's core identity (and, except Wedding, at
+  least one schedule for the date) — `getMissingPublishRequirements()`.
+  Drafts may be saved incomplete because the editor autosaves.
+
+---
+
+# 38. Homepage → Onboarding → Event Creation Flow
+
+Part of MVP scope (`docs/PRD.md` §45), not a deferred marketing concern.
+
+```text
+Homepage (public, unauthenticated)
+        ↓
+CTA / Sign Up
+        ↓
+Authentication (Phase 1)
+        ↓
+Onboarding (`docs/PRD.md` §10)
+        ↓
+Create Event
+        ↓
+Choose Event Type (`docs/PRD.md` §11, §13.1–§13.7)
+```
+
+The homepage is a public, unauthenticated route and follows the same
+Server-Component-first, CSP-covered rendering rules as every other route
+in this application (§36) — it introduces no new architectural pattern.
+Onboarding is a post-registration, authenticated flow that creates a
+draft `Event` immediately (`docs/PRD.md` §10) — it reuses the existing
+event-creation service layer (§9-10), not a separate one.
+
+**Implementation status:** not yet built. The homepage is still the
+original stub and there is no onboarding route; registration still
+redirects to `/dashboard`. Event creation itself (`/dashboard/events/new`)
+supports all eight types and leads into the type-aware editor (§37.1).

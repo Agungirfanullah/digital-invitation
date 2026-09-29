@@ -1023,6 +1023,19 @@ Example conceptual structure:
 
 Do not put business-critical relational data into JSON.
 
+**Implemented (Phase 0.9, `docs/DECISIONS.md` D-062)** in the existing
+`Event.settings Json?` column (no migration needed):
+
+```json
+{ "sections": { "rsvp": false, "gift": false } }
+```
+
+- Keys: `identity`, `schedule`, `story`, `gallery`, `rsvp`, `gift`,
+  `wishes`. Only owner overrides are stored; an absent key means "use the
+  type's default". Unknown keys / non-boolean values are ignored when
+  read (fail safe) and rejected when written.
+- Ordering (`sortOrder`) is not implemented yet.
+
 ---
 
 # 33. JSON Usage Rules
@@ -1230,3 +1243,54 @@ Database work is complete only when:
 - Application can read/write data
 - Authorization is enforced
 - Tests pass
+
+---
+
+# 42. Event-Type Identity Families — Identity Profile Tables
+
+All eight `EventType` enum values (`docs/PRD.md` §11) are MVP product
+scope, grouped into six conceptual identity families
+(`docs/ARCHITECTURE.md` §37):
+
+```text
+COUPLE        → Wedding, Engagement, Anniversary
+PERSON        → Birthday
+BABY_FAMILY   → Aqiqah
+HOST_GROUP    → Gathering
+ORGANIZATION  → Corporate
+GENERIC       → Other
+```
+
+**Implemented (Phase 0.9, `docs/DECISIONS.md` D-061)** — migration
+`20260928120000_add_event_type_identity_profiles`, purely additive:
+
+```text
+Family        Types                              Table
+COUPLE        Wedding, Engagement, Anniversary   WeddingProfile (existing; + yearsTogether Int?)
+PERSON        Birthday                           PersonProfile
+BABY_FAMILY   Aqiqah                             BabyFamilyProfile
+HOST_GROUP    Gathering                          HostProfile
+ORGANIZATION  Corporate                          OrganizationProfile
+GENERIC       Other                              (none — PRD §13.7)
+```
+
+- `WeddingProfile` keeps its name and `bride*`/`groom*` columns
+  (non-destructive); for Engagement/Anniversary they hold person 1 /
+  person 2. `yearsTogether` is Anniversary-only (rejected by the service
+  for the other couple types).
+- `PersonProfile`: fullName, nickname, age, milestone, hostedBy,
+  instagram. `BabyFamilyProfile`: babyFullName, babyNickname, fatherName,
+  motherName, birthDate (`DATE`), birthDetails. `HostProfile`: hostName,
+  occasionTheme, contactInfo. `OrganizationProfile`: organizationName,
+  contactPerson, dressCode.
+- Every table: `eventId UNIQUE`, FK to `Event` with `ON DELETE CASCADE`,
+  RLS enabled and `anon`/`authenticated` privileges revoked in the same
+  migration (§0.3, §40).
+- All identity columns are nullable: drafts autosave partially. Required
+  identity information is enforced at publish time (application layer).
+- The event's type decides which table is read; a row in another
+  family's table is ignored, never rendered.
+- A Gathering's/Corporate event's "purpose" is the existing `Event.title`
+  (PRD §13.5/§13.6 "event title/purpose") — no separate column.
+
+Existing `WeddingProfile` rows were not migrated or modified.
