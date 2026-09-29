@@ -2304,3 +2304,84 @@ new `sectionOrder: string[]` sibling key alongside the existing
 migration required, matching this decision's own framing that no new
 technical constraint was introduced (`docs/DATABASE.md` §32,
 `docs/ARCHITECTURE.md` §37.1). See `docs/STATUS.md` for current status.
+
+---
+
+## D-068 — Countdown MVP Behavior Contract
+
+**Status:** APPROVED
+
+**Context:** `docs/PRD.md` §15 has always listed Countdown as a
+supported invitation section, and §45 lists it as MVP scope, but no
+document defined what Countdown actually displays, what date/time it
+targets, how it handles Wedding's 0/1/2-schedule publish contract, or
+how it interacts with Schedule being disabled (D-064) and section
+ordering (D-066/D-067). An implementation-readiness audit against this
+ambiguity found several genuine product decisions blocking
+implementation, most notably a direct tension with the existing,
+deliberate policy (`lib/invitations/format.ts`) of never assuming a
+timezone for stored schedule date/time, since Indonesia spans three
+timezones (WIB/WITA/WIT). This decision resolves those blockers.
+
+**Decision:** the product owner has explicitly resolved the following,
+now recorded in `docs/PRD.md` §15.2:
+
+1. **Independent section.** Countdown is its own toggleable,
+   reorderable invitation section (same model as every other §15
+   section) — not part of Hero, and not rendered merely because
+   Schedule exists.
+2. **Target.** Countdown targets `schedule.date + schedule.startTime`
+   (the start instant) — never `endTime`, never server/publish/creation
+   time.
+3. **Timezone.** For MVP, Countdown interprets the target in the
+   **guest's browser-local timezone**. No hardcoded WIB/WITA/WIT, no new
+   timezone column, no migration. The existing no-timezone-on-storage
+   policy is explicitly preserved, not overridden — this is a
+   documented MVP limitation.
+4. **Schedule OFF → Countdown does not render**, even if Countdown
+   itself is enabled — Countdown must never consume Schedule's data as
+   a hidden dependency once Schedule is disabled (extends the D-064
+   principle to a new section, rather than weakening it).
+5. **Wedding 0/1/2-schedule behavior:** 0 schedules → Countdown does
+   not render even if enabled; 1 schedule → targets it; 2 schedules →
+   targets the first schedule in the canonical schedule order. No new
+   "primary schedule" field, column, or selection UI.
+6. **Non-Wedding types** (Engagement, Birthday, Aqiqah, Anniversary,
+   Gathering, Corporate, Other) always have exactly one valid schedule
+   per the existing publish contract (F4-09) and Countdown simply
+   targets it — no per-type selection logic.
+7. **Display:** exactly Days / Hours / Minutes / Seconds, updating once
+   per second while the target is in the future. No weeks/months/years
+   unit for MVP.
+8. **Past/zero:** once the target is reached or passed, Countdown
+   clamps to `0 days / 0 hours / 0 minutes / 0 seconds` and never shows
+   a negative value. No "event started" state for MVP; Countdown does
+   not auto-hide at zero.
+9. **Existing events default to Countdown OFF.** Introducing the
+   section must not silently change any already-published invitation's
+   appearance.
+10. **No schema/migration/timezone column.** The existing
+    `EventSchedule.date`/`EventSchedule.startTime` columns are
+    sufficient for this MVP contract.
+11. **Compatible with D-064 and D-067/D-067-FIX as-is** — Countdown is
+    a normal member of the existing `InvitationSectionKey` model once
+    added; none of those mechanisms need to change to accommodate it.
+
+**Rationale:** every decision above resolves a genuine ambiguity the
+prior audit found blocking, without inventing scope beyond what §15/§45
+already named. The timezone decision in particular is deliberately
+conservative: it keeps the existing, deliberate no-timezone-assumption
+policy on stored data fully intact (nothing about how schedules are
+stored, validated, or displayed elsewhere changes), and confines the
+new timezone interpretation to the browser at render time, which is
+reversible and does not require touching `EventSchedule` or any other
+persisted data. The Wedding first-schedule rule reuses the schedule
+model's own existing order rather than inventing a new concept.
+
+**Impact:** documentation only (`docs/PRD.md` §15.2, §45). No source
+code, schema, test, or dependency was changed by this decision.
+Countdown remains **not implemented** as of this decision — see
+`docs/STATUS.md` for current implementation status, tracked separately
+from MVP scope. A future implementation must not reopen points 1–11
+above as product questions; only their technical execution remains
+open.

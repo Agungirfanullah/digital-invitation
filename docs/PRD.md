@@ -616,6 +616,86 @@ specified further here.
 
 ---
 
+# 15.2 Countdown Section Contract (MVP, D-068)
+
+Countdown (§15, item 5) is MVP/launch scope (§45) — not a post-MVP
+feature. This section makes its behavior explicit, since it was
+previously undefined beyond being named as a supported section.
+
+**Independent section.** Countdown is a first-class, independently
+toggleable invitation section, following the same section configuration
+model as every other section in §15 (Enable, Disable, Reorder). It is
+not part of Hero, and does not render merely because Schedule exists —
+it renders only when it is itself enabled **and** its schedule data
+dependency is available (see "Schedule dependency" below).
+
+**Target.** Countdown targets the start instant of a schedule:
+
+```text
+schedule.date + schedule.startTime
+```
+
+Never `endTime`, never server/publish/creation time, never a bare date
+with no time component.
+
+**Timezone (MVP).** Countdown interprets `date` + `startTime` in the
+**guest's browser-local timezone**. There is no hardcoded WIB/WITA/WIT,
+no new timezone column, and no timezone migration. The existing policy
+that stored schedule date/time values carry no timezone (§14, Event
+Schedules) is unchanged by Countdown — this is a documented MVP
+limitation, not a defect: a guest viewing the invitation from outside
+the event's actual timezone will see a countdown computed against their
+own local clock, not the venue's.
+
+**Schedule dependency (D-064 compatibility).** Countdown depends on
+Schedule data:
+
+```text
+Schedule ON  + Countdown ON  → Countdown may render
+Schedule OFF + Countdown ON  → Countdown MUST NOT render
+```
+
+When Schedule is disabled, Countdown must not consume Schedule data as
+a hidden/secondary dependency — the same principle
+`docs/ARCHITECTURE.md` §37.1 (D-064) already establishes for Hero.
+
+**Event-type behavior.** For Engagement, Birthday, Aqiqah, Anniversary,
+Gathering, Corporate, and Other, the existing publish contract
+(`docs/F4_CANONICAL_PUBLISH_CONTRACT.md` §4.4) requires exactly one
+valid schedule; Countdown targets that schedule. No additional per-type
+schedule-selection logic exists for these types.
+
+Wedding may have 0, 1, or 2 schedules (`docs/F4_CANONICAL_PUBLISH_CONTRACT.md` §4.3):
+
+```text
+0 schedules → Countdown MUST NOT render, even if enabled
+1 schedule  → Countdown targets that schedule
+2 schedules → Countdown targets the first schedule in the canonical
+              schedule order (no new "primary schedule" field, no
+              schedule-selection UI)
+```
+
+**Display.** Countdown displays exactly Days / Hours / Minutes /
+Seconds remaining until the target — no weeks/months/years unit for
+MVP — updating once per second while the target is in the future.
+
+**Target reached or past.** When the target time is reached or has
+passed, Countdown clamps to `0 days / 0 hours / 0 minutes / 0 seconds`
+and never displays a negative value. There is no "event started" state
+for MVP, and Countdown does not automatically hide itself after
+reaching zero.
+
+**Existing events.** Introducing Countdown must not silently change
+what any already-published invitation looks like. For an event with no
+explicit Countdown section state, Countdown defaults to **disabled**.
+
+**No schema/migration requirement.** The existing `EventSchedule.date`
+and `EventSchedule.startTime` columns are sufficient for this MVP
+contract. No new column, no timezone column, no new table, and no new
+API endpoint are required.
+
+---
+
 # 16. Public Invitation
 
 Public invitation URL:
@@ -1271,7 +1351,7 @@ RSVP
 
 Gallery
 
-Countdown
+Countdown (independently toggleable, reorderable section — see §15.2)
 
 Location
 

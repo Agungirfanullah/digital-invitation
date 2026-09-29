@@ -1877,7 +1877,12 @@ explicitly-recorded decision changes them.
    / Reveal (`docs/PRD.md` §17, D-065) and invitation section reordering
    (`docs/PRD.md` §15, D-066) are likewise MVP/launch scope, not
    post-MVP or optional features — do not reopen either as a product
-   decision.
+   decision. The Countdown section's full behavior contract (target,
+   browser-local timezone, Schedule-OFF dependency, Wedding 0/1/2-
+   schedule handling, display/units, past-state clamping, existing-
+   events-default-OFF) is likewise settled — see `docs/PRD.md` §15.2
+   and `docs/DECISIONS.md` D-068 — and must not be reopened as a
+   product decision during implementation.
 8. Agents must not silently redefine product scope. If a document is
    ambiguous or silent on scope, that is a decision for the human, not an
    inference for the agent to make and proceed on.
