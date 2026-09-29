@@ -304,7 +304,7 @@ describe("publish readiness (integration)", () => {
     expect(stillDraft.status).toBe("DRAFT");
   });
 
-  it("requires the celebrant and a date for a Birthday, then publishes once both exist", async () => {
+  it("requires the celebrant, a date, and a venue for a Birthday (F4-09 §4.4), then publishes once all exist", async () => {
     const userA = await createTestUser("a");
     const event = trackEvent(
       await createEventForUser(userA.id, validInput({ type: "BIRTHDAY", title: "Ulang Tahun" })),
@@ -326,6 +326,22 @@ describe("publish readiness (integration)", () => {
       },
     });
 
+    // A date without a venue is not enough (F4-09 §4.4).
+    expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([
+      "Lokasi acara (tambahkan venue pada jadwal yang belum memiliki lokasi)",
+    ]);
+    await expect(publishEventForUser(event.id, userA.id)).rejects.toThrow(
+      PublishRequirementsNotMetError,
+    );
+
+    const venue = await prisma.venue.create({
+      data: { eventId: event.id, name: "Gedung Serbaguna", address: "Jl. Uji Coba No. 1" },
+    });
+    await prisma.eventSchedule.updateMany({
+      where: { eventId: event.id },
+      data: { venueId: venue.id },
+    });
+
     expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([]);
     await expect(publishEventForUser(event.id, userA.id)).resolves.toMatchObject({
       status: "PUBLISHED",
@@ -343,6 +359,146 @@ describe("publish readiness (integration)", () => {
     await expect(publishEventForUser(event.id, userA.id)).rejects.toThrow(
       PublishRequirementsNotMetError,
     );
+  });
+
+  it("Wedding with 1 agenda does not require a venue (F4-09 §4.3) — publishes with only the couple's names", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+    await addCoupleNames(event.id);
+
+    expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([]);
+    await expect(publishEventForUser(event.id, userA.id)).resolves.toMatchObject({
+      status: "PUBLISHED",
+    });
+  });
+
+  async function createSchedule(eventId: string, title: string, venueId: string | null) {
+    return prisma.eventSchedule.create({
+      data: {
+        eventId,
+        title,
+        date: new Date("2026-12-12T00:00:00Z"),
+        startTime: new Date("1970-01-01T08:00:00Z"),
+        endTime: new Date("1970-01-01T10:00:00Z"),
+        venueId,
+      },
+    });
+  }
+
+  describe("F4-09 agenda count & venue rule (real database)", () => {
+    it("Wedding: a 2nd agenda is allowed and publishes once both agendas have a venue", async () => {
+      const userA = await createTestUser("a");
+      const event = trackEvent(await createEventForUser(userA.id, validInput()));
+      await addCoupleNames(event.id);
+      const venueA = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung A", address: "Jl. A" },
+      });
+      const venueB = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung B", address: "Jl. B" },
+      });
+      await createSchedule(event.id, "Akad Nikah", venueA.id);
+      await createSchedule(event.id, "Resepsi", venueB.id);
+
+      expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([]);
+      await expect(publishEventForUser(event.id, userA.id)).resolves.toMatchObject({
+        status: "PUBLISHED",
+      });
+    });
+
+    it("Wedding: a 2nd agenda without a venue blocks publishing, even though 1 agenda alone would not need one", async () => {
+      const userA = await createTestUser("a");
+      const event = trackEvent(await createEventForUser(userA.id, validInput()));
+      await addCoupleNames(event.id);
+      const venueA = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung A", address: "Jl. A" },
+      });
+      await createSchedule(event.id, "Akad Nikah", venueA.id);
+      await createSchedule(event.id, "Resepsi", null);
+
+      expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([
+        "Lokasi acara (tambahkan venue pada jadwal yang belum memiliki lokasi)",
+      ]);
+      await expect(publishEventForUser(event.id, userA.id)).rejects.toThrow(
+        PublishRequirementsNotMetError,
+      );
+    });
+
+    it("Wedding: a 3rd agenda blocks publishing regardless of venue completeness", async () => {
+      const userA = await createTestUser("a");
+      const event = trackEvent(await createEventForUser(userA.id, validInput()));
+      await addCoupleNames(event.id);
+      const venue = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung", address: "Jl. Contoh" },
+      });
+      await createSchedule(event.id, "Akad Nikah", venue.id);
+      await createSchedule(event.id, "Resepsi", venue.id);
+      await createSchedule(event.id, "Ramah Tamah", venue.id);
+
+      const error = await publishEventForUser(event.id, userA.id).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(PublishRequirementsNotMetError);
+      expect((error as PublishRequirementsNotMetError).missing).toEqual([
+        "Jumlah jadwal melebihi batas maksimal (2 jadwal)",
+      ]);
+    });
+
+    it("a non-Wedding type rejects a 2nd agenda even when both agendas have a venue (agenda-count ceiling, not just venue)", async () => {
+      const userA = await createTestUser("a");
+      const event = trackEvent(
+        await createEventForUser(userA.id, validInput({ type: "CORPORATE", title: "Rapat" })),
+      );
+      await prisma.organizationProfile.create({
+        data: { eventId: event.id, organizationName: "PT Maju" },
+      });
+      const venueA = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung A", address: "Jl. A" },
+      });
+      const venueB = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung B", address: "Jl. B" },
+      });
+      await createSchedule(event.id, "Sesi 1", venueA.id);
+      await createSchedule(event.id, "Sesi 2", venueB.id);
+
+      const error = await publishEventForUser(event.id, userA.id).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(PublishRequirementsNotMetError);
+      expect((error as PublishRequirementsNotMetError).missing).toEqual([
+        "Jumlah jadwal melebihi batas maksimal (1 jadwal)",
+      ]);
+    });
+  });
+
+  it("a schedule with a venue satisfies the venue requirement for Gathering and Corporate (F4 §3.6/§3.7)", async () => {
+    const userA = await createTestUser("a");
+
+    for (const type of ["GATHERING", "CORPORATE"] as const) {
+      const event = trackEvent(await createEventForUser(userA.id, validInput({ type })));
+      if (type === "GATHERING") {
+        await prisma.hostProfile.create({
+          data: { eventId: event.id, hostName: "Keluarga Wiryo" },
+        });
+      } else {
+        await prisma.organizationProfile.create({
+          data: { eventId: event.id, organizationName: "PT Maju" },
+        });
+      }
+      const venue = await prisma.venue.create({
+        data: { eventId: event.id, name: "Gedung Serbaguna", address: "Jl. Uji Coba No. 1" },
+      });
+      await prisma.eventSchedule.create({
+        data: {
+          eventId: event.id,
+          title: "Acara",
+          date: new Date("2026-12-12T00:00:00Z"),
+          startTime: new Date("1970-01-01T18:00:00Z"),
+          endTime: new Date("1970-01-01T21:00:00Z"),
+          venueId: venue.id,
+        },
+      });
+
+      expect((await getPublishReadinessForUser(event.id, userA.id)).missing).toEqual([]);
+      await expect(publishEventForUser(event.id, userA.id)).resolves.toMatchObject({
+        status: "PUBLISHED",
+      });
+    }
   });
 
   it("readiness is VIEWER-and-above and IDOR-safe", async () => {

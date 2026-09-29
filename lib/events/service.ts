@@ -101,16 +101,21 @@ export async function updateEventForUser(eventId: string, userId: string, input:
   }
 }
 
-/** The type-specific information still missing before `eventId` can be published — see `getMissingPublishRequirements()`. */
+/**
+ * The type-specific information still missing before `eventId` can be
+ * published — see `getMissingPublishRequirements()` (F4-09 agenda-count
+ * and venue rule).
+ */
 async function findMissingPublishRequirements(eventId: string): Promise<string[]> {
   const record = await prisma.event.findUniqueOrThrow({
     where: { id: eventId },
-    include: { ...IDENTITY_PROFILE_INCLUDE, _count: { select: { schedules: true } } },
+    include: { ...IDENTITY_PROFILE_INCLUDE, schedules: { select: { venueId: true } } },
   });
   return getMissingPublishRequirements(
     record.type,
     toIdentityProfileData(record),
-    record._count.schedules,
+    record.schedules.length,
+    record.schedules.filter((schedule) => schedule.venueId !== null).length,
   );
 }
 

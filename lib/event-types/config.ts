@@ -45,8 +45,24 @@ export interface EventTypeConfig {
   storyDefaultTitle: string;
   /** Public closing sentence. */
   closingMessage: string;
-  /** Whether publishing requires at least one schedule (the event date). */
+  /**
+   * Whether publishing requires at least one schedule (the event date).
+   * Combined with `maxAgendas` this defines the agenda-count range
+   * (docs/F4_CANONICAL_PUBLISH_CONTRACT.md §4 / F4-09): `false` means a
+   * minimum of 0 agendas (only WEDDING, the Phase 0.9 regression
+   * baseline), `true` means a minimum of 1.
+   */
   requiresDate: boolean;
+  /**
+   * The maximum number of schedules ("agendas") an event of this type may
+   * have at publish time (F4-09, docs/F4_CANONICAL_PUBLISH_CONTRACT.md §4).
+   * WEDDING is the only type allowed 2; every other type allows exactly 1
+   * (combined with `requiresDate: true`, meaning non-Wedding types must
+   * have exactly 1 agenda). See
+   * `lib/event-types/identity.ts`'s `getMissingPublishRequirements()` for
+   * how this and the venue requirement are resolved together.
+   */
+  maxAgendas: number;
 }
 
 const HONOR = "Merupakan suatu kehormatan dan kebahagiaan bagi kami apabila Bapak/Ibu/Saudara/i";
@@ -64,6 +80,8 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     // Wedding is the regression baseline: its existing publish behavior
     // only gains the couple-name requirement, not a schedule requirement.
     requiresDate: false,
+    // F4-09 §4.3: Wedding is the only type allowed a 2nd agenda.
+    maxAgendas: 2,
   },
   ENGAGEMENT: {
     family: "COUPLE",
@@ -79,6 +97,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     storyDefaultTitle: "Kisah Kami",
     closingMessage: `${HONOR} berkenan hadir dan memberikan doa restu.`,
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
   ANNIVERSARY: {
     family: "COUPLE",
@@ -90,6 +109,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     storyDefaultTitle: "Perjalanan Kami",
     closingMessage: `${HONOR} berkenan hadir dan turut merayakan kebahagiaan kami.`,
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
   BIRTHDAY: {
     family: "PERSON",
@@ -101,6 +121,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     storyDefaultTitle: "Cerita",
     closingMessage: `${HONOR} berkenan hadir dan merayakan hari istimewa ini bersama kami.`,
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
   AQIQAH: {
     family: "BABY_FAMILY",
@@ -112,6 +133,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     storyDefaultTitle: "Cerita Kami",
     closingMessage: `${HONOR} berkenan hadir dan memberikan doa terbaik untuk buah hati kami.`,
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
   GATHERING: {
     family: "HOST_GROUP",
@@ -123,6 +145,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     storyDefaultTitle: "Tentang Acara",
     closingMessage: `${HONOR} berkenan hadir dan meramaikan acara ini.`,
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
   CORPORATE: {
     family: "ORGANIZATION",
@@ -135,6 +158,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     closingMessage:
       "Merupakan suatu kehormatan bagi kami apabila Bapak/Ibu/Saudara/i berkenan hadir pada acara ini.",
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
   OTHER: {
     family: "GENERIC",
@@ -146,6 +170,7 @@ export const EVENT_TYPE_CONFIG: Record<EventType, EventTypeConfig> = {
     storyDefaultTitle: "Tentang Acara",
     closingMessage: `${HONOR} berkenan hadir.`,
     requiresDate: true,
+    maxAgendas: 1, // F4-09 §4.4
   },
 };
 

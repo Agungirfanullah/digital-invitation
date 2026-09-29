@@ -4,9 +4,12 @@ import { EventType } from "@prisma/client";
 import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
 import {
   buildPublicIdentity,
+  EMPTY_BABY_FAMILY_IDENTITY,
+  EMPTY_COUPLE_IDENTITY,
   emptyIdentityFor,
   getHeroHeading,
   getMissingPublishRequirements,
+  type CoupleIdentityData,
 } from "@/lib/event-types/identity";
 import { getIdentityFieldGroups } from "@/lib/event-types/identity-fields";
 import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
@@ -117,15 +120,15 @@ describe("getHeroHeading", () => {
 });
 
 describe("getMissingPublishRequirements", () => {
-  it("is satisfied by every type's complete identity plus one schedule", () => {
+  it("is satisfied by every type's complete identity plus one venued schedule", () => {
     for (const type of ALL_TYPES) {
-      expect(getMissingPublishRequirements(type, IDENTITY_BY_TYPE[type], 1)).toEqual([]);
+      expect(getMissingPublishRequirements(type, IDENTITY_BY_TYPE[type], 1, 1)).toEqual([]);
     }
   });
 
-  it("lists each type's required identity information when empty", () => {
+  it("lists each type's required identity information when empty (F4 canonical contract §8)", () => {
     const missing = (type: EventType) =>
-      getMissingPublishRequirements(type, emptyIdentityFor(type), 1);
+      getMissingPublishRequirements(type, emptyIdentityFor(type), 1, 1);
     expect(missing("WEDDING")).toEqual(["Nama Mempelai Wanita", "Nama Mempelai Pria"]);
     expect(missing("ENGAGEMENT")).toEqual([
       "Nama Calon Mempelai Wanita",
@@ -141,18 +144,19 @@ describe("getMissingPublishRequirements", () => {
 
   it("requires a date (a schedule) for every type except Wedding (unchanged baseline)", () => {
     for (const type of ALL_TYPES) {
-      const missing = getMissingPublishRequirements(type, IDENTITY_BY_TYPE[type], 0);
+      const missing = getMissingPublishRequirements(type, IDENTITY_BY_TYPE[type], 0, 0);
       expect(missing.includes("Tanggal acara (tambahkan minimal satu jadwal)")).toBe(
         type !== "WEDDING",
       );
     }
   });
 
-  it("accepts a nickname in place of a full name, and one parent for Aqiqah", () => {
+  it("accepts a nickname in place of a full name, and one parent for Aqiqah (F4-04/05/06/07)", () => {
     expect(
       getMissingPublishRequirements(
         "BIRTHDAY",
         { family: "PERSON", data: { ...emptyPerson(), nickname: "Citra" } },
+        1,
         1,
       ),
     ).toEqual([]);
@@ -171,13 +175,186 @@ describe("getMissingPublishRequirements", () => {
           },
         },
         1,
+        1,
       ),
     ).toEqual([]);
   });
 
   it("treats another family's identity as missing", () => {
-    expect(getMissingPublishRequirements("CORPORATE", IDENTITY_BY_TYPE.WEDDING, 1)).toEqual([
+    expect(getMissingPublishRequirements("CORPORATE", IDENTITY_BY_TYPE.WEDDING, 1, 1)).toEqual([
       "Nama organisasi",
+    ]);
+  });
+
+  // --- F4-09: agenda count & venue rule (docs/F4_CANONICAL_PUBLISH_CONTRACT.md §4) ---
+
+  const VENUE_MESSAGE = "Lokasi acara (tambahkan venue pada jadwal yang belum memiliki lokasi)";
+  const tooManyMessage = (max: number) => `Jumlah jadwal melebihi batas maksimal (${max} jadwal)`;
+
+  describe("WEDDING — up to 2 agendas; venue only required once both agenda slots are used", () => {
+    const identity = IDENTITY_BY_TYPE.WEDDING;
+
+    it("0 agendas — PASS (unchanged Phase 0.9 baseline, not an F4-09 requirement)", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 0, 0)).toEqual([]);
+    });
+
+    it("1 agenda + no venue — PASS", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 1, 0)).toEqual([]);
+    });
+
+    it("1 agenda + venue — PASS", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 1, 1)).toEqual([]);
+    });
+
+    it("2 agendas + both venued — PASS", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 2, 2)).toEqual([]);
+    });
+
+    it("2 agendas + first agenda's venue null — FAIL", () => {
+      // venuedScheduleCount = 1 covers "only one of the two has a venue,"
+      // regardless of which position — the resolver doesn't distinguish
+      // by index, only by count, matching the contract's "either agenda
+      // unvenued → FAIL" (there is no ordering concept in the data model).
+      expect(getMissingPublishRequirements("WEDDING", identity, 2, 1)).toEqual([VENUE_MESSAGE]);
+    });
+
+    it("2 agendas + second agenda's venue null — FAIL", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 2, 1)).toEqual([VENUE_MESSAGE]);
+    });
+
+    it("2 agendas + both venues null — FAIL", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 2, 0)).toEqual([VENUE_MESSAGE]);
+    });
+
+    it("3 agendas — FAIL (regardless of venue state), and never also reports a venue error", () => {
+      expect(getMissingPublishRequirements("WEDDING", identity, 3, 3)).toEqual([tooManyMessage(2)]);
+      expect(getMissingPublishRequirements("WEDDING", identity, 3, 0)).toEqual([tooManyMessage(2)]);
+    });
+  });
+
+  describe.each(ALL_TYPES.filter((type) => type !== "WEDDING"))(
+    "%s — exactly 1 agenda, venue required on it (F4-09 §4.4)",
+    (type) => {
+      const identity = IDENTITY_BY_TYPE[type];
+
+      it("0 agendas — FAIL", () => {
+        expect(getMissingPublishRequirements(type, identity, 0, 0)).toEqual([
+          "Tanggal acara (tambahkan minimal satu jadwal)",
+        ]);
+      });
+
+      it("1 agenda + venue — PASS", () => {
+        expect(getMissingPublishRequirements(type, identity, 1, 1)).toEqual([]);
+      });
+
+      it("1 agenda + venue null — FAIL", () => {
+        expect(getMissingPublishRequirements(type, identity, 1, 0)).toEqual([VENUE_MESSAGE]);
+      });
+
+      it("2 agendas, both venued — FAIL (agenda-count ceiling, independent of venue completeness)", () => {
+        expect(getMissingPublishRequirements(type, identity, 2, 2)).toEqual([tooManyMessage(1)]);
+      });
+
+      it("2 agendas, one venue null — FAIL", () => {
+        expect(getMissingPublishRequirements(type, identity, 2, 1)).toEqual([tooManyMessage(1)]);
+      });
+    },
+  );
+
+  it("F4 §11.1 Wedding — every full-name/nickname combination publishes; either side missing blocks it", () => {
+    const couple = (bride: Partial<CoupleIdentityData>, groom: Partial<CoupleIdentityData>) => ({
+      family: "COUPLE" as const,
+      data: { ...EMPTY_COUPLE_IDENTITY, ...bride, ...groom },
+    });
+
+    // Valid: every full-name/nickname combination (1 agenda, no venue —
+    // still PASS per the F4-09 Wedding rule verified above).
+    expect(
+      getMissingPublishRequirements(
+        "WEDDING",
+        couple({ brideFullName: "Ayu" }, { groomFullName: "Budi" }),
+        1,
+        0,
+      ),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements(
+        "WEDDING",
+        couple({ brideNickname: "Ayu" }, { groomNickname: "Budi" }),
+        1,
+        0,
+      ),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements(
+        "WEDDING",
+        couple({ brideFullName: "Ayu Lestari" }, { groomNickname: "Budi" }),
+        1,
+        0,
+      ),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements(
+        "WEDDING",
+        couple({ brideNickname: "Ayu" }, { groomFullName: "Budi Santoso" }),
+        1,
+        0,
+      ),
+    ).toEqual([]);
+
+    // Invalid: either side entirely missing.
+    expect(
+      getMissingPublishRequirements("WEDDING", couple({}, { groomFullName: "Budi" }), 1, 1),
+    ).toEqual(["Nama Mempelai Wanita"]);
+    expect(
+      getMissingPublishRequirements("WEDDING", couple({ brideFullName: "Ayu" }, {}), 1, 1),
+    ).toEqual(["Nama Mempelai Pria"]);
+  });
+
+  it("F4 §11.5 Aqiqah — father-only, mother-only, and both-parents all satisfy the parent requirement; neither does not", () => {
+    const baby = (
+      overrides: Partial<{ babyFullName: string | null; babyNickname: string | null }>,
+      father: string | null,
+      mother: string | null,
+    ) => ({
+      family: "BABY_FAMILY" as const,
+      data: {
+        ...EMPTY_BABY_FAMILY_IDENTITY,
+        babyFullName: null,
+        babyNickname: null,
+        ...overrides,
+        fatherName: father,
+        motherName: mother,
+      },
+    });
+
+    expect(
+      getMissingPublishRequirements("AQIQAH", baby({ babyFullName: "Rafa" }, "Rizky", null), 1, 1),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements("AQIQAH", baby({ babyNickname: "Rafa" }, null, "Nadia"), 1, 1),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements(
+        "AQIQAH",
+        baby({ babyFullName: "Rafa" }, "Rizky", "Nadia"),
+        1,
+        1,
+      ),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements(
+        "AQIQAH",
+        baby({ babyNickname: "Rafa" }, "Rizky", "Nadia"),
+        1,
+        1,
+      ),
+    ).toEqual([]);
+    expect(
+      getMissingPublishRequirements("AQIQAH", baby({ babyFullName: "Rafa" }, null, null), 1, 1),
+    ).toEqual(["Nama orang tua"]);
+    expect(getMissingPublishRequirements("AQIQAH", baby({}, "Rizky", "Nadia"), 1, 1)).toEqual([
+      "Nama buah hati",
     ]);
   });
 });

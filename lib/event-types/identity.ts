@@ -263,15 +263,34 @@ export function getHeroHeading(invitation: {
 }
 
 /**
- * The required-information check behind publishing (docs/PRD.md §13–§13.7).
- * Returns human-readable, Indonesian labels of what's missing; an empty
- * list means the event may be published. Drafts may be saved incomplete —
- * the editor autosaves partial input — so this is enforced at publish time.
+ * The required-information check behind publishing. Canonical source:
+ * docs/F4_CANONICAL_PUBLISH_CONTRACT.md (supersedes PRD §13–§13.7 wording
+ * for publish eligibility specifically — see the contract's §1 "Authority
+ * Rule"). Returns human-readable, Indonesian labels of what's missing; an
+ * empty list means the event may be published. Drafts may be saved
+ * incomplete — the editor autosaves partial input — so this is enforced at
+ * publish time.
+ *
+ * `scheduleCount` and `venuedScheduleCount` (how many of those schedules
+ * have a non-null `venueId`) together resolve the F4-09 agenda-count and
+ * venue rule (contract §4), which replaced the earlier unresolved
+ * "every schedule vs. at least one schedule" question:
+ *
+ * - the schedule ("agenda") count must fall within
+ *   `[config.requiresDate ? 1 : 0, config.maxAgendas]`;
+ * - a venue is required on every schedule ONLY once the event has reached
+ *   its type's maximum agenda count (`scheduleCount === config.maxAgendas`)
+ *   — below that count, venue is not required at all. For every type
+ *   except WEDDING, `maxAgendas` is 1, so this reduces to "the single
+ *   agenda must have a venue." For WEDDING (`maxAgendas: 2`), a single
+ *   agenda's venue stays optional, but a second agenda requires both to
+ *   be venued.
  */
 export function getMissingPublishRequirements(
   type: EventType,
   identity: IdentityProfileData,
   scheduleCount: number,
+  venuedScheduleCount: number,
 ): string[] {
   const config = EVENT_TYPE_CONFIG[type];
   const missing: string[] = [];
@@ -313,8 +332,16 @@ export function getMissingPublishRequirements(
       break;
   }
 
-  if (config.requiresDate && scheduleCount === 0) {
+  // F4-09 (docs/F4_CANONICAL_PUBLISH_CONTRACT.md §4): agenda count, then
+  // venue — checked as separate, mutually exclusive conditions so an
+  // out-of-range count is never also reported as a venue problem.
+  const minAgendas = config.requiresDate ? 1 : 0;
+  if (scheduleCount < minAgendas) {
     missing.push("Tanggal acara (tambahkan minimal satu jadwal)");
+  } else if (scheduleCount > config.maxAgendas) {
+    missing.push(`Jumlah jadwal melebihi batas maksimal (${config.maxAgendas} jadwal)`);
+  } else if (scheduleCount === config.maxAgendas && venuedScheduleCount < scheduleCount) {
+    missing.push("Lokasi acara (tambahkan venue pada jadwal yang belum memiliki lokasi)");
   }
 
   return missing;
