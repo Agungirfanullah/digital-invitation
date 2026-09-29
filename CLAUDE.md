@@ -1873,7 +1873,11 @@ explicitly-recorded decision changes them.
    type. Do not hard-code a capability as forbidden for a type unless a
    specific PRD section says so explicitly.
 7. Homepage (`docs/PRD.md` §7-8) and Onboarding (`docs/PRD.md` §10) are
-   MVP/launch scope, not deferred marketing features.
+   MVP/launch scope, not deferred marketing features. Invitation Opening
+   / Reveal (`docs/PRD.md` §17, D-065) and invitation section reordering
+   (`docs/PRD.md` §15, D-066) are likewise MVP/launch scope, not
+   post-MVP or optional features — do not reopen either as a product
+   decision.
 8. Agents must not silently redefine product scope. If a document is
    ambiguous or silent on scope, that is a decision for the human, not an
    inference for the agent to make and proceed on.

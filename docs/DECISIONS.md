@@ -2225,3 +2225,75 @@ content of its own (§4 of the preceding audit) and none was added; its
 only editor-facing control is the existing "Bagian Undangan" on/off
 toggle, identical to how RSVP/Gift/Wishes are already toggled without a
 dedicated content tab.
+
+## D-065 --- Invitation Opening / Reveal Is MVP-Required
+
+**Status:** APPROVED
+
+**Context:** the Phase 0.9 post-remediation reconciliation audit (baseline
+`350e4bf`) found that `docs/PRD.md` §45 — the document's own stated
+"authoritative definition of MVP product scope" — did not list "Opening"
+or "Invitation Opening" among its MVP bullets, while §17 already specifies
+a detailed Opening screen (couple/host names, event date, personalized
+guest greeting, a "Buka Undangan" CTA, and post-open reveal/music/scroll
+behavior), and `docs/ROADMAP.md` Phase 6 already lists "Opening screen" as
+a P0 task. This left the feature's MVP status genuinely unresolved by the
+documents themselves, and the audit raised it as a decision the product
+owner, not an agent, needed to make.
+
+**Decision:** the product owner has explicitly resolved this ambiguity.
+Invitation Opening / Reveal is MVP-required. `docs/PRD.md` §45 now lists
+it explicitly ("Invitation Opening (guest-facing reveal experience —
+see §17)"), and §17 itself now states "Part of MVP/launch scope (§45) —
+not a post-MVP feature," matching the pattern already used for Homepage
+(§7) and Onboarding (§10).
+
+**Rationale:** this decision records that the ambiguity has been settled
+by explicit product-owner approval — not a newly invented product
+requirement. The behavior itself is exactly what §17 already specified;
+no new UX, content, or technical behavior was introduced by this
+decision. `docs/ROADMAP.md` required no change: Phase 6 already carried
+"Opening screen" as a P0 task before this decision.
+
+**Impact:** documentation only (`docs/PRD.md` §45, §17). No source code,
+schema, or test was changed by this decision. Opening/Reveal remains
+**not implemented** as of this decision — see `docs/STATUS.md` for
+current implementation status, tracked separately from MVP scope
+(`docs/PRD.md` §45's own "not yet implemented ≠ not MVP" distinction).
+
+## D-066 --- Invitation Section Reordering Is MVP-Required
+
+**Status:** APPROVED
+
+**Context:** the same reconciliation audit found that `docs/PRD.md` §45
+did not list section reordering among its MVP bullets, while §15 states
+without qualification that "Each section must be independently
+configurable. Owner can: Enable, Disable, Reorder, Edit" for the 16 listed
+sections, and `docs/DECISIONS.md` D-062 had already recorded reordering as
+"Not implemented" without flagging whether that absence was acceptable
+for MVP. `docs/ROADMAP.md` Phase 5 already lists "section ordering" as a
+P0 task. This left the feature's MVP status genuinely unresolved by the
+documents themselves.
+
+**Decision:** the product owner has explicitly resolved this ambiguity.
+Section reordering (as specified in §15: the owner may change the display
+order of the configurable invitation sections) is MVP-required.
+`docs/PRD.md` §45 now lists it explicitly ("Section Reorder
+(owner-configurable section ordering — see §15)"), and §15 itself now
+states that Reorder "is part of MVP/launch scope (§45), not a deferred
+capability."
+
+**Rationale:** this decision records that the ambiguity has been settled
+by explicit product-owner approval, not a newly invented product
+requirement. The behavior itself is exactly what §15 already specified
+(Enable/Disable/Reorder/Edit for the existing, already-implemented
+section-configuration model — `lib/event-types/sections.ts`); no new
+section model, ordering scheme, or technical constraint was introduced by
+this decision. `docs/ROADMAP.md` required no change: Phase 5 already
+carried "section ordering" as a P0 task before this decision.
+
+**Impact:** documentation only (`docs/PRD.md` §45, §15). No source code,
+schema, or test was changed by this decision. Section reordering remains
+**not implemented** as of this decision (D-062 already documented this
+gap) — see `docs/STATUS.md` for current implementation status, tracked
+separately from MVP scope.

@@ -589,6 +589,10 @@ Owner can:
 - Reorder
 - Edit
 
+Reorder is part of MVP/launch scope (§45), not a deferred capability —
+the owner must be able to change the display order of the configurable
+sections listed above.
+
 ---
 
 # 15.1 Shared Capability Model (Cross-Event-Type)
@@ -631,6 +635,8 @@ Public invitations must not require authentication.
 ---
 
 # 17. Invitation Opening
+
+Part of MVP/launch scope (§45) — not a post-MVP feature.
 
 Opening screen:
 
@@ -1251,7 +1257,11 @@ Templates
 
 Invitation editor
 
+Section Reorder (owner-configurable section ordering — see §15)
+
 Public invitation
+
+Invitation Opening (guest-facing reveal experience — see §17)
 
 Guest management
 
