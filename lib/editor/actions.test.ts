@@ -33,6 +33,7 @@ const createScheduleMock = vi.fn();
 const addGalleryItemMock = vi.fn();
 const uploadGalleryImageMock = vi.fn();
 const moveGalleryItemMock = vi.fn();
+const moveSectionOrderMock = vi.fn();
 const updateGalleryItemCaptionMock = vi.fn();
 const checkGalleryUploadRateLimitMock = vi.fn();
 const validateGalleryImageUploadMock = vi.fn();
@@ -50,6 +51,7 @@ vi.mock("@/lib/editor/service", () => ({
   addGalleryItem: (...args: unknown[]) => addGalleryItemMock(...args),
   uploadGalleryImage: (...args: unknown[]) => uploadGalleryImageMock(...args),
   moveGalleryItem: (...args: unknown[]) => moveGalleryItemMock(...args),
+  moveSectionOrder: (...args: unknown[]) => moveSectionOrderMock(...args),
   updateGalleryItemCaption: (...args: unknown[]) => updateGalleryItemCaptionMock(...args),
 }));
 
@@ -69,6 +71,7 @@ import {
   addGalleryItemAction,
   createScheduleAction,
   moveGalleryItemAction,
+  moveSectionOrderAction,
   saveIdentityProfileAction,
   saveSectionOverridesAction,
   saveThemeAction,
@@ -90,6 +93,7 @@ beforeEach(() => {
   addGalleryItemMock.mockReset();
   uploadGalleryImageMock.mockReset();
   moveGalleryItemMock.mockReset();
+  moveSectionOrderMock.mockReset();
   updateGalleryItemCaptionMock.mockReset();
   checkGalleryUploadRateLimitMock.mockReset().mockResolvedValue(true);
   validateGalleryImageUploadMock.mockReset();
@@ -171,6 +175,16 @@ describe("editor actions — server-side validation and authorization", () => {
     const result = await saveSectionOverridesAction("event-1", { rsvp: false });
     expect(result.ok).toBe(true);
     expect(updateSectionOverridesMock).toHaveBeenCalledWith("event-1", "user-1", { rsvp: false });
+  });
+
+  // Regression (found during D-067's inspection step): `hero` was missing
+  // from sectionOverridesSchema since D-064 shipped it as a toggleable
+  // section — `.strict()` silently rejected any request that included it.
+  it("saveSectionOverridesAction accepts the hero key (D-064/D-067 regression)", async () => {
+    updateSectionOverridesMock.mockResolvedValue({ hero: false });
+    const result = await saveSectionOverridesAction("event-1", { hero: false });
+    expect(result.ok).toBe(true);
+    expect(updateSectionOverridesMock).toHaveBeenCalledWith("event-1", "user-1", { hero: false });
   });
 
   it("saveThemeAction rejects a CSS-injection-shaped color without calling the service", async () => {
@@ -296,6 +310,29 @@ describe("editor actions — server-side validation and authorization", () => {
 
     expect(requireAppUserMock).toHaveBeenCalledTimes(1);
     expect(moveGalleryItemMock).toHaveBeenCalledWith("event-1", "user-1", "item-1", "up");
+  });
+
+  it("moveSectionOrderAction rejects an unknown section key or direction without calling the service", async () => {
+    for (const input of [
+      { key: "payments", direction: "up" },
+      { key: "rsvp", direction: "sideways" },
+      { key: "closing", direction: "up" },
+      null,
+    ]) {
+      const result = await moveSectionOrderAction("event-1", input);
+      expect(result.ok).toBe(false);
+    }
+    expect(moveSectionOrderMock).not.toHaveBeenCalled();
+  });
+
+  it("moveSectionOrderAction requires authentication and passes the session user's id to the service", async () => {
+    moveSectionOrderMock.mockResolvedValue(["identity", "hero"]);
+
+    const result = await moveSectionOrderAction("event-1", { key: "hero", direction: "down" });
+
+    expect(result.ok).toBe(true);
+    expect(requireAppUserMock).toHaveBeenCalledTimes(1);
+    expect(moveSectionOrderMock).toHaveBeenCalledWith("event-1", "user-1", "hero", "down");
   });
 });
 

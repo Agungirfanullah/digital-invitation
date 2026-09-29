@@ -3,7 +3,7 @@ import { WishStatus, type Prisma } from "@prisma/client";
 
 import { buildPublicIdentity } from "@/lib/event-types/identity";
 import { IDENTITY_PROFILE_INCLUDE, toIdentityProfileData } from "@/lib/event-types/identity-record";
-import { resolveEnabledSections } from "@/lib/event-types/sections";
+import { resolveEnabledSections, resolveSectionOrder } from "@/lib/event-types/sections";
 import { parseTheme } from "@/lib/invitations/theme";
 import { stripDisabledSectionContent } from "@/lib/invitations/visibility";
 import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
@@ -91,6 +91,7 @@ export function toPublicInvitation(
     theme: parseTheme(event.theme, getTemplateDefaultTheme(event.template?.slug ?? null)),
     identity: buildPublicIdentity(event.type, toIdentityProfileData(event)),
     sections: resolveEnabledSections(event.type, event.settings),
+    sectionOrder: resolveSectionOrder(event.settings),
     schedules: event.schedules.map((schedule) => ({
       id: schedule.id,
       title: schedule.title,

@@ -1,4 +1,6 @@
+import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
+import type { InvitationSectionKey } from "@/lib/event-types/sections";
 import { getInvitationCopy } from "@/lib/event-types/config";
 import { themeToCssVars } from "@/components/invitation/theme-vars";
 import { HeroSection } from "@/components/invitation/sections/hero-section";
@@ -18,11 +20,36 @@ import { ClosingSection } from "@/components/invitation/sections/closing-section
  * event's section configuration (`invitation.sections`, which now
  * includes `hero` — docs/DECISIONS.md D-064), so an event with only a
  * title still renders a complete, honest page instead of empty
- * placeholders.
+ * placeholders. Configurable sections render in `invitation.sectionOrder`
+ * (docs/PRD.md §15 "Reorder", D-066/D-067) — each section's own
+ * enable/data guard below is unchanged; only the sequence they're
+ * evaluated in is now data-driven instead of hard-coded. Closing always
+ * renders last, outside the ordered sequence (D-064).
  */
 export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
   const { sections } = invitation;
   const copy = getInvitationCopy(invitation.type);
+
+  const sectionRenderers: Record<InvitationSectionKey, ReactNode> = {
+    hero: sections.hero && <HeroSection invitation={invitation} />,
+    identity: sections.identity && invitation.identity && (
+      <IdentitySection identity={invitation.identity} />
+    ),
+    schedule: sections.schedule && <ScheduleSection schedules={invitation.schedules} />,
+    story: (
+      <LoveStorySection loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
+    ),
+    gallery: <GallerySection galleries={invitation.galleries} />,
+    rsvp: sections.rsvp && <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />,
+    gift: <GiftSection giftMethods={invitation.giftMethods} />,
+    wishes: sections.wishes && (
+      <WishesSection
+        eventId={invitation.eventId}
+        wishes={invitation.wishes}
+        guest={wishGuest ?? null}
+      />
+    ),
+  };
 
   return (
     <main
@@ -30,22 +57,9 @@ export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: Invitati
       className="min-h-screen bg-[color:var(--ii-background)]"
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
-        {sections.hero && <HeroSection invitation={invitation} />}
-        {sections.identity && invitation.identity && (
-          <IdentitySection identity={invitation.identity} />
-        )}
-        {sections.schedule && <ScheduleSection schedules={invitation.schedules} />}
-        <LoveStorySection loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
-        <GallerySection galleries={invitation.galleries} />
-        {sections.rsvp && <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />}
-        <GiftSection giftMethods={invitation.giftMethods} />
-        {sections.wishes && (
-          <WishesSection
-            eventId={invitation.eventId}
-            wishes={invitation.wishes}
-            guest={wishGuest ?? null}
-          />
-        )}
+        {invitation.sectionOrder.map((key) => (
+          <Fragment key={key}>{sectionRenderers[key]}</Fragment>
+        ))}
         <ClosingSection type={invitation.type} />
       </div>
     </main>

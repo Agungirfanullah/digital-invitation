@@ -37,6 +37,7 @@ export function EditorShell({
   );
   const [identity, setIdentity] = useState(initialEvent.identity);
   const [sectionOverrides, setSectionOverrides] = useState(initialEvent.sectionOverrides);
+  const [sectionOrder, setSectionOrder] = useState(initialEvent.sectionOrder);
   const [theme, setTheme] = useState(initialEvent.theme);
   const [templateKey, setTemplateKey] = useState(initialEvent.templateKey);
   const [schedules, setSchedules] = useState(initialEvent.schedules);
@@ -69,12 +70,23 @@ export function EditorShell({
         templateKey,
         identity,
         sectionOverrides,
+        sectionOrder,
         theme,
         schedules,
         loveStory,
         gallery,
       }),
-    [initialEvent, templateKey, identity, sectionOverrides, theme, schedules, loveStory, gallery],
+    [
+      initialEvent,
+      templateKey,
+      identity,
+      sectionOverrides,
+      sectionOrder,
+      theme,
+      schedules,
+      loveStory,
+      gallery,
+    ],
   );
 
   return (
@@ -140,6 +152,8 @@ export function EditorShell({
               type={type}
               value={sectionOverrides}
               onSaved={setSectionOverrides}
+              order={sectionOrder}
+              onOrderSaved={setSectionOrder}
             />
           )}
           {activeSection === "theme" && (

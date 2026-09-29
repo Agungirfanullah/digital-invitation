@@ -24,18 +24,27 @@ Event Types (core engine done; onboarding/homepage/opening still open)
   identity, story title and closing copy (no wedding wording outside
   Wedding/Engagement); type-aware editor navigation and a single
   data-driven identity form (OTHER has none); section configuration in
-  `Event.settings` with server-side enforcement (D-062); EventType
-  immutable after creation (D-063); per-type publish requirements with a
-  checklist on the event page. See `docs/ARCHITECTURE.md` §37.1.
+  `Event.settings` with server-side enforcement (D-062); Hero/Cover an
+  independently toggleable section (D-064); owner-configurable section
+  *ordering* via a `sectionOrder` sibling key in the same
+  `Event.settings` column, with editor up/down controls and identical
+  resolution across the preview and all six templates (D-066/D-067);
+  EventType immutable after creation (D-063); per-type publish
+  requirements with a checklist on the event page. See
+  `docs/ARCHITECTURE.md` §37.1.
 - **Verified:** typecheck, lint, format, build, `prisma validate`,
   `migrate status` (migration applied to DEV, checksum matches); Vitest
   82 files / 973 tests; Playwright 76/76 against a production build
   (new `e2e/event-types.spec.ts`). One earlier full E2E run had 7
   transient failures in untouched specs from Supabase connection
   exhaustion (`P2028`); they passed in isolation and on a full re-run.
+- **Verified (D-067, section reordering):** typecheck, lint, format,
+  build, `prisma validate`; Vitest 82 files / 1126 tests; Playwright
+  (event-types, editor, gallery, invitation, templates specs) against a
+  production build.
 - **Not implemented yet (MVP scope, still open):** onboarding route
   (PRD §10), launch homepage (PRD §7-8), invitation opening/reveal
-  (PRD §17), section reordering (PRD §15).
+  (PRD §17).
 - **Open product decision:** per-type default on/off state of sections
   (currently all on — D-062).
 

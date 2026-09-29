@@ -8,6 +8,7 @@ import {
   parseIdentityProfileInput,
   personIdentitySchema,
   scheduleFormSchema,
+  sectionMoveSchema,
   sectionOverridesSchema,
   templateSelectionSchema,
   themeSchema,
@@ -105,6 +106,38 @@ describe("sectionOverridesSchema", () => {
   it("rejects unknown keys and non-boolean values", () => {
     expect(sectionOverridesSchema.safeParse({ payments: true }).success).toBe(false);
     expect(sectionOverridesSchema.safeParse({ rsvp: "false" }).success).toBe(false);
+  });
+
+  // Regression (found during D-067's inspection step): `hero` was missing
+  // from this schema since D-064 shipped it as a toggleable section —
+  // `.strict()` silently rejected any request that included it.
+  it("accepts the hero key (D-064/D-067 regression)", () => {
+    expect(sectionOverridesSchema.safeParse({ hero: false }).success).toBe(true);
+  });
+});
+
+describe("sectionMoveSchema (D-067)", () => {
+  it("accepts every configurable section key with either direction", () => {
+    for (const key of [
+      "hero",
+      "identity",
+      "schedule",
+      "story",
+      "gallery",
+      "rsvp",
+      "gift",
+      "wishes",
+    ]) {
+      for (const direction of ["up", "down"]) {
+        expect(sectionMoveSchema.safeParse({ key, direction }).success).toBe(true);
+      }
+    }
+  });
+
+  it("rejects an unknown key, an unknown direction, and closing (structurally non-reorderable)", () => {
+    expect(sectionMoveSchema.safeParse({ key: "payments", direction: "up" }).success).toBe(false);
+    expect(sectionMoveSchema.safeParse({ key: "rsvp", direction: "sideways" }).success).toBe(false);
+    expect(sectionMoveSchema.safeParse({ key: "closing", direction: "up" }).success).toBe(false);
   });
 });
 

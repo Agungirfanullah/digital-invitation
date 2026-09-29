@@ -7,8 +7,14 @@ import type { IdentityProfileData } from "@/lib/event-types/identity";
 import { IDENTITY_PROFILE_INCLUDE, toIdentityProfileData } from "@/lib/event-types/identity-record";
 import {
   findNonToggleableSections,
+  getReorderableSectionKeys,
+  mergeSectionOrder,
   mergeSectionOverrides,
+  parseSectionOrder,
   parseSectionOverrides,
+  resolveSectionMoveSwap,
+  resolveSectionOrder,
+  type InvitationSectionKey,
   type SectionOverrides,
 } from "@/lib/event-types/sections";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
@@ -157,6 +163,7 @@ export async function getEditorEvent(eventId: string, userId: string): Promise<E
     templateKey: event.template?.slug ?? null,
     identity: toIdentityProfileData(event),
     sectionOverrides: parseSectionOverrides(event.settings),
+    sectionOrder: parseSectionOrder(event.settings),
     theme: event.theme
       ? {
           primaryColor: event.theme.primaryColor,
@@ -290,6 +297,56 @@ export async function updateSectionOverrides(
   });
 
   return settings.sections;
+}
+
+/**
+ * Moves one configurable section up or down by one position and persists
+ * the resulting order into `Event.settings.sectionOrder`, merged with
+ * what's already stored (docs/PRD.md §15 "Reorder", D-066/D-067). Mirrors
+ * `moveGalleryItem()`'s swap-and-persist shape below. Closing can never be
+ * passed here: it has no `InvitationSectionKey` value to represent it.
+ *
+ * Swaps against the nearest *reorderable* (type-supported) neighbor, via
+ * `getReorderableSectionKeys(event.type)` — not the literal adjacent array
+ * index. A currently-unsupported section (e.g. `identity` for `OTHER`)
+ * still occupies a slot in the persisted order, but is invisible in the
+ * editor's list and must never act as a reorder barrier or an accidental
+ * swap target (D-067-FIX). `key` itself is not re-validated as an error
+ * condition — unlike enable/disable, calling this with an unsupported
+ * `key` simply no-ops, matching `resolveSectionMoveSwap()`'s "nothing to
+ * do" contract, since the editor never offers a move control for a
+ * section it doesn't show in the first place.
+ *
+ * No-ops (returns the current order unchanged) when `key` is already at
+ * the relevant edge — the same "nothing to do" contract
+ * `resolveGalleryMoveSwap()` already established.
+ */
+export async function moveSectionOrder(
+  eventId: string,
+  userId: string,
+  key: InvitationSectionKey,
+  direction: "up" | "down",
+): Promise<InvitationSectionKey[]> {
+  const event = await requireEditorAccess(eventId, userId);
+
+  const currentOrder = resolveSectionOrder(event.settings);
+  const reorderableKeys = getReorderableSectionKeys(event.type);
+  const swap = resolveSectionMoveSwap(currentOrder, key, direction, reorderableKeys);
+  if (!swap) return currentOrder;
+
+  const reordered = [...currentOrder];
+  [reordered[swap.indexA], reordered[swap.indexB]] = [
+    reordered[swap.indexB],
+    reordered[swap.indexA],
+  ];
+
+  const settings = mergeSectionOrder(event.settings, reordered);
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { settings: settings as Prisma.InputJsonObject },
+  });
+
+  return reordered;
 }
 
 export async function updateTheme(eventId: string, userId: string, input: ThemeInput) {

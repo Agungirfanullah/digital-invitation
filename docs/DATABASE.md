@@ -1030,11 +1030,30 @@ Do not put business-critical relational data into JSON.
 { "sections": { "rsvp": false, "gift": false } }
 ```
 
-- Keys: `identity`, `schedule`, `story`, `gallery`, `rsvp`, `gift`,
-  `wishes`. Only owner overrides are stored; an absent key means "use the
-  type's default". Unknown keys / non-boolean values are ignored when
-  read (fail safe) and rejected when written.
-- Ordering (`sortOrder`) is not implemented yet.
+- Keys: `hero`, `identity`, `schedule`, `story`, `gallery`, `rsvp`,
+  `gift`, `wishes`. Only owner overrides are stored; an absent key means
+  "use the type's default". Unknown keys / non-boolean values are
+  ignored when read (fail safe) and rejected when written.
+
+**Ordering — implemented (D-067)** as an independent sibling key in the
+same `Event.settings` object, not the `sortOrder`-per-item shape
+originally sketched above:
+
+```json
+{ "sectionOrder": ["gallery", "hero", "story", "identity", "schedule", "rsvp", "gift", "wishes"] }
+```
+
+- A flat array of `InvitationSectionKey` values, in display order.
+  Position is independent of the `sections` enable/disable map above —
+  a disabled section keeps its slot in the array but renders nothing
+  there.
+- Closing is structural and always renders last; it is never a member
+  of this array and cannot be reordered.
+- Fail-safe resolution (`resolveSectionOrder` in
+  `lib/event-types/sections.ts`): no persisted order falls back to the
+  canonical key order; a partial order is padded with the missing keys,
+  canonically ordered, at the end; unknown keys and duplicates are
+  dropped.
 
 ---
 

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { INVITATION_SECTION_KEYS } from "@/lib/event-types/sections";
 import { isSafeHttpUrl } from "@/lib/invitations/url-safety";
 
 /**
@@ -137,9 +138,19 @@ export function parseIdentityProfileInput(input: unknown): IdentityParseResult {
   return { ok: true, value: { family, data: parsed.data } as IdentityProfileInput };
 }
 
-/** Owner section overrides: known keys only, boolean values only. */
+/**
+ * Owner section overrides: known keys only, boolean values only.
+ *
+ * `hero` was missing here from D-064 until this fix (D-067's own
+ * inspection step found it): `.strict()` rejected any request containing
+ * `hero`, even though `lib/event-types/sections.ts` and the editor UI
+ * already treated it as a normal toggleable key end to end. No caller
+ * ever exercised the gap because no existing test submitted `hero`
+ * specifically through this schema.
+ */
 export const sectionOverridesSchema = z
   .object({
+    hero: z.boolean(),
     identity: z.boolean(),
     schedule: z.boolean(),
     story: z.boolean(),
@@ -150,6 +161,14 @@ export const sectionOverridesSchema = z
   })
   .partial()
   .strict();
+
+/** A single up/down move of one configurable section (docs/PRD.md §15 "Reorder"). Closing is never a valid `key` — it has no `InvitationSectionKey` value. */
+export const sectionMoveSchema = z.object({
+  key: z.enum(INVITATION_SECTION_KEYS),
+  direction: z.enum(["up", "down"]),
+});
+
+export type SectionMoveInput = z.infer<typeof sectionMoveSchema>;
 
 const colorField = z
   .string()

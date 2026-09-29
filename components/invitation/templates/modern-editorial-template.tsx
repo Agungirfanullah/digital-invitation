@@ -1,4 +1,6 @@
+import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
+import type { InvitationSectionKey } from "@/lib/event-types/sections";
 import type {
   PublicGallery,
   PublicGiftMethod,
@@ -365,26 +367,30 @@ export function ModernEditorialTemplate({ invitation, rsvp, wishGuest }: Invitat
   const { sections } = invitation;
   const copy = getInvitationCopy(invitation.type);
 
+  const sectionRenderers: Record<InvitationSectionKey, ReactNode> = {
+    hero: sections.hero && <Hero invitation={invitation} />,
+    identity: sections.identity && invitation.identity && (
+      <Identity identity={invitation.identity} />
+    ),
+    schedule: sections.schedule && <Schedule schedules={invitation.schedules} />,
+    story: <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />,
+    gallery: <Gallery galleries={invitation.galleries} />,
+    rsvp: sections.rsvp && <Rsvp eventId={invitation.eventId} rsvp={rsvp ?? null} />,
+    gift: <Gift giftMethods={invitation.giftMethods} />,
+    wishes: sections.wishes && (
+      <Wishes eventId={invitation.eventId} wishes={invitation.wishes} guest={wishGuest ?? null} />
+    ),
+  };
+
   return (
     <main
       style={themeToCssVars(invitation.theme)}
       className="min-h-screen bg-[color:var(--ii-background)]"
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
-        {sections.hero && <Hero invitation={invitation} />}
-        {sections.identity && invitation.identity && <Identity identity={invitation.identity} />}
-        {sections.schedule && <Schedule schedules={invitation.schedules} />}
-        <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
-        <Gallery galleries={invitation.galleries} />
-        {sections.rsvp && <Rsvp eventId={invitation.eventId} rsvp={rsvp ?? null} />}
-        <Gift giftMethods={invitation.giftMethods} />
-        {sections.wishes && (
-          <Wishes
-            eventId={invitation.eventId}
-            wishes={invitation.wishes}
-            guest={wishGuest ?? null}
-          />
-        )}
+        {invitation.sectionOrder.map((key) => (
+          <Fragment key={key}>{sectionRenderers[key]}</Fragment>
+        ))}
         <Closing copy={copy} />
       </div>
     </main>

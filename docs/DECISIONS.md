@@ -2297,3 +2297,10 @@ schema, or test was changed by this decision. Section reordering remains
 **not implemented** as of this decision (D-062 already documented this
 gap) — see `docs/STATUS.md` for current implementation status, tracked
 separately from MVP scope.
+
+**Implementation update:** section reordering is now implemented, as a
+new `sectionOrder: string[]` sibling key alongside the existing
+`sections` boolean map in the same `Event.settings Json?` column — no
+migration required, matching this decision's own framing that no new
+technical constraint was introduced (`docs/DATABASE.md` §32,
+`docs/ARCHITECTURE.md` §37.1). See `docs/STATUS.md` for current status.

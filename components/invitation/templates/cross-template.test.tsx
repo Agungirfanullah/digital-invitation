@@ -3,7 +3,11 @@ import { render, screen, within } from "@testing-library/react";
 import type { EventType } from "@prisma/client";
 
 import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
-import type { InvitationSections } from "@/lib/event-types/sections";
+import {
+  INVITATION_SECTION_KEYS,
+  type InvitationSectionKey,
+  type InvitationSections,
+} from "@/lib/event-types/sections";
 import { resolveTemplateComponent } from "@/lib/invitations/templates/registry";
 import {
   buildFullyPopulatedInvitation,
@@ -235,6 +239,138 @@ describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {
       expect(scheduleTitle === null).toBe(!sections.schedule);
     },
   );
+});
+
+// --- D-067: section reordering ---------------------------------------------
+
+describe.each(ALL_SLUGS)("%s — section order (D-067)", (slug) => {
+  const Template = resolveTemplateComponent(slug);
+
+  const ALL_ON: InvitationSections = {
+    hero: true,
+    identity: true,
+    schedule: true,
+    story: true,
+    gallery: true,
+    rsvp: true,
+    gift: true,
+    wishes: true,
+  };
+
+  // Unique text emitted by each section under the standard Wedding fixture,
+  // anonymous (guest: null) so RSVP/Wishes render their fixed
+  // not-personalized copy instead of a form.
+  const MARKER: Record<InvitationSectionKey, string> = {
+    hero: "Ayu & Budi",
+    identity: "Mempelai",
+    schedule: "Akad Nikah",
+    story: "Pertama Bertemu",
+    gallery: "Momen Kami",
+    rsvp: "RSVP hanya dapat diisi melalui tautan undangan pribadi Anda.",
+    gift: "Bank Contoh",
+    wishes: "Ucapan hanya dapat dikirim melalui tautan undangan pribadi Anda.",
+  };
+
+  // Uses textContent, not innerHTML: innerHTML entity-encodes "&" to
+  // "&amp;", which would silently break the "Ayu & Budi" marker (indexOf
+  // returns -1, sorting Hero first regardless of its real position).
+  function observedOrder(text: string): InvitationSectionKey[] {
+    return [...INVITATION_SECTION_KEYS].sort(
+      (a, b) => text.indexOf(MARKER[a]) - text.indexOf(MARKER[b]),
+    );
+  }
+
+  it("renders the canonical order when no order is persisted", () => {
+    const invitation = buildFullyPopulatedInvitation({ guest: null });
+    const { container } = render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
+    expect(observedOrder(container.textContent ?? "")).toEqual(INVITATION_SECTION_KEYS);
+  });
+
+  it("renders a custom persisted order exactly as configured", () => {
+    const customOrder: InvitationSectionKey[] = [
+      "gallery",
+      "hero",
+      "story",
+      "identity",
+      "schedule",
+      "rsvp",
+      "gift",
+      "wishes",
+    ];
+    const invitation = buildFullyPopulatedInvitation({ guest: null, sectionOrder: customOrder });
+    const { container } = render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
+    expect(observedOrder(container.textContent ?? "")).toEqual(customOrder);
+  });
+
+  it("keeps a disabled section's content out of the page even under a custom order", () => {
+    const customOrder: InvitationSectionKey[] = [
+      "gallery",
+      "hero",
+      "story",
+      "identity",
+      "schedule",
+      "rsvp",
+      "gift",
+      "wishes",
+    ];
+    const invitation = buildFullyPopulatedInvitation({
+      guest: null,
+      sectionOrder: customOrder,
+      sections: { ...ALL_ON, rsvp: false },
+    });
+    render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
+    expect(screen.queryByText(MARKER.rsvp)).not.toBeInTheDocument();
+    expect(screen.getByText(MARKER.gallery)).toBeInTheDocument();
+    expect(screen.getByText(MARKER.gift)).toBeInTheDocument();
+  });
+
+  it("always renders Closing last, regardless of the configured section order", () => {
+    const customOrder: InvitationSectionKey[] = [
+      "wishes",
+      "gift",
+      "rsvp",
+      "schedule",
+      "identity",
+      "story",
+      "gallery",
+      "hero",
+    ];
+    const invitation = buildFullyPopulatedInvitation({ guest: null, sectionOrder: customOrder });
+    const { container } = render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
+    const text = container.textContent ?? "";
+    const closingIndex = text.indexOf(EVENT_TYPE_CONFIG.WEDDING.closingMessage);
+    expect(closingIndex).toBeGreaterThan(-1);
+    for (const key of customOrder) {
+      expect(text.indexOf(MARKER[key])).toBeLessThan(closingIndex);
+    }
+  });
+
+  it("Hero dependency regression (D-064) still holds under a non-default section order", () => {
+    const customOrder: InvitationSectionKey[] = [
+      "wishes",
+      "hero",
+      "identity",
+      "schedule",
+      "story",
+      "gallery",
+      "rsvp",
+      "gift",
+    ];
+    const invitation = buildFullyPopulatedInvitation({
+      guest: null,
+      sectionOrder: customOrder,
+      sections: { ...ALL_ON, identity: false, schedule: false },
+    });
+    render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
+
+    const heroRegion = screen.getByRole("region", { name: "Sampul undangan" });
+    expect(within(heroRegion).getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Pernikahan Uji Coba",
+    );
+    expect(within(heroRegion).queryByText("12 Desember 2026")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Mempelai" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Akad Nikah")).not.toBeInTheDocument();
+  });
 });
 
 /** Expected public presentation per event type — heading of the identity section, the hero heading, and a type-specific detail line. */

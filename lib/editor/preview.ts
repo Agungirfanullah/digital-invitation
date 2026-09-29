@@ -1,7 +1,12 @@
 import type { EventType } from "@prisma/client";
 
 import { buildPublicIdentity, type IdentityProfileData } from "@/lib/event-types/identity";
-import { resolveEnabledSections, type SectionOverrides } from "@/lib/event-types/sections";
+import {
+  resolveEnabledSections,
+  resolveSectionOrder,
+  type InvitationSectionKey,
+  type SectionOverrides,
+} from "@/lib/event-types/sections";
 import { parseTheme } from "@/lib/invitations/theme";
 import type { PublicInvitation } from "@/lib/invitations/types";
 import { stripDisabledSectionContent } from "@/lib/invitations/visibility";
@@ -21,6 +26,7 @@ export interface PreviewSource {
   templateKey: string | null;
   identity: IdentityProfileData;
   sectionOverrides: SectionOverrides;
+  sectionOrder: InvitationSectionKey[] | null;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;
@@ -60,6 +66,7 @@ export function buildPreviewInvitation(source: PreviewSource): PublicInvitation 
     theme: parseTheme(source.theme),
     identity: buildPublicIdentity(source.type, source.identity),
     sections: resolveEnabledSections(source.type, { sections: source.sectionOverrides }),
+    sectionOrder: resolveSectionOrder({ sectionOrder: source.sectionOrder }),
     schedules: source.schedules,
     loveStory: source.loveStory,
     galleries: source.gallery ? [source.gallery] : [],

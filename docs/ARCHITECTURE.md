@@ -1045,6 +1045,17 @@ disabled, even while Hero itself is enabled — `getHeroHeading()` and
 corresponding data, rather than relying on data presence alone. RSVP and
 wish submission re-check their section server-side.
 
+Section ordering (D-067): `Event.settings.sectionOrder` (a sibling key
+to `sections`, independent of enable/disable) → `resolveSectionOrder()`
+→ `PublicInvitation.sectionOrder`, consumed identically by the editor
+preview and every template via a `Record<InvitationSectionKey,
+ReactNode>` lookup rendered through `invitation.sectionOrder.map()`
+(wrapped in a keyed `Fragment`, adding no DOM node, so existing template
+layout/styling is unaffected). Closing is never part of this array — it
+has no `InvitationSectionKey` value and always renders last. Reordering
+reuses the gallery item's up/down move-swap pattern
+(`resolveSectionMoveSwap()`/`moveSectionOrder()`).
+
 Server-side guards:
 
 - Identity writes (`updateIdentityProfile`) are checked against the

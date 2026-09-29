@@ -1,7 +1,7 @@
 import type { EventStatus, EventType, GalleryItemType } from "@prisma/client";
 
 import type { IdentityProfileData } from "@/lib/event-types/identity";
-import type { SectionOverrides } from "@/lib/event-types/sections";
+import type { InvitationSectionKey, SectionOverrides } from "@/lib/event-types/sections";
 
 /**
  * The authenticated owner/editor's view of an event's editable content.
@@ -91,6 +91,8 @@ export interface EditorEventData {
   identity: IdentityProfileData;
   /** Persisted owner section overrides; resolve with lib/event-types/sections.ts. */
   sectionOverrides: SectionOverrides;
+  /** Raw persisted section order, or `null` if none is stored yet; resolve with `resolveSectionOrder()`. */
+  sectionOrder: InvitationSectionKey[] | null;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;

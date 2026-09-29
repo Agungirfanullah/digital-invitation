@@ -20,6 +20,11 @@ import {
   TemplateNotAvailableError,
 } from "@/lib/editor/errors";
 import type { IdentityProfileData } from "@/lib/event-types/identity";
+import {
+  INVITATION_SECTION_KEYS,
+  resolveSectionOrder,
+  resolveSectionStates,
+} from "@/lib/event-types/sections";
 import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
 import {
   addGalleryItem,
@@ -31,6 +36,7 @@ import {
   getEditorEvent,
   listTemplateOptions,
   moveGalleryItem,
+  moveSectionOrder,
   selectTemplate,
   updateGalleryItem,
   updateGalleryItemCaption,
@@ -329,6 +335,240 @@ describe("updateSectionOverrides (integration)", () => {
         EventNotFoundError,
       );
     }
+  });
+});
+
+describe("moveSectionOrder (integration — D-067)", () => {
+  it("moving a middle section up swaps it with its predecessor and persists the result", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    const expected = [...INVITATION_SECTION_KEYS];
+    const scheduleIndex = expected.indexOf("schedule");
+    [expected[scheduleIndex - 1], expected[scheduleIndex]] = [
+      expected[scheduleIndex],
+      expected[scheduleIndex - 1],
+    ];
+    expect(reordered).toEqual(expected);
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toEqual({ sectionOrder: expected });
+    expect((await getEditorEvent(event.id, owner.id)).sectionOrder).toEqual(expected);
+  });
+
+  it("moving a middle section down swaps it with its successor", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "down");
+    const expected = [...INVITATION_SECTION_KEYS];
+    const scheduleIndex = expected.indexOf("schedule");
+    [expected[scheduleIndex], expected[scheduleIndex + 1]] = [
+      expected[scheduleIndex + 1],
+      expected[scheduleIndex],
+    ];
+    expect(reordered).toEqual(expected);
+  });
+
+  it("moving the first section up is a safe no-op and writes nothing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    const first = INVITATION_SECTION_KEYS[0];
+    const result = await moveSectionOrder(event.id, owner.id, first, "up");
+    expect(result).toEqual(INVITATION_SECTION_KEYS);
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toBeNull();
+  });
+
+  it("moving the last section down is a safe no-op and writes nothing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    const last = INVITATION_SECTION_KEYS[INVITATION_SECTION_KEYS.length - 1];
+    const result = await moveSectionOrder(event.id, owner.id, last, "down");
+    expect(result).toEqual(INVITATION_SECTION_KEYS);
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toBeNull();
+  });
+
+  it("a persisted order survives an independent reload", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    await moveSectionOrder(event.id, owner.id, "wishes", "up");
+    const reloaded = await getEditorEvent(event.id, owner.id);
+    const expected = [...INVITATION_SECTION_KEYS];
+    const wishesIndex = expected.indexOf("wishes");
+    [expected[wishesIndex - 1], expected[wishesIndex]] = [
+      expected[wishesIndex],
+      expected[wishesIndex - 1],
+    ];
+    expect(reloaded.sectionOrder).toEqual(expected);
+  });
+
+  it("reordering does not disturb existing enable/disable overrides, and vice versa", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    await updateSectionOverrides(event.id, owner.id, { rsvp: false, gift: false });
+    await moveSectionOrder(event.id, owner.id, "hero", "down");
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    const settings = row.settings as { sections: Record<string, boolean>; sectionOrder: string[] };
+    expect(settings.sections).toEqual({ rsvp: false, gift: false });
+
+    const expectedOrder = [...INVITATION_SECTION_KEYS];
+    const heroIndex = expectedOrder.indexOf("hero");
+    [expectedOrder[heroIndex], expectedOrder[heroIndex + 1]] = [
+      expectedOrder[heroIndex + 1],
+      expectedOrder[heroIndex],
+    ];
+    expect(settings.sectionOrder).toEqual(expectedOrder);
+
+    const reloaded = await getEditorEvent(event.id, owner.id);
+    expect(reloaded.sectionOverrides).toEqual({ rsvp: false, gift: false });
+    expect(reloaded.sectionOrder).toEqual(expectedOrder);
+  });
+
+  it("rejects a VIEWER-role member and a stranger (IDOR)", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id);
+    await addMember(event.id, viewer.id, EventMemberRole.VIEWER);
+
+    for (const userId of [viewer.id, stranger.id]) {
+      await expect(moveSectionOrder(event.id, userId, "hero", "up")).rejects.toThrow(
+        EventNotFoundError,
+      );
+    }
+  });
+
+  it("rejects moving a section for an event belonging to a different owner (IDOR via cross-event id)", async () => {
+    const ownerA = await createTestUser("owner-a");
+    const ownerB = await createTestUser("owner-b");
+    const eventA = await createTestEvent(ownerA.id);
+    await createTestEvent(ownerB.id);
+
+    await expect(moveSectionOrder(eventA.id, ownerB.id, "hero", "up")).rejects.toThrow(
+      EventNotFoundError,
+    );
+  });
+});
+
+describe("moveSectionOrder — OTHER-type unsupported-section adjacency (D-067-FIX)", () => {
+  // `identity` is unsupported for OTHER — a hidden slot that must never
+  // block, or become the swap target for, an adjacent supported section's
+  // move. Canonical order: hero, identity(hidden), schedule, story,
+  // gallery, rsvp, gift, wishes.
+
+  /** Mirrors SectionsForm's own filtering — the list actually shown to the owner. */
+  function visibleOrder(order: string[]) {
+    const states = resolveSectionStates("OTHER", null);
+    return order.filter((key) => states[key as keyof typeof states].supported);
+  }
+
+  it("Test 1 — moving Schedule up skips the hidden Identity section and lands next to Hero", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "up");
+
+    // identity keeps its slot — not deleted from the persisted order.
+    expect(reordered).toContain("identity");
+    expect(reordered).toHaveLength(INVITATION_SECTION_KEYS.length);
+    // Visible order: schedule now precedes hero, exactly as the owner asked.
+    expect(visibleOrder(reordered)).toEqual([
+      "schedule",
+      "hero",
+      "story",
+      "gallery",
+      "rsvp",
+      "gift",
+      "wishes",
+    ]);
+  });
+
+  it("Test 2 — moving Schedule back down skips the hidden Identity section and lands after Hero again", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "down");
+
+    expect(visibleOrder(reordered)).toEqual([
+      "hero",
+      "schedule",
+      "story",
+      "gallery",
+      "rsvp",
+      "gift",
+      "wishes",
+    ]);
+  });
+
+  it("Test 3 — Hero (first reorderable section) cannot move up, even though Identity is hidden right after it", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    const result = await moveSectionOrder(event.id, owner.id, "hero", "up");
+    expect(result).toEqual(INVITATION_SECTION_KEYS);
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toBeNull();
+  });
+
+  it("Test 4 — Wishes (last reorderable section) cannot move down", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    const result = await moveSectionOrder(event.id, owner.id, "wishes", "down");
+    expect(result).toEqual(INVITATION_SECTION_KEYS);
+
+    const row = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    expect(row.settings).toBeNull();
+  });
+
+  it("Test 5 — the fixed-up order persists correctly across an independent reload", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    const reloaded = await getEditorEvent(event.id, owner.id);
+
+    expect(reloaded.sectionOrder).toContain("identity");
+    expect(visibleOrder(reloaded.sectionOrder!)).toEqual([
+      "schedule",
+      "hero",
+      "story",
+      "gallery",
+      "rsvp",
+      "gift",
+      "wishes",
+    ]);
+  });
+
+  it("Test 6 — UI/server consistency: the editor's visible order and the server's move both agree, and never swap against the hidden section", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "OTHER");
+
+    // What SectionsForm shows before any move: schedule is the 2nd visible
+    // item (index 1) — not first — so its "up" arrow would be enabled.
+    const before = await getEditorEvent(event.id, owner.id);
+    const visibleBefore = visibleOrder(resolveSectionOrder({ sectionOrder: before.sectionOrder }));
+    expect(visibleBefore.indexOf("schedule")).toBe(1);
+
+    // The UI's enabled "up" click must produce a real, visible change —
+    // this is the exact regression: "UI says move is possible but server
+    // swaps against hidden unsupported section" (D-067-FIX).
+    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    const visibleAfter = visibleOrder(reordered);
+    expect(visibleAfter).not.toEqual(visibleBefore);
+    expect(visibleAfter.indexOf("schedule")).toBeLessThan(visibleBefore.indexOf("schedule"));
   });
 });
 

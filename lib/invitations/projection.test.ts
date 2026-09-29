@@ -149,6 +149,7 @@ describe("toPublicInvitation — identity", () => {
         templateKey: null,
         identity: toIdentityProfileData(record),
         sectionOverrides: {},
+        sectionOrder: null,
         theme: null,
         schedules: [],
         loveStory: null,

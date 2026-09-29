@@ -1,7 +1,7 @@
 import type { EventType, GalleryItemType, GiftMethodType } from "@prisma/client";
 
 import type { IdentityFamily } from "@/lib/event-types/config";
-import type { InvitationSections } from "@/lib/event-types/sections";
+import type { InvitationSectionKey, InvitationSections } from "@/lib/event-types/sections";
 
 /**
  * Public-safe DTOs for the `/invite/[slug]` rendering pipeline. Nothing
@@ -139,6 +139,8 @@ export interface PublicInvitation {
   identity: PublicIdentity | null;
   /** Effective section configuration — lib/event-types/sections.ts. Disabled sections' data is already stripped. */
   sections: InvitationSections;
+  /** Display order of the configurable sections (docs/PRD.md §15 "Reorder") — Closing is never included; it always renders last. */
+  sectionOrder: InvitationSectionKey[];
   schedules: PublicSchedule[];
   loveStory: PublicLoveStory | null;
   galleries: PublicGallery[];

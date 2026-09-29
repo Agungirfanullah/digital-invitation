@@ -11,13 +11,14 @@ import {
   loveStoryTitleSchema,
   parseIdentityProfileInput,
   scheduleFormSchema,
+  sectionMoveSchema,
   sectionOverridesSchema,
   templateSelectionSchema,
   themeSchema,
   toScheduleInput,
 } from "@/lib/editor/validation";
 import type { IdentityProfileData } from "@/lib/event-types/identity";
-import type { SectionOverrides } from "@/lib/event-types/sections";
+import type { InvitationSectionKey, SectionOverrides } from "@/lib/event-types/sections";
 import { GALLERY_UPLOAD_RATE_LIMIT_MESSAGE, mapStorageErrorMessage } from "@/lib/storage/errors";
 import { validateGalleryImageUpload } from "@/lib/storage/validation";
 import type { ActionResult } from "@/lib/editor/types";
@@ -60,6 +61,19 @@ export async function saveSectionOverridesAction(
 
   return withEditorAuth((userId) =>
     editorService.updateSectionOverrides(eventId, userId, parsed.data),
+  );
+}
+
+/** Moves one configurable section up or down by one position (docs/PRD.md §15 "Reorder"). */
+export async function moveSectionOrderAction(
+  eventId: string,
+  input: unknown,
+): Promise<ActionResult<InvitationSectionKey[]>> {
+  const parsed = sectionMoveSchema.safeParse(input);
+  if (!parsed.success) return invalidInput(parsed.error.flatten().fieldErrors);
+
+  return withEditorAuth((userId) =>
+    editorService.moveSectionOrder(eventId, userId, parsed.data.key, parsed.data.direction),
   );
 }
 

@@ -5,7 +5,7 @@ import {
   type CoupleIdentityData,
   type IdentityProfileData,
 } from "@/lib/event-types/identity";
-import { resolveEnabledSections } from "@/lib/event-types/sections";
+import { resolveEnabledSections, resolveSectionOrder } from "@/lib/event-types/sections";
 import { DEFAULT_THEME } from "@/lib/invitations/theme";
 import type { PublicInvitation } from "@/lib/invitations/types";
 
@@ -23,6 +23,7 @@ export function buildMinimalInvitation(
     theme: DEFAULT_THEME,
     identity: null,
     sections: resolveEnabledSections(overrides.type ?? "WEDDING", null),
+    sectionOrder: resolveSectionOrder(null),
     schedules: [],
     loveStory: null,
     galleries: [],
