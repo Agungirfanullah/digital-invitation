@@ -9,7 +9,7 @@ import type {
   PublicWish,
 } from "@/lib/invitations/types";
 import { getInvitationCopy, type InvitationCopy } from "@/lib/event-types/config";
-import { getHeroHeading } from "@/lib/event-types/identity";
+import { getHeroHeading, getHeroScheduleDate } from "@/lib/event-types/identity";
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { GIFT_METHOD_TYPE_LABELS } from "@/lib/gifts/labels";
 import {
@@ -50,7 +50,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {
-  const earliestSchedule = invitation.schedules[0];
+  const heroDate = getHeroScheduleDate(invitation);
 
   return (
     <section
@@ -67,9 +67,9 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
       >
         {getHeroHeading(invitation)}
       </h1>
-      {earliestSchedule && (
+      {heroDate && (
         <p className="relative text-sm text-[color:var(--ii-text)]">
-          {formatIndonesianDate(earliestSchedule.date)}
+          {formatIndonesianDate(heroDate)}
         </p>
       )}
       <div className="relative mt-4 space-y-1">
@@ -377,7 +377,7 @@ export function SoftRomanticTemplate({ invitation, rsvp, wishGuest }: Invitation
       className="min-h-screen bg-[color:var(--ii-background)]"
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
-        <Hero invitation={invitation} />
+        {sections.hero && <Hero invitation={invitation} />}
         {sections.identity && invitation.identity && <Identity identity={invitation.identity} />}
         {sections.schedule && <Schedule schedules={invitation.schedules} />}
         <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />

@@ -13,10 +13,11 @@ import { ClosingSection } from "@/components/invitation/sections/closing-section
 
 /**
  * The first real, working template. Genuinely renders whatever data the
- * event actually has — every section beyond Hero/Closing is conditional
- * on real backing data existing (see each section's own guard) and on the
- * event's section configuration (`invitation.sections`), so an event with
- * only a title still renders a complete, honest page instead of empty
+ * event actually has — every section beyond Closing is conditional on
+ * real backing data existing (see each section's own guard) and on the
+ * event's section configuration (`invitation.sections`, which now
+ * includes `hero` — docs/DECISIONS.md D-064), so an event with only a
+ * title still renders a complete, honest page instead of empty
  * placeholders.
  */
 export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
@@ -29,7 +30,7 @@ export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: Invitati
       className="min-h-screen bg-[color:var(--ii-background)]"
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
-        <HeroSection invitation={invitation} />
+        {sections.hero && <HeroSection invitation={invitation} />}
         {sections.identity && invitation.identity && (
           <IdentitySection identity={invitation.identity} />
         )}

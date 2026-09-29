@@ -1,10 +1,10 @@
-import { getHeroHeading } from "@/lib/event-types/identity";
+import { getHeroHeading, getHeroScheduleDate } from "@/lib/event-types/identity";
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { formatIndonesianDate } from "@/lib/invitations/format";
 import type { PublicInvitation } from "@/lib/invitations/types";
 
 export function HeroSection({ invitation }: { invitation: PublicInvitation }) {
-  const earliestSchedule = invitation.schedules[0];
+  const heroDate = getHeroScheduleDate(invitation);
 
   return (
     <section
@@ -22,10 +22,8 @@ export function HeroSection({ invitation }: { invitation: PublicInvitation }) {
         {getHeroHeading(invitation)}
       </h1>
 
-      {earliestSchedule && (
-        <p className="text-sm text-[color:var(--ii-text)]">
-          {formatIndonesianDate(earliestSchedule.date)}
-        </p>
+      {heroDate && (
+        <p className="text-sm text-[color:var(--ii-text)]">{formatIndonesianDate(heroDate)}</p>
       )}
 
       <div className="mt-6 space-y-1">

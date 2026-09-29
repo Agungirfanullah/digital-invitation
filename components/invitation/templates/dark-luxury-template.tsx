@@ -9,7 +9,7 @@ import type {
   PublicWish,
 } from "@/lib/invitations/types";
 import { getInvitationCopy, type InvitationCopy } from "@/lib/event-types/config";
-import { getHeroHeading } from "@/lib/event-types/identity";
+import { getHeroHeading, getHeroScheduleDate } from "@/lib/event-types/identity";
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { GIFT_METHOD_TYPE_LABELS } from "@/lib/gifts/labels";
 import {
@@ -48,7 +48,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {
-  const earliestSchedule = invitation.schedules[0];
+  const heroDate = getHeroScheduleDate(invitation);
 
   return (
     <section
@@ -65,9 +65,9 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
         {getHeroHeading(invitation)}
       </h1>
       <HairlineRule className="w-16" />
-      {earliestSchedule && (
+      {heroDate && (
         <p className="text-sm tracking-widest text-[color:var(--ii-text)] uppercase">
-          {formatIndonesianDate(earliestSchedule.date)}
+          {formatIndonesianDate(heroDate)}
         </p>
       )}
       <div className="mt-8 space-y-1">
@@ -384,7 +384,7 @@ export function DarkLuxuryTemplate({ invitation, rsvp, wishGuest }: InvitationTe
       className="min-h-screen bg-[color:var(--ii-background)]"
     >
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
-        <Hero invitation={invitation} />
+        {sections.hero && <Hero invitation={invitation} />}
         {sections.identity && invitation.identity && <Identity identity={invitation.identity} />}
         {sections.schedule && <Schedule schedules={invitation.schedules} />}
         <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />

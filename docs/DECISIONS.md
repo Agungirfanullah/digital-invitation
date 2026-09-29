@@ -2167,3 +2167,61 @@ the missing items shown on the event page. Wedding requires both couple
 names but, to keep the Wedding baseline's existing behavior, not a
 schedule; every other type also requires at least one schedule (the
 date). Already-published events are not retroactively unpublished.
+
+## D-064 --- Hero/Cover Is an Independently Toggleable Section; Hero Must Not Consume a Disabled Identity/Schedule Section's Content
+
+**Context:** an F1 follow-up audit found that `lib/event-types/sections.ts`
+treated Hero/Cover as structural and always rendered — excluded from
+`INVITATION_SECTION_KEYS` entirely — while `docs/PRD.md` §15 lists "Cover"
+as one of 16 sections all stated as "independently configurable... Enable,
+Disable, Reorder, Edit," and the pre-Phase-0.9 `ARCHITECTURE.md` §7
+diagram places "Cover" as an ordinary box inside "Invitation Sections,"
+not as a structural exception. The "Hero and closing are structural"
+claim in `ARCHITECTURE.md` §37.1 was traced to have no corresponding
+justification in `D-062`'s own text — it was an unstated assumption
+introduced only in the architecture summary. Separately, Hero was found
+to read `invitation.identity`/`invitation.schedules[0]` unconditionally,
+so disabling the dedicated Identity or Schedule section never stopped
+Hero from showing the identity's display name or the earliest schedule's
+date — a passing test (`cross-template.test.tsx`) explicitly asserted
+this as expected behavior.
+
+**Decision:** `hero` is added to `INVITATION_SECTION_KEYS`
+(`lib/event-types/sections.ts`), Supported/Default Enabled/Owner
+Toggleable for every event type, resolved and persisted through the exact
+same `Event.settings.sections` mechanism as every other section — no
+schema change, no migration, no backfill. A missing `hero` key in
+existing `Event.settings` resolves to enabled, so every existing
+invitation renders unchanged.
+
+Independently, and regardless of Hero's own on/off state: **Hero must not
+consume Identity's or Schedule's content when that section is
+individually disabled.** `getHeroHeading()` and the new
+`getHeroScheduleDate()` (`lib/event-types/identity.ts`) now check
+`invitation.sections.identity`/`.schedule` before reading
+`invitation.identity`/`invitation.schedules`, rather than relying on data
+presence alone. This closes the specific gap the F1 follow-up audit
+identified. When Identity/Schedule are OFF, Hero falls back to
+`invitation.title` for its heading and shows no date — no new content is
+invented, per the same "no fake identity data" principle used everywhere
+else in this codebase.
+
+**Rejected:** inventing new Hero-only content (a separate headline field,
+a Hero-specific database model, a Hero content editor) to fill the space
+when Identity/Schedule are off — out of scope for this MVP change and not
+requested; making Hero's fallback conditional on anything other than the
+two sections it currently reads (e.g. a new "always show a name if one
+exists anywhere" rule) — would reintroduce the same cross-section
+consumption this decision closes.
+
+**Also decided:** Closing remains structural and always rendered — it is
+explicitly out of scope for this decision, not newly exempted; no change
+was made to its behavior or to `ClosingSection`. Section reordering (PRD
+§15 "Reorder") remains unimplemented for every section, Hero included —
+also out of scope here.
+
+**Not implemented:** a dedicated Hero content-editing form. Hero has no
+content of its own (§4 of the preceding audit) and none was added; its
+only editor-facing control is the existing "Bagian Undangan" on/off
+toggle, identical to how RSVP/Gift/Wishes are already toggled without a
+dedicated content tab.

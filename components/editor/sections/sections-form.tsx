@@ -59,7 +59,7 @@ export function SectionsForm({ eventId, type, value, onSaved }: SectionsFormProp
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Bagian Undangan</h2>
         <p className="text-muted-foreground text-sm">
-          Pilih bagian yang ditampilkan di undangan. Sampul dan penutup selalu tampil.
+          Pilih bagian yang ditampilkan di undangan. Penutup selalu tampil.
         </p>
       </div>
 

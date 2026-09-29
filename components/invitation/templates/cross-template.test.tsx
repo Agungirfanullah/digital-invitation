@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { EventType } from "@prisma/client";
 
 import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
+import type { InvitationSections } from "@/lib/event-types/sections";
 import { resolveTemplateComponent } from "@/lib/invitations/templates/registry";
 import {
   buildFullyPopulatedInvitation,
@@ -112,9 +113,10 @@ describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {
     expect(screen.queryByText(/Bapak Lestari/)).not.toBeInTheDocument();
   });
 
-  it("hides owner-disabled sections (identity, schedule, RSVP, wishes)", () => {
+  it("hides owner-disabled dedicated sections (identity, schedule, RSVP, wishes) while Hero stays on", () => {
     const invitation = buildFullyPopulatedInvitation({
       sections: {
+        hero: true,
         identity: false,
         schedule: false,
         story: true,
@@ -129,9 +131,110 @@ describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {
     expect(screen.queryByText("Akad Nikah")).not.toBeInTheDocument();
     expect(screen.queryByText(/RSVP hanya dapat diisi/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Ucapan hanya dapat dikirim/)).not.toBeInTheDocument();
-    // The hero still uses the identity's display name.
-    expect(screen.getByRole("heading", { level: 1, name: "Ayu & Budi" })).toBeInTheDocument();
+    // Hero itself is on, but per D-064 it must not consume the disabled
+    // Identity section's data — it falls back to the event title, not the
+    // couple's names.
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Pernikahan Uji Coba" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Ayu & Budi" })).not.toBeInTheDocument();
   });
+
+  // --- D-064: Hero is independently toggleable, and must not consume a --
+  // --- disabled Identity/Schedule section's content. -------------------
+
+  const ALL_SECTIONS_ON: InvitationSections = {
+    hero: true,
+    identity: true,
+    schedule: true,
+    story: true,
+    gallery: true,
+    rsvp: true,
+    gift: true,
+    wishes: true,
+  };
+
+  const HERO_DEPENDENCY_CASES: {
+    label: string;
+    sections: InvitationSections;
+    heroRendered: boolean;
+    expectDisplayName: boolean;
+    expectDate: boolean;
+  }[] = [
+    {
+      label: "Hero OFF, Identity ON, Schedule ON → Hero absent",
+      sections: { ...ALL_SECTIONS_ON, hero: false },
+      heroRendered: false,
+      expectDisplayName: false,
+      expectDate: false,
+    },
+    {
+      label: "Hero ON, Identity ON, Schedule ON → existing Hero content preserved",
+      sections: ALL_SECTIONS_ON,
+      heroRendered: true,
+      expectDisplayName: true,
+      expectDate: true,
+    },
+    {
+      label: "Hero ON, Identity OFF, Schedule ON → no identity-derived Hero content",
+      sections: { ...ALL_SECTIONS_ON, identity: false },
+      heroRendered: true,
+      expectDisplayName: false,
+      expectDate: true,
+    },
+    {
+      label: "Hero ON, Identity ON, Schedule OFF → no schedule-derived Hero content",
+      sections: { ...ALL_SECTIONS_ON, schedule: false },
+      heroRendered: true,
+      expectDisplayName: true,
+      expectDate: false,
+    },
+    {
+      label: "Hero ON, Identity OFF, Schedule OFF → no identity/schedule-derived Hero content",
+      sections: { ...ALL_SECTIONS_ON, identity: false, schedule: false },
+      heroRendered: true,
+      expectDisplayName: false,
+      expectDate: false,
+    },
+  ];
+
+  it.each(HERO_DEPENDENCY_CASES)(
+    "$label",
+    ({ sections, heroRendered, expectDisplayName, expectDate }) => {
+      const invitation = buildFullyPopulatedInvitation({ sections });
+      render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
+
+      const heroRegion = screen.queryByRole("region", { name: "Sampul undangan" });
+
+      if (!heroRendered) {
+        expect(heroRegion).not.toBeInTheDocument();
+        // Hero OFF must not disable Identity/Schedule — both are ON in this case.
+        expect(screen.getByRole("heading", { name: "Mempelai" })).toBeInTheDocument();
+        expect(screen.getByText("Akad Nikah")).toBeInTheDocument();
+        return;
+      }
+
+      expect(heroRegion).not.toBeNull();
+      const heroHeading = within(heroRegion!).getByRole("heading", { level: 1 });
+      expect(heroHeading).toHaveTextContent(
+        expectDisplayName ? "Ayu & Budi" : "Pernikahan Uji Coba",
+      );
+
+      const heroDate = within(heroRegion!).queryByText("12 Desember 2026");
+      if (expectDate) {
+        expect(heroDate).toBeInTheDocument();
+      } else {
+        expect(heroDate).not.toBeInTheDocument();
+      }
+
+      // Identity/Schedule independence: their own dedicated blocks always
+      // follow their own toggle, regardless of what Hero decided to show.
+      const identityHeading = screen.queryByRole("heading", { name: "Mempelai" });
+      expect(identityHeading === null).toBe(!sections.identity);
+      const scheduleTitle = screen.queryByText("Akad Nikah");
+      expect(scheduleTitle === null).toBe(!sections.schedule);
+    },
+  );
 });
 
 /** Expected public presentation per event type — heading of the identity section, the hero heading, and a type-specific detail line. */

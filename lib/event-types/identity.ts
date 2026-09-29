@@ -1,8 +1,9 @@
 import type { EventType } from "@prisma/client";
 
 import { EVENT_TYPE_CONFIG, type IdentityFamily } from "@/lib/event-types/config";
+import type { InvitationSections } from "@/lib/event-types/sections";
 import { formatIndonesianDate } from "@/lib/invitations/format";
-import type { PublicIdentity, PublicIdentityMember } from "@/lib/invitations/types";
+import type { PublicIdentity, PublicIdentityMember, PublicSchedule } from "@/lib/invitations/types";
 
 /**
  * Canonical, storage-shaped identity data per identity family. The editor
@@ -254,12 +255,36 @@ export function buildPublicIdentity(
   };
 }
 
-/** The hero heading every template uses: the identity's display name, else the event title. */
+/**
+ * The hero heading every template uses: the identity's display name, else
+ * the event title. Respects the Identity section's own on/off state
+ * (docs/DECISIONS.md D-064) — Hero must not consume identity data when the
+ * owner has disabled Identity, even though the data is still present in
+ * the projection for the (independently gated) dedicated Identity block.
+ */
 export function getHeroHeading(invitation: {
   title: string;
   identity: PublicIdentity | null;
+  sections: InvitationSections;
 }): string {
-  return invitation.identity?.displayName ?? invitation.title;
+  const identity = invitation.sections.identity ? invitation.identity : null;
+  return identity?.displayName ?? invitation.title;
+}
+
+/**
+ * The date Hero shows, if any. Respects the Schedule section's own on/off
+ * state (docs/DECISIONS.md D-064) — Hero must not consume schedule data
+ * when the owner has disabled Schedule, even though the data is still
+ * present in the projection for the (independently gated) dedicated
+ * Schedule block. Returns `null` when there is no schedule, or when
+ * Schedule is disabled — never a stale/fallback value.
+ */
+export function getHeroScheduleDate(invitation: {
+  schedules: PublicSchedule[];
+  sections: InvitationSections;
+}): string | null {
+  if (!invitation.sections.schedule) return null;
+  return invitation.schedules[0]?.date ?? null;
 }
 
 /**

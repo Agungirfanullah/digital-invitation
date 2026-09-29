@@ -8,10 +8,12 @@ import {
   EMPTY_COUPLE_IDENTITY,
   emptyIdentityFor,
   getHeroHeading,
+  getHeroScheduleDate,
   getMissingPublishRequirements,
   type CoupleIdentityData,
 } from "@/lib/event-types/identity";
 import { getIdentityFieldGroups } from "@/lib/event-types/identity-fields";
+import type { InvitationSections } from "@/lib/event-types/sections";
 import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
 
 const ALL_TYPES = Object.values(EventType);
@@ -109,13 +111,73 @@ describe("buildPublicIdentity", () => {
   });
 });
 
+const ALL_SECTIONS_ENABLED: InvitationSections = {
+  hero: true,
+  identity: true,
+  schedule: true,
+  story: true,
+  gallery: true,
+  rsvp: true,
+  gift: true,
+  wishes: true,
+};
+
 describe("getHeroHeading", () => {
-  it("uses the identity's display name, else the event title", () => {
+  it("uses the identity's display name, else the event title, when Identity is enabled", () => {
     const identity = buildPublicIdentity("WEDDING", IDENTITY_BY_TYPE.WEDDING);
-    expect(getHeroHeading({ title: "Judul", identity })).toBe("Ayu & Budi");
-    expect(getHeroHeading({ title: "Rapat Tahunan", identity: null })).toBe("Rapat Tahunan");
+    expect(getHeroHeading({ title: "Judul", identity, sections: ALL_SECTIONS_ENABLED })).toBe(
+      "Ayu & Budi",
+    );
+    expect(
+      getHeroHeading({ title: "Rapat Tahunan", identity: null, sections: ALL_SECTIONS_ENABLED }),
+    ).toBe("Rapat Tahunan");
     const corporate = buildPublicIdentity("CORPORATE", IDENTITY_BY_TYPE.CORPORATE);
-    expect(getHeroHeading({ title: "Rapat Tahunan", identity: corporate })).toBe("Rapat Tahunan");
+    expect(
+      getHeroHeading({
+        title: "Rapat Tahunan",
+        identity: corporate,
+        sections: ALL_SECTIONS_ENABLED,
+      }),
+    ).toBe("Rapat Tahunan");
+  });
+
+  it("F4-09/D-064: falls back to the event title when Identity is disabled, even if identity data exists", () => {
+    const identity = buildPublicIdentity("WEDDING", IDENTITY_BY_TYPE.WEDDING);
+    expect(
+      getHeroHeading({
+        title: "Judul",
+        identity,
+        sections: { ...ALL_SECTIONS_ENABLED, identity: false },
+      }),
+    ).toBe("Judul");
+  });
+});
+
+describe("getHeroScheduleDate", () => {
+  const schedules = [
+    {
+      id: "s1",
+      title: "Akad",
+      description: null,
+      date: "2026-12-12",
+      startTime: "08:00",
+      endTime: "10:00",
+      venue: null,
+    },
+  ];
+
+  it("returns the earliest schedule's date when Schedule is enabled", () => {
+    expect(getHeroScheduleDate({ schedules, sections: ALL_SECTIONS_ENABLED })).toBe("2026-12-12");
+  });
+
+  it("returns null when there is no schedule", () => {
+    expect(getHeroScheduleDate({ schedules: [], sections: ALL_SECTIONS_ENABLED })).toBeNull();
+  });
+
+  it("D-064: returns null when Schedule is disabled, even if schedule data exists", () => {
+    expect(
+      getHeroScheduleDate({ schedules, sections: { ...ALL_SECTIONS_ENABLED, schedule: false } }),
+    ).toBeNull();
   });
 });
 

@@ -88,3 +88,43 @@ describe("findNonToggleableSections", () => {
     expect(findNonToggleableSections("WEDDING", { identity: false })).toEqual([]);
   });
 });
+
+// --- D-064: hero is an independently toggleable section --------------------
+
+describe("hero section (D-064)", () => {
+  it("exists in the canonical section keys", () => {
+    expect(INVITATION_SECTION_KEYS).toContain("hero");
+  });
+
+  it("defaults to enabled for every event type", () => {
+    for (const type of ALL_TYPES) {
+      expect(resolveEnabledSections(type, null).hero).toBe(true);
+    }
+  });
+
+  it("a missing hero override resolves to enabled, even when other overrides are set", () => {
+    expect(resolveEnabledSections("WEDDING", { sections: { identity: false } }).hero).toBe(true);
+  });
+
+  it("can be explicitly disabled, independently of identity/schedule", () => {
+    const enabled = resolveEnabledSections("WEDDING", {
+      sections: { hero: false, identity: true, schedule: true },
+    });
+    expect(enabled.hero).toBe(false);
+    expect(enabled.identity).toBe(true);
+    expect(enabled.schedule).toBe(true);
+  });
+
+  it("disabling identity/schedule does not disable hero, and vice versa", () => {
+    expect(resolveEnabledSections("WEDDING", { sections: { identity: false } }).hero).toBe(true);
+    expect(resolveEnabledSections("WEDDING", { sections: { schedule: false } }).hero).toBe(true);
+    expect(resolveEnabledSections("WEDDING", { sections: { hero: false } }).identity).toBe(true);
+    expect(resolveEnabledSections("WEDDING", { sections: { hero: false } }).schedule).toBe(true);
+  });
+
+  it("is toggleable for every event type, including OTHER (which only restricts identity)", () => {
+    for (const type of ALL_TYPES) {
+      expect(findNonToggleableSections(type, { hero: false })).toEqual([]);
+    }
+  });
+});

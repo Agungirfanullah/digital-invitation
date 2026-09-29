@@ -1026,12 +1026,24 @@ Templates render `PublicInvitation.identity` (heading, display name,
 members, details) and `getInvitationCopy(type)` (story fallback title,
 closing message); none of the six templates hard-codes wedding wording.
 
-Section configuration (D-062): `EventType + Event.settings.sections` →
-`resolveEnabledSections()` → `PublicInvitation.sections`. Both the
-projection and the preview apply `stripDisabledSectionContent()`, so a
-disabled section's data is never serialized to the browser; RSVP and
-wish submission re-check the section server-side. Hero and closing are
-structural and always rendered.
+Section configuration (D-062, extended by D-064): `EventType +
+Event.settings.sections` → `resolveEnabledSections()` →
+`PublicInvitation.sections`. `hero` (the invitation's cover) is an
+independently toggleable section like `identity`/`schedule`/`story`/
+`gallery`/`rsvp`/`gift`/`wishes` — default enabled, owner toggleable for
+every type. Closing remains structural and always rendered; it is not a
+configurable section.
+
+Section independence: a disabled section's dedicated content is never
+serialized (`stripDisabledSectionContent()` for story/gallery/gift/
+wishes; a template-level `{sections.x && <Component .../>}` guard for
+identity/schedule/hero/rsvp/wishes). Hero specifically must not consume
+identity or schedule content when those sections are individually
+disabled, even while Hero itself is enabled — `getHeroHeading()` and
+`getHeroScheduleDate()` (`lib/event-types/identity.ts`) check
+`invitation.sections.identity`/`.schedule` before reading the
+corresponding data, rather than relying on data presence alone. RSVP and
+wish submission re-check their section server-side.
 
 Server-side guards:
 

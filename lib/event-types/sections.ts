@@ -10,11 +10,15 @@ import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
  * the public projection, the editor preview, and server-side submission
  * guards alike. Client-safe: no server imports.
  *
- * Hero/cover and closing are structural and always rendered — they are not
- * configurable sections.
+ * `hero` (the invitation's cover — docs/PRD.md §15 "Cover") is an
+ * independently toggleable section like every other one here
+ * (docs/DECISIONS.md D-064). Closing remains structural and always
+ * rendered — it is not a configurable section, and is out of scope for
+ * D-064.
  */
 
 export const INVITATION_SECTION_KEYS = [
+  "hero",
   "identity",
   "schedule",
   "story",
@@ -131,6 +135,8 @@ export function mergeSectionOverrides(
 export function getSectionLabel(type: EventType, key: InvitationSectionKey): string {
   const config = EVENT_TYPE_CONFIG[type];
   switch (key) {
+    case "hero":
+      return "Sampul";
     case "identity":
       return config.identityHeading;
     case "schedule":
