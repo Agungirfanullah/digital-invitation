@@ -114,6 +114,10 @@ describe("sectionOverridesSchema", () => {
   it("accepts the hero key (D-064/D-067 regression)", () => {
     expect(sectionOverridesSchema.safeParse({ hero: false }).success).toBe(true);
   });
+
+  it("accepts the countdown key (D-068)", () => {
+    expect(sectionOverridesSchema.safeParse({ countdown: true }).success).toBe(true);
+  });
 });
 
 describe("sectionMoveSchema (D-067)", () => {

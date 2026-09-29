@@ -5,6 +5,7 @@ import { getInvitationCopy } from "@/lib/event-types/config";
 import { themeToCssVars } from "@/components/invitation/theme-vars";
 import { HeroSection } from "@/components/invitation/sections/hero-section";
 import { IdentitySection } from "@/components/invitation/sections/identity-section";
+import { CountdownSection } from "@/components/invitation/sections/countdown-section";
 import { ScheduleSection } from "@/components/invitation/sections/schedule-section";
 import { LoveStorySection } from "@/components/invitation/sections/love-story-section";
 import { GallerySection } from "@/components/invitation/sections/gallery-section";
@@ -35,6 +36,7 @@ export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: Invitati
     identity: sections.identity && invitation.identity && (
       <IdentitySection identity={invitation.identity} />
     ),
+    countdown: sections.countdown && <CountdownSection invitation={invitation} />,
     schedule: sections.schedule && <ScheduleSection schedules={invitation.schedules} />,
     story: (
       <LoveStorySection loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />

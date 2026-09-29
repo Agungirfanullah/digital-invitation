@@ -114,6 +114,7 @@ describe("buildPublicIdentity", () => {
 const ALL_SECTIONS_ENABLED: InvitationSections = {
   hero: true,
   identity: true,
+  countdown: true,
   schedule: true,
   story: true,
   gallery: true,

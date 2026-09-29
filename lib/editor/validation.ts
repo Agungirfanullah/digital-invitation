@@ -152,6 +152,7 @@ export const sectionOverridesSchema = z
   .object({
     hero: z.boolean(),
     identity: z.boolean(),
+    countdown: z.boolean(),
     schedule: z.boolean(),
     story: z.boolean(),
     gallery: z.boolean(),

@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
 import type { InvitationSectionKey } from "@/lib/event-types/sections";
+import { CountdownSection } from "@/components/invitation/sections/countdown-section";
 import type {
   PublicGallery,
   PublicGiftMethod,
@@ -394,6 +395,7 @@ export function FloralRomanceTemplate({ invitation, rsvp, wishGuest }: Invitatio
     identity: sections.identity && invitation.identity && (
       <Identity identity={invitation.identity} />
     ),
+    countdown: sections.countdown && <CountdownSection invitation={invitation} />,
     schedule: sections.schedule && <Schedule schedules={invitation.schedules} />,
     story: <LoveStory loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />,
     gallery: <Gallery galleries={invitation.galleries} />,

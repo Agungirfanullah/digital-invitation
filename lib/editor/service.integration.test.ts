@@ -336,6 +336,19 @@ describe("updateSectionOverrides (integration)", () => {
       );
     }
   });
+
+  it("countdown defaults off and can be explicitly enabled (D-068)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    expect((await getEditorEvent(event.id, owner.id)).sectionOverrides.countdown).toBeUndefined();
+
+    const stored = await updateSectionOverrides(event.id, owner.id, { countdown: true });
+    expect(stored.countdown).toBe(true);
+    expect((await getEditorEvent(event.id, owner.id)).sectionOverrides).toEqual({
+      countdown: true,
+    });
+  });
 });
 
 describe("moveSectionOrder (integration — D-067)", () => {
@@ -458,13 +471,30 @@ describe("moveSectionOrder (integration — D-067)", () => {
       EventNotFoundError,
     );
   });
+
+  it("countdown participates in reordering exactly like any other section (D-068)", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id);
+
+    const reordered = await moveSectionOrder(event.id, owner.id, "countdown", "up");
+    const expected = [...INVITATION_SECTION_KEYS];
+    const countdownIndex = expected.indexOf("countdown");
+    [expected[countdownIndex - 1], expected[countdownIndex]] = [
+      expected[countdownIndex],
+      expected[countdownIndex - 1],
+    ];
+    expect(reordered).toEqual(expected);
+    expect((await getEditorEvent(event.id, owner.id)).sectionOrder).toEqual(expected);
+  });
 });
 
 describe("moveSectionOrder — OTHER-type unsupported-section adjacency (D-067-FIX)", () => {
   // `identity` is unsupported for OTHER — a hidden slot that must never
   // block, or become the swap target for, an adjacent supported section's
-  // move. Canonical order: hero, identity(hidden), schedule, story,
-  // gallery, rsvp, gift, wishes.
+  // move. Canonical order: hero, identity(hidden), countdown, schedule,
+  // story, gallery, rsvp, gift, wishes. `countdown` (D-068) is the section
+  // now immediately after the hidden slot, so it — not `schedule` — is
+  // what exercises the adjacency fix here.
 
   /** Mirrors SectionsForm's own filtering — the list actually shown to the owner. */
   function visibleOrder(order: string[]) {
@@ -472,19 +502,20 @@ describe("moveSectionOrder — OTHER-type unsupported-section adjacency (D-067-F
     return order.filter((key) => states[key as keyof typeof states].supported);
   }
 
-  it("Test 1 — moving Schedule up skips the hidden Identity section and lands next to Hero", async () => {
+  it("Test 1 — moving Countdown up skips the hidden Identity section and lands next to Hero", async () => {
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id, "OTHER");
 
-    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    const reordered = await moveSectionOrder(event.id, owner.id, "countdown", "up");
 
     // identity keeps its slot — not deleted from the persisted order.
     expect(reordered).toContain("identity");
     expect(reordered).toHaveLength(INVITATION_SECTION_KEYS.length);
-    // Visible order: schedule now precedes hero, exactly as the owner asked.
+    // Visible order: countdown now precedes hero, exactly as the owner asked.
     expect(visibleOrder(reordered)).toEqual([
-      "schedule",
+      "countdown",
       "hero",
+      "schedule",
       "story",
       "gallery",
       "rsvp",
@@ -493,15 +524,16 @@ describe("moveSectionOrder — OTHER-type unsupported-section adjacency (D-067-F
     ]);
   });
 
-  it("Test 2 — moving Schedule back down skips the hidden Identity section and lands after Hero again", async () => {
+  it("Test 2 — moving Countdown back down skips the hidden Identity section and lands after Hero again", async () => {
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id, "OTHER");
 
-    await moveSectionOrder(event.id, owner.id, "schedule", "up");
-    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "down");
+    await moveSectionOrder(event.id, owner.id, "countdown", "up");
+    const reordered = await moveSectionOrder(event.id, owner.id, "countdown", "down");
 
     expect(visibleOrder(reordered)).toEqual([
       "hero",
+      "countdown",
       "schedule",
       "story",
       "gallery",
@@ -537,13 +569,14 @@ describe("moveSectionOrder — OTHER-type unsupported-section adjacency (D-067-F
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id, "OTHER");
 
-    await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    await moveSectionOrder(event.id, owner.id, "countdown", "up");
     const reloaded = await getEditorEvent(event.id, owner.id);
 
     expect(reloaded.sectionOrder).toContain("identity");
     expect(visibleOrder(reloaded.sectionOrder!)).toEqual([
-      "schedule",
+      "countdown",
       "hero",
+      "schedule",
       "story",
       "gallery",
       "rsvp",
@@ -556,19 +589,20 @@ describe("moveSectionOrder — OTHER-type unsupported-section adjacency (D-067-F
     const owner = await createTestUser("owner");
     const event = await createTestEvent(owner.id, "OTHER");
 
-    // What SectionsForm shows before any move: schedule is the 2nd visible
-    // item (index 1) — not first — so its "up" arrow would be enabled.
+    // What SectionsForm shows before any move: countdown is the 2nd
+    // visible item (index 1) — not first — so its "up" arrow would be
+    // enabled.
     const before = await getEditorEvent(event.id, owner.id);
     const visibleBefore = visibleOrder(resolveSectionOrder({ sectionOrder: before.sectionOrder }));
-    expect(visibleBefore.indexOf("schedule")).toBe(1);
+    expect(visibleBefore.indexOf("countdown")).toBe(1);
 
     // The UI's enabled "up" click must produce a real, visible change —
     // this is the exact regression: "UI says move is possible but server
     // swaps against hidden unsupported section" (D-067-FIX).
-    const reordered = await moveSectionOrder(event.id, owner.id, "schedule", "up");
+    const reordered = await moveSectionOrder(event.id, owner.id, "countdown", "up");
     const visibleAfter = visibleOrder(reordered);
     expect(visibleAfter).not.toEqual(visibleBefore);
-    expect(visibleAfter.indexOf("schedule")).toBeLessThan(visibleBefore.indexOf("schedule"));
+    expect(visibleAfter.indexOf("countdown")).toBeLessThan(visibleBefore.indexOf("countdown"));
   });
 });
 

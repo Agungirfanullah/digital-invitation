@@ -16,6 +16,14 @@ import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
  * rendered — it is not a configurable section, and is out of scope for
  * D-064.
  *
+ * `countdown` (docs/PRD.md §15.2, D-068) is a normal member of this same
+ * enable/disable/order model, with one exception: it defaults to
+ * disabled for every type (see `sectionDefault()` below), so adding it
+ * never changes what an already-published invitation displays. Its
+ * schedule-target selection and remaining-time computation live in
+ * `lib/invitations/countdown.ts`, not here — this module only resolves
+ * whether the section is enabled, supported, and where it sits in order.
+ *
  * Display order of the configurable sections (docs/PRD.md §15 "Reorder",
  * docs/DECISIONS.md D-066/D-067) is a second, independent JSON key,
  * `Event.settings.sectionOrder` — a sibling of `Event.settings.sections`,
@@ -30,6 +38,7 @@ import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
 export const INVITATION_SECTION_KEYS = [
   "hero",
   "identity",
+  "countdown",
   "schedule",
   "story",
   "gallery",
@@ -70,10 +79,19 @@ export function isInvitationSectionKey(value: unknown): value is InvitationSecti
  * behavior, so existing events render unchanged. The one structural
  * exception is identity for OTHER, which has no identity profile at all
  * (docs/PRD.md §13.7).
+ *
+ * `countdown` is the one section that defaults to **disabled** for every
+ * type (docs/PRD.md §15.2, D-068) — it is still Supported and Owner
+ * Toggleable everywhere, just not on by default. This is deliberate, not
+ * an oversight: introducing a new section key into the canonical list
+ * must never make an already-published invitation suddenly display new
+ * content, so Countdown requires an explicit owner opt-in rather than
+ * inheriting the "all enabled" default every other section gets.
  */
 function sectionDefault(type: EventType, key: InvitationSectionKey) {
   const supported = !(key === "identity" && EVENT_TYPE_CONFIG[type].family === "GENERIC");
-  return { supported, defaultEnabled: supported, toggleable: supported };
+  const defaultEnabled = supported && key !== "countdown";
+  return { supported, defaultEnabled, toggleable: supported };
 }
 
 /**
@@ -276,6 +294,8 @@ export function getSectionLabel(type: EventType, key: InvitationSectionKey): str
       return "Sampul";
     case "identity":
       return config.identityHeading;
+    case "countdown":
+      return "Hitung Mundur";
     case "schedule":
       return "Jadwal Acara";
     case "story":

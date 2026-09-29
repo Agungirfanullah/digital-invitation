@@ -122,6 +122,7 @@ describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {
       sections: {
         hero: true,
         identity: false,
+        countdown: false,
         schedule: false,
         story: true,
         gallery: true,
@@ -150,6 +151,7 @@ describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {
   const ALL_SECTIONS_ON: InvitationSections = {
     hero: true,
     identity: true,
+    countdown: true,
     schedule: true,
     story: true,
     gallery: true,
@@ -249,6 +251,7 @@ describe.each(ALL_SLUGS)("%s — section order (D-067)", (slug) => {
   const ALL_ON: InvitationSections = {
     hero: true,
     identity: true,
+    countdown: true,
     schedule: true,
     story: true,
     gallery: true,
@@ -263,6 +266,7 @@ describe.each(ALL_SLUGS)("%s — section order (D-067)", (slug) => {
   const MARKER: Record<InvitationSectionKey, string> = {
     hero: "Ayu & Budi",
     identity: "Mempelai",
+    countdown: "Menghitung mundur menuju 12 Desember 2026, pukul 08:00.",
     schedule: "Akad Nikah",
     story: "Pertama Bertemu",
     gallery: "Momen Kami",
@@ -274,16 +278,25 @@ describe.each(ALL_SLUGS)("%s — section order (D-067)", (slug) => {
   // Uses textContent, not innerHTML: innerHTML entity-encodes "&" to
   // "&amp;", which would silently break the "Ayu & Budi" marker (indexOf
   // returns -1, sorting Hero first regardless of its real position).
-  function observedOrder(text: string): InvitationSectionKey[] {
-    return [...INVITATION_SECTION_KEYS].sort(
-      (a, b) => text.indexOf(MARKER[a]) - text.indexOf(MARKER[b]),
-    );
+  //
+  // Takes an explicit `keys` list rather than always sorting the full
+  // canonical key list: Countdown defaults to disabled (D-068), so a
+  // custom-order fixture that doesn't explicitly enable and include it
+  // never renders its marker — sorting by every key would then hit the
+  // same indexOf(-1) pitfall this comment already warns about.
+  function observedOrder(
+    text: string,
+    keys: readonly InvitationSectionKey[],
+  ): InvitationSectionKey[] {
+    return [...keys].sort((a, b) => text.indexOf(MARKER[a]) - text.indexOf(MARKER[b]));
   }
 
   it("renders the canonical order when no order is persisted", () => {
-    const invitation = buildFullyPopulatedInvitation({ guest: null });
+    const invitation = buildFullyPopulatedInvitation({ guest: null, sections: ALL_ON });
     const { container } = render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
-    expect(observedOrder(container.textContent ?? "")).toEqual(INVITATION_SECTION_KEYS);
+    expect(observedOrder(container.textContent ?? "", INVITATION_SECTION_KEYS)).toEqual(
+      INVITATION_SECTION_KEYS,
+    );
   });
 
   it("renders a custom persisted order exactly as configured", () => {
@@ -299,7 +312,7 @@ describe.each(ALL_SLUGS)("%s — section order (D-067)", (slug) => {
     ];
     const invitation = buildFullyPopulatedInvitation({ guest: null, sectionOrder: customOrder });
     const { container } = render(<Template invitation={invitation} rsvp={null} wishGuest={null} />);
-    expect(observedOrder(container.textContent ?? "")).toEqual(customOrder);
+    expect(observedOrder(container.textContent ?? "", customOrder)).toEqual(customOrder);
   });
 
   it("keeps a disabled section's content out of the page even under a custom order", () => {
@@ -370,6 +383,89 @@ describe.each(ALL_SLUGS)("%s — section order (D-067)", (slug) => {
     expect(within(heroRegion).queryByText("12 Desember 2026")).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Mempelai" })).not.toBeInTheDocument();
     expect(screen.queryByText("Akad Nikah")).not.toBeInTheDocument();
+  });
+});
+
+// --- D-068: Countdown ---------------------------------------------------
+
+describe.each(ALL_SLUGS)("%s — countdown (D-068)", (slug) => {
+  const Template = resolveTemplateComponent(slug);
+
+  const ALL_ON_WITH_COUNTDOWN: InvitationSections = {
+    hero: true,
+    identity: true,
+    countdown: true,
+    schedule: true,
+    story: true,
+    gallery: true,
+    rsvp: true,
+    gift: true,
+    wishes: true,
+  };
+
+  it("1. Countdown enabled + valid schedule → rendered", () => {
+    const invitation = buildFullyPopulatedInvitation({ sections: ALL_ON_WITH_COUNTDOWN });
+    render(<Template invitation={invitation} />);
+    expect(screen.getByRole("region", { name: "Hitung mundur" })).toBeInTheDocument();
+  });
+
+  it("2. Countdown disabled → absent, even though Schedule is enabled", () => {
+    const invitation = buildFullyPopulatedInvitation({
+      sections: { ...ALL_ON_WITH_COUNTDOWN, countdown: false },
+    });
+    render(<Template invitation={invitation} />);
+    expect(screen.queryByRole("region", { name: "Hitung mundur" })).not.toBeInTheDocument();
+  });
+
+  it("3. Schedule disabled + Countdown enabled → absent (D-064 dependency)", () => {
+    const invitation = buildFullyPopulatedInvitation({
+      sections: { ...ALL_ON_WITH_COUNTDOWN, schedule: false },
+    });
+    render(<Template invitation={invitation} />);
+    expect(screen.queryByRole("region", { name: "Hitung mundur" })).not.toBeInTheDocument();
+    // Schedule's own dedicated content stays hidden too — this isn't
+    // Countdown leaking Schedule's disabled data through a side door.
+    expect(screen.queryByText("Akad Nikah")).not.toBeInTheDocument();
+  });
+
+  it("4. Wedding with zero schedules → absent, even though Countdown is enabled", () => {
+    const invitation = buildMinimalInvitation({
+      type: "WEDDING",
+      sections: ALL_ON_WITH_COUNTDOWN,
+      schedules: [],
+    });
+    render(<Template invitation={invitation} />);
+    expect(screen.queryByRole("region", { name: "Hitung mundur" })).not.toBeInTheDocument();
+  });
+
+  it("5. Wedding with two schedules → targets the first schedule in canonical order", () => {
+    const invitation = buildFullyPopulatedInvitation({
+      sections: ALL_ON_WITH_COUNTDOWN,
+      schedules: [
+        {
+          id: "sch-1",
+          title: "Akad Nikah",
+          description: null,
+          date: "2026-12-12",
+          startTime: "08:00",
+          endTime: "10:00",
+          venue: null,
+        },
+        {
+          id: "sch-2",
+          title: "Resepsi",
+          description: null,
+          date: "2026-12-12",
+          startTime: "11:00",
+          endTime: "14:00",
+          venue: null,
+        },
+      ],
+    });
+    render(<Template invitation={invitation} />);
+    const region = screen.getByRole("region", { name: "Hitung mundur" });
+    expect(within(region).getByText(/pukul 08:00\./)).toBeInTheDocument();
+    expect(within(region).queryByText(/pukul 11:00\./)).not.toBeInTheDocument();
   });
 });
 

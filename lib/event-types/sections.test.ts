@@ -19,16 +19,17 @@ import {
 const ALL_TYPES = Object.values(EventType);
 
 describe("resolveSectionStates — defaults", () => {
-  it("every section is Supported, Default Enabled and Owner Toggleable for every type (PRD §15.1), except identity for OTHER", () => {
+  it("every section is Supported, Default Enabled and Owner Toggleable for every type (PRD §15.1), except identity for OTHER and countdown (D-068, defaults off everywhere)", () => {
     for (const type of ALL_TYPES) {
       const states = resolveSectionStates(type, null);
       for (const key of INVITATION_SECTION_KEYS) {
         const expectedSupported = !(type === "OTHER" && key === "identity");
+        const expectedDefaultEnabled = expectedSupported && key !== "countdown";
         expect(states[key]).toEqual({
           supported: expectedSupported,
-          defaultEnabled: expectedSupported,
+          defaultEnabled: expectedDefaultEnabled,
           toggleable: expectedSupported,
-          enabled: expectedSupported,
+          enabled: expectedDefaultEnabled,
         });
       }
     }
@@ -135,6 +136,55 @@ describe("hero section (D-064)", () => {
   });
 });
 
+// --- D-068: countdown defaults off, everywhere ------------------------------
+
+describe("countdown section (D-068)", () => {
+  it("exists in the canonical section keys", () => {
+    expect(INVITATION_SECTION_KEYS).toContain("countdown");
+  });
+
+  it("defaults to disabled for every event type — existing events must not suddenly display it", () => {
+    for (const type of ALL_TYPES) {
+      expect(resolveEnabledSections(type, null).countdown).toBe(false);
+    }
+  });
+
+  it("is still Supported and Owner Toggleable for every event type (only the default differs)", () => {
+    for (const type of ALL_TYPES) {
+      expect(resolveSectionStates(type, null).countdown).toEqual({
+        supported: true,
+        defaultEnabled: false,
+        toggleable: true,
+        enabled: false,
+      });
+      expect(findNonToggleableSections(type, { countdown: false })).toEqual([]);
+    }
+  });
+
+  it("can be explicitly enabled via an owner override, independently of other sections", () => {
+    const enabled = resolveEnabledSections("WEDDING", { sections: { countdown: true } });
+    expect(enabled.countdown).toBe(true);
+    expect(enabled.hero).toBe(true);
+    expect(enabled.schedule).toBe(true);
+  });
+
+  it("enabling/disabling countdown does not affect schedule, and vice versa", () => {
+    expect(resolveEnabledSections("WEDDING", { sections: { schedule: false } }).countdown).toBe(
+      false,
+    );
+    expect(
+      resolveEnabledSections("WEDDING", { sections: { countdown: true, schedule: false } })
+        .schedule,
+    ).toBe(false);
+  });
+
+  it("participates in reordering like any other section", () => {
+    for (const type of ALL_TYPES) {
+      expect(getReorderableSectionKeys(type)).toContain("countdown");
+    }
+  });
+});
+
 // --- D-067: section reordering ---------------------------------------------
 
 describe("resolveSectionOrder", () => {
@@ -145,7 +195,17 @@ describe("resolveSectionOrder", () => {
   });
 
   it("Case B — a valid, complete persisted order is used as-is", () => {
-    const custom = ["gallery", "hero", "story", "identity", "schedule", "rsvp", "gift", "wishes"];
+    const custom = [
+      "gallery",
+      "hero",
+      "story",
+      "identity",
+      "countdown",
+      "schedule",
+      "rsvp",
+      "gift",
+      "wishes",
+    ];
     expect(resolveSectionOrder({ sectionOrder: custom })).toEqual(custom);
   });
 
@@ -170,7 +230,17 @@ describe("resolveSectionOrder", () => {
   });
 
   it("Case G — a disabled section's key still holds its position (order is independent of enabled state)", () => {
-    const custom = ["wishes", "hero", "gallery", "identity", "schedule", "rsvp", "gift", "story"];
+    const custom = [
+      "wishes",
+      "hero",
+      "gallery",
+      "identity",
+      "countdown",
+      "schedule",
+      "rsvp",
+      "gift",
+      "story",
+    ];
     // resolveSectionOrder only concerns position; enabled/disabled is resolveEnabledSections's job.
     expect(resolveSectionOrder({ sectionOrder: custom })).toEqual(custom);
   });
@@ -261,9 +331,10 @@ describe("resolveSectionMoveSwap — unsupported-section adjacency (D-067-FIX)",
   const reorderable = getReorderableSectionKeys("OTHER");
 
   it("Test 1 — moving a supported section up skips the hidden unsupported section", () => {
-    // schedule (index 2) moving up must land next to hero (index 0), not
-    // swap with the hidden identity at index 1.
-    const swap = resolveSectionMoveSwap(order, "schedule", "up", reorderable);
+    // countdown (index 2) sits immediately after the hidden identity
+    // (index 1). Moving it up must land next to hero (index 0), not swap
+    // with the hidden identity slot in between.
+    const swap = resolveSectionMoveSwap(order, "countdown", "up", reorderable);
     expect(swap).toEqual({ indexA: 2, indexB: 0 });
 
     const reordered = [...order];
@@ -273,9 +344,10 @@ describe("resolveSectionMoveSwap — unsupported-section adjacency (D-067-FIX)",
     ];
     // identity keeps its slot (still present, still index 1) — not deleted.
     expect(reordered).toEqual([
-      "schedule",
+      "countdown",
       "identity",
       "hero",
+      "schedule",
       "story",
       "gallery",
       "rsvp",
@@ -283,8 +355,9 @@ describe("resolveSectionMoveSwap — unsupported-section adjacency (D-067-FIX)",
       "wishes",
     ]);
     expect(reordered.filter((key) => reorderable.includes(key))).toEqual([
-      "schedule",
+      "countdown",
       "hero",
+      "schedule",
       "story",
       "gallery",
       "rsvp",
@@ -294,19 +367,20 @@ describe("resolveSectionMoveSwap — unsupported-section adjacency (D-067-FIX)",
   });
 
   it("Test 2 — moving a supported section down skips the hidden unsupported section", () => {
-    // Starting from the post-Test-1 order, schedule (index 0) moving down
+    // Starting from the post-Test-1 order, countdown (index 0) moving down
     // must land next to hero (index 2), skipping the hidden identity.
     const rearranged: InvitationSectionKey[] = [
-      "schedule",
+      "countdown",
       "identity",
       "hero",
+      "schedule",
       "story",
       "gallery",
       "rsvp",
       "gift",
       "wishes",
     ];
-    const swap = resolveSectionMoveSwap(rearranged, "schedule", "down", reorderable);
+    const swap = resolveSectionMoveSwap(rearranged, "countdown", "down", reorderable);
     expect(swap).toEqual({ indexA: 0, indexB: 2 });
 
     const reordered = [...rearranged];
@@ -331,7 +405,7 @@ describe("resolveSectionMoveSwap — unsupported-section adjacency (D-067-FIX)",
   });
 
   it("omitting reorderableKeys preserves the original literal-adjacent-index behavior", () => {
-    expect(resolveSectionMoveSwap(order, "schedule", "up")).toEqual({ indexA: 2, indexB: 1 });
+    expect(resolveSectionMoveSwap(order, "schedule", "up")).toEqual({ indexA: 3, indexB: 2 });
   });
 });
 

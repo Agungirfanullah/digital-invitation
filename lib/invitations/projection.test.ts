@@ -184,9 +184,11 @@ describe("toPublicInvitation — section configuration", () => {
     instructions: null,
   };
 
-  it("defaults every section to enabled when nothing is configured (backward compatible)", () => {
+  it("defaults every section to enabled when nothing is configured (backward compatible), except countdown (D-068, defaults off everywhere)", () => {
     const dto = toPublicInvitation(fakeEvent({ settings: null }), null);
-    expect(Object.values(dto.sections).every(Boolean)).toBe(true);
+    expect(dto.sections.countdown).toBe(false);
+    const { countdown: _countdown, ...rest } = dto.sections;
+    expect(Object.values(rest).every(Boolean)).toBe(true);
   });
 
   it("strips a disabled section's data from the public payload, not just the markup", () => {
