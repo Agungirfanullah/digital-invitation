@@ -716,7 +716,17 @@ Public invitations must not require authentication.
 
 # 17. Invitation Opening
 
-Part of MVP/launch scope (§45) — not a post-MVP feature.
+Part of MVP/launch scope (§45) — not a post-MVP feature. Locked as a
+product/architecture contract by `docs/DECISIONS.md` D-069 — the
+decisions below must not be reopened during implementation.
+
+**Architecture.** Opening is a structural, guest-facing gate that
+appears before the invitation's scrollable content — not an invitation
+section. It is not a member of `INVITATION_SECTION_KEYS` (§15), does
+not participate in `sectionOrder` (§15, D-066/D-067), and cannot be
+moved via Section Reordering. This mirrors how Closing (§15) is already
+structural rather than configurable — Opening is its mirror image at
+the start of the page instead of the end.
 
 Opening screen:
 
@@ -735,13 +745,65 @@ CTA:
 
 > Buka Undangan
 
-After opening:
+**Content dependency (D-064).** Opening follows the same
+section-dependency contract Hero already follows: identity-derived
+names are shown only when Identity (§15) is enabled, and the
+schedule-derived date is shown only when Schedule (§15) is enabled;
+otherwise Opening falls back to the invitation/event title, the same
+way Hero does. The personalized guest greeting is shown only when guest
+identity is already available through the existing invitation/guest
+token flow (§18) — no new guest-data requirement is introduced. Opening
+does **not** depend on Hero: whether Hero is enabled or disabled never
+controls whether Opening is shown — they are independent mechanisms.
 
-- Reveal invitation
-- Start optional music
-- Enable smooth scrolling
+After the CTA:
 
-Browser autoplay restrictions must be respected.
+- Opening is dismissed
+- Invitation content becomes visible
+- Normal invitation scrolling becomes available
+
+**Reveal transition.** A simple fade/opacity transition — lightweight,
+mobile-friendly, short, non-blocking. No curtain, page-flip, 3D, or
+other elaborate animation, and no new animation dependency. Respects
+`prefers-reduced-motion`: guests who prefer reduced motion get an
+immediate or near-immediate state change instead of the animated
+transition.
+
+**Reveal state.** Client-side and ephemeral for MVP — not persisted via
+database, Server Action, API endpoint, cookie, localStorage, or URL
+parameter. Refreshing the page shows Opening again; browser back/forward
+follow normal page navigation, since no persistent reveal state exists.
+Opening never writes to `GuestInvitation.openedAt`/`status` — those
+fields remain permanently unused per the existing, unrelated decision in
+`docs/DECISIONS.md` (D-052). Tracking whether a guest actually revealed
+their invitation is a separate, future decision, out of scope for D-069.
+
+**Public invitation vs. editor preview.** Opening is active on the
+public invitation whenever it is enabled. The editor's live preview
+bypasses Opening, so the owner can see and edit content without
+repeatedly clicking "Buka Undangan" on every preview re-render — this is
+an editor UX behavior only, and never disables Opening on the actual
+public invitation. Public and preview still render from the same
+invitation data through the same renderer (§39); only this one
+interaction differs, intentionally.
+
+**Configuration.** Opening is independently enable/disable-configurable
+as a structural feature, using the existing `Event.settings` JSON
+mechanism (`docs/DATABASE.md` §32) — no new Prisma field, table, or
+migration. New event configuration defaults to Opening enabled; existing
+invitations that predate this feature use that same default, with no
+data migration required.
+
+**Music.** Background music is a deferred, future capability — **out of
+scope for D-069 MVP**. D-069 introduces no audio upload, audio storage,
+music-selection UI, audio URL field, schema change, or
+autoplay/playback controls. If background music is built later, browser
+autoplay restrictions will need to be respected at that time; this is
+not a D-069 requirement.
+
+**Publish validation.** Opening introduces no new publish requirement —
+it does not modify identity, schedule, venue, or agenda-count rules for
+any event type (`docs/F4_CANONICAL_PUBLISH_CONTRACT.md`).
 
 ---
 

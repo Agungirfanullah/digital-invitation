@@ -1882,7 +1882,16 @@ explicitly-recorded decision changes them.
    schedule handling, display/units, past-state clamping, existing-
    events-default-OFF) is likewise settled — see `docs/PRD.md` §15.2
    and `docs/DECISIONS.md` D-068 — and must not be reopened as a
-   product decision during implementation.
+   product decision during implementation. Opening/Reveal's full
+   contract is also settled: a structural guest-facing gate outside
+   `INVITATION_SECTION_KEYS`/`sectionOrder` (not a section, not
+   reorderable), following Hero's D-064 dependency contract
+   independently of Hero itself, active on the public invitation but
+   bypassed in the editor's live preview, with ephemeral client-side
+   reveal state (no persistence, refresh re-shows it), a simple
+   reduced-motion-safe fade transition, and no music/audio in this
+   MVP — see `docs/PRD.md` §17 and `docs/DECISIONS.md` D-069 — and
+   must not be reopened as a product decision during implementation.
 8. Agents must not silently redefine product scope. If a document is
    ambiguous or silent on scope, that is a decision for the human, not an
    inference for the agent to make and proceed on.

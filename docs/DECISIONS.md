@@ -2385,3 +2385,96 @@ Countdown remains **not implemented** as of this decision — see
 from MVP scope. A future implementation must not reopen points 1–11
 above as product questions; only their technical execution remains
 open.
+
+---
+
+## D-069 — Invitation Opening / Reveal MVP Behavior Contract
+
+**Status:** APPROVED
+
+**Context:** D-065 already locked Opening/Reveal as MVP-required, but
+only as a documentation-scope decision — `docs/PRD.md` §17's original
+text specified content (title, names, date, personalized greeting, a
+"Buka Undangan" CTA) with no implementation-readiness detail. A
+follow-up implementation-readiness audit found six genuine, blocking
+product/architecture ambiguities: whether Opening must follow the D-064
+section-dependency contract; whether Opening is a normal reorderable
+section or a structural gate; whether the editor's live preview (which
+re-renders on every keystroke through the same `InvitationRenderer` the
+public route uses) should show or bypass Opening; whether reveal state
+needs persistence; what the reveal transition and reduced-motion
+behavior should be; and whether "optional music" (mentioned once, in
+passing, in §17) is required for D-069. This decision resolves all six.
+
+**Decision:**
+
+1. **Structural gate, not a section.** Opening is a structural,
+   guest-facing gate that renders before the invitation's scrollable
+   content. It is **not** added to `INVITATION_SECTION_KEYS`
+   (`lib/event-types/sections.ts`), does not participate in
+   `sectionOrder`, and cannot be moved via Section Reordering. This
+   mirrors the existing Closing precedent (structural, not
+   configurable) at the opposite end of the page.
+2. **D-064 dependency, independent of Hero.** Opening follows Hero's
+   existing dependency contract: identity-derived names require
+   `sections.identity` enabled (falling back to the invitation/event
+   title otherwise), and the schedule-derived date requires
+   `sections.schedule` enabled. Opening does **not** depend on Hero —
+   `sections.hero` never determines whether Opening renders. This
+   extends D-064's principle to a new mechanism; it does not weaken it.
+3. **Public active, preview bypassed.** The public invitation shows
+   Opening whenever it is enabled. The editor's live preview bypasses
+   it, so editing isn't gated behind a repeated "Buka Undangan" click on
+   every re-render. This is an editor-only UX behavior — it never
+   disables Opening on the actual public invitation, and both contexts
+   keep rendering the same invitation data through the same
+   `InvitationRenderer` (no second rendering architecture).
+4. **Ephemeral client state.** Reveal state is client-side and
+   ephemeral for MVP — no database write, Server Action, API endpoint,
+   cookie, localStorage, or URL parameter. A full page refresh shows
+   Opening again. `GuestInvitation.openedAt`/`status` remain untouched,
+   per the already-closed D-052 decision; "did the guest actually
+   reveal it" analytics is a separate, future decision, out of scope
+   here.
+5. **Simple fade, reduced-motion safe.** The MVP reveal transition is a
+   simple fade/opacity change — lightweight, mobile-friendly, short,
+   non-blocking, using existing CSS/React capabilities (no new animation
+   dependency). `prefers-reduced-motion` degrades it to an immediate or
+   near-immediate state change.
+6. **Music out of MVP.** Background music is deferred, not part of
+   D-069. No audio upload, storage, selection UI, URL field, schema
+   change, or playback controls are introduced. `docs/PRD.md` §17 is
+   updated so "optional music" reads as a future capability, not a
+   D-069 deliverable.
+
+**Compatibility:**
+
+- **D-064 (Hero):** extended, not weakened — Opening gets its own
+  independent application of the same dependency principle.
+- **D-067 (Section Reordering):** unaffected — Opening is outside
+  `INVITATION_SECTION_KEYS`/`sectionOrder` entirely, so nothing about
+  the reorder mechanism changes.
+- **D-068 (Countdown):** unaffected — Countdown's own Schedule
+  dependency is independent of Opening.
+- **F4 (Publish Contract):** unaffected — no identity, schedule, venue,
+  or agenda-count rule changes for any event type.
+- **D-052:** reaffirmed, not reopened — `GuestInvitation.openedAt`/
+  `status` remain permanently unused.
+
+**Rationale:** every point above resolves a specific ambiguity the
+readiness audit raised, using the smallest mechanism already established
+elsewhere in this codebase — `Event.settings` JSON for configuration
+(the same pattern D-062/D-064/D-067/D-068 all use), Closing as the
+structural precedent, and Hero's own dependency guard as the template
+for Opening's. Nothing here invents a new persistence model, a new
+rendering architecture, or a new analytics surface.
+
+**Impact:** documentation only (`docs/PRD.md` §17). No source code,
+schema, test, or dependency was changed by this decision. Opening/Reveal
+remains **not implemented** as of this decision — see `docs/STATUS.md`
+for current implementation status. A future implementation must not
+reopen decisions 1–6 above as product questions; only their technical
+execution remains open. Configuration storage (an `Event.settings` key,
+enable/disable, defaulting to enabled for new and existing events with
+no migration) is the one implementation detail explicitly pre-approved
+by this decision, not left open.
