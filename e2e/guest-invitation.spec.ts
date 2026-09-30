@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * Drives a real authenticated session through the actual /login page,
  * using the admin-provisioning pattern from Phase 4 (docs/DECISIONS.md
@@ -275,6 +277,7 @@ test.describe("guest invitation delivery", () => {
     // appears twice (the greeting and the RSVP section's own "Halo ..."
     // prompt — see e2e/invitation.spec.ts's equivalent fix from Phase 6).
     await page.goto(newPath);
+    await revealInvitation(page);
     await expect(page.getByText("Sinta Wulandari").first()).toBeVisible();
   });
 

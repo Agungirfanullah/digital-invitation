@@ -13,7 +13,8 @@ PostgreSQL + Supabase Storage + Vercel
 **Development Mode:** Autonomous Claude Code agentic execution
 
 **Current Phase:** Phase 0.9 — Generalize Invitation Engine for All 8 MVP
-Event Types (core engine done; onboarding/homepage/opening still open)
+Event Types (core engine done; homepage/opening still open; onboarding
+implemented — D-071)
 
 **Status (Phase 0.9):**
 
@@ -42,9 +43,14 @@ Event Types (core engine done; onboarding/homepage/opening still open)
   build, `prisma validate`; Vitest 82 files / 1126 tests; Playwright
   (event-types, editor, gallery, invitation, templates specs) against a
   production build.
-- **Not implemented yet (MVP scope, still open):** onboarding route
-  (PRD §10), launch homepage (PRD §7-8), invitation opening/reveal
-  (PRD §17).
+- **Not implemented yet (MVP scope, still open):** launch homepage
+  (PRD §7-8), invitation opening/reveal (PRD §17).
+- **Implemented (D-071):** onboarding route (PRD §10) — `/onboarding`
+  exists, is protected, and walks a first-event authenticated user
+  through type/name/date/identity/template into a real DRAFT event and
+  the existing editor. Immediate-session registration redirects to
+  `/onboarding`; login continues to land on `/dashboard` unchanged (see
+  `docs/DECISIONS.md` D-071).
 - **Open product decision:** per-type default on/off state of sections
   (currently all on — D-062).
 

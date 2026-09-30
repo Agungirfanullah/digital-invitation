@@ -1095,7 +1095,12 @@ Onboarding is a post-registration, authenticated flow that creates a
 draft `Event` immediately (`docs/PRD.md` §10) — it reuses the existing
 event-creation service layer (§9-10), not a separate one.
 
-**Implementation status:** not yet built. The homepage is still the
-original stub and there is no onboarding route; registration still
-redirects to `/dashboard`. Event creation itself (`/dashboard/events/new`)
-supports all eight types and leads into the type-aware editor (§37.1).
+**Implementation status:** the homepage is still the original stub. The
+onboarding route now exists (`/onboarding`, D-071): immediate-session
+registration redirects there; a protected, authenticated, eventless user
+is walked through type/name/date/identity/template into a real DRAFT
+event and the existing editor. Login is unchanged — it continues to land
+on `/dashboard` (see `docs/DECISIONS.md` D-071 for why the entry-point
+scope stops at registration). Event creation itself
+(`/dashboard/events/new`) supports all eight types and leads into the
+type-aware editor (§37.1).

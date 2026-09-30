@@ -2478,3 +2478,109 @@ execution remains open. Configuration storage (an `Event.settings` key,
 enable/disable, defaulting to enabled for new and existing events with
 no migration) is the one implementation detail explicitly pre-approved
 by this decision, not left open.
+
+---
+
+## D-071 — Onboarding MVP: First-Event Flow, Entry-Point Scope, and Orchestration Behavior
+
+**Status:** APPROVED — implemented
+
+**Context:** `docs/PRD.md` §10 specified the onboarding contract
+(greeting, five questions, immediate draft creation) but left the exact
+service orchestration, the slug/schedule engineering defaults, and the
+login-vs-registration entry-point scope undecided. This decision records
+what was actually built.
+
+**Decision:**
+
+1. **First-event creation flow.** `/onboarding` is the canonical
+   first-event entry point: a protected route (`PROTECTED_PATH_PREFIXES`
+   in `lib/supabase/route-protection.ts`, plus `requireAppUser()`) that
+   walks an authenticated, eventless user through five steps in order:
+   event type → event name → date → identity → template
+   (`components/onboarding/onboarding-wizard.tsx`). An authenticated user
+   who already owns/has access to an event is redirected straight to
+   `/dashboard` instead (`app/onboarding/page.tsx`).
+2. **Entry-point scope: registration only, not login.** `registerAction`
+   redirects an immediate-session registration to `/onboarding` — a
+   brand-new `User` row can't own an event yet, so no query is needed.
+   `loginAction` is **intentionally left unchanged**: it continues to
+   land every login on `/dashboard` (or an explicit `next` path), same as
+   before D-071. This was tested broader (a zero-event check added to
+   `loginAction`) and reverted after it broke 23 pre-existing E2E tests
+   whose shared `login()` helpers assert a `/dashboard` landing —
+   `/login` is the one entry point every returning user goes through, not
+   a safe place to add a first-event assumption. The existing dashboard
+   empty state (`app/dashboard/page.tsx`, unchanged) remains a valid,
+   working first-event path for any zero-event user who lands there
+   instead of `/onboarding` (e.g. an account that required email
+   confirmation before its first login).
+3. **No new domain model.** Onboarding introduces no new Prisma model,
+   column, enum, or migration. It orchestrates four pre-existing,
+   independently-tested services unchanged by this decision:
+   `createEventForUser()`, `createSchedule()`, `updateIdentityProfile()`,
+   `selectTemplate()`.
+4. **Draft-only; never publishes.** The created `Event` uses the schema
+   default `status: DRAFT`; onboarding never calls the publish action or
+   bypasses `docs/F4_CANONICAL_PUBLISH_CONTRACT.md`'s eligibility rules.
+   Publication remains an explicit, later, separate owner action.
+5. **Schedule default values.** The single "Date" question does not
+   collect a schedule title or start/end time, so `completeOnboarding()`
+   (`lib/onboarding/service.ts`) fills them with fixed engineering
+   defaults — title: the event type's existing `EVENT_TYPE_LABELS` value;
+   time range: **08:00–10:00**. All three remain fully editable
+   afterward in the existing schedule editor; this is not a new product
+   decision, per the D-070 Product Decision Resolution Audit's PD-01
+   finding.
+6. **Slug generation.** The onboarding UI never asks for a slug. The
+   server generates one from the event title via the existing
+   `slugify()` helper (`lib/events/slug.ts`, not duplicated), with a
+   bounded retry of up to 5 attempts appending a numeric suffix
+   (`-2`, `-3`, ...) on a `SlugConflictError` collision; exhausting the
+   budget surfaces the existing slug-conflict error rather than looping
+   indefinitely or creating an invalid slug.
+7. **Identity expansion, no parallel model.** The wizard collects only
+   the minimal name field(s) for the event type's identity family;
+   `completeOnboarding()` expands these into the existing, full
+   `IdentityProfileInput` shape (unset fields `null`) before calling
+   `updateIdentityProfile()`, which independently re-validates the family
+   against the stored event type. GENERIC (OTHER) collects no identity
+   fields at all, matching its existing no-profile contract.
+8. **Non-transactional orchestration.** `createEventForUser()` is the
+   point of no return: once it succeeds, a failure in the subsequent
+   schedule/identity/template calls is caught, logged
+   (`console.error`), and does not roll back the created event — the
+   resulting DRAFT is the same valid, resumable, editor-completable state
+   the pre-existing `/dashboard/events/new` flow already produces
+   immediately after creation, not a newly-invented broken state.
+
+**Compatibility:**
+
+- **D-064 (Hero):** unaffected — onboarding never reads or writes
+  `sections.hero`.
+- **D-067 (Section Reordering):** unaffected — onboarding never reads or
+  writes `Event.settings.sectionOrder`.
+- **D-068 (Countdown):** compatible — the canonical `EventSchedule` row
+  onboarding creates is the same kind Countdown already depends on;
+  onboarding does not toggle `sections.countdown`.
+- **D-069 (Opening/Reveal):** unaffected — onboarding never reads
+  Opening's `Event.settings.openingEnabled` key and does not touch
+  `GuestInvitation.openedAt`/`status`.
+- **F4 (Publish Contract):** unaffected — see Decision 4.
+- **D-052:** not materially relevant — onboarding never creates or
+  touches `Guest`/`GuestInvitation` rows.
+
+**Rationale:** every mechanism above reuses an existing, already-tested
+contract (event creation, schedule/identity/template services, slug
+utility, error types) rather than introducing a parallel one, per
+CLAUDE.md §23.2's "do not rebuild what already exists." The
+registration-only entry-point scope was chosen over a broader
+login-path check specifically because the broader version measurably
+broke existing, passing test coverage for no corresponding product
+requirement — `docs/PRD.md` §10 only specifies "after registration," not
+"on every login."
+
+**Impact:** implemented (`app/onboarding/page.tsx`,
+`components/onboarding/onboarding-wizard.tsx`, `lib/onboarding/`).
+`docs/STATUS.md` and `docs/ARCHITECTURE.md` §38 are updated to reflect
+this. No schema, migration, or dependency change was introduced.
