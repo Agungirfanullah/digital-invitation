@@ -9,6 +9,9 @@ const title = z
   .min(3, "Judul acara minimal 3 karakter.")
   .max(120, "Judul acara maksimal 120 karakter.");
 
+/** Re-exported so other domains (e.g. onboarding) validate an event title without duplicating the rule. */
+export const eventTitleSchema = title;
+
 export const slugSchema = z
   .string()
   .trim()

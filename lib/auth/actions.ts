@@ -75,7 +75,9 @@ export async function registerAction(
   }
 
   await ensureAppUser({ id: data.user.id, email, name });
-  redirect("/dashboard");
+  // A brand-new Prisma User row can't own any Event yet — no query needed
+  // to know this is a first-event user (D-071).
+  redirect("/onboarding");
 }
 
 export async function loginAction(
@@ -118,6 +120,19 @@ export async function loginAction(
         : data.user.email.split("@")[0],
   });
 
+  // Deliberately NOT routed to onboarding here (D-071 §8's own explicit
+  // regression boundary): unlike registerAction's immediate-session path,
+  // `/login` is the one auth entry point every returning user goes
+  // through, so it can't assume "no session at signup" implies "first
+  // event." Detecting "first login after email confirmation" here would
+  // require a `listEventsForUser` query on every single login and, more
+  // importantly, is exactly the login-path change the task calls out as a
+  // "critical regression boundary" — it is the shared entry point every
+  // existing authenticated E2E fixture already depends on landing on
+  // `/dashboard`. A user whose account required email confirmation before
+  // their very first login (registerAction's own redirect never ran for
+  // them) lands on the dashboard's existing empty state instead of
+  // onboarding — a known, narrow, non-blocking gap, not a silent one.
   redirect(isSafeRedirectPath(next) ? next : "/dashboard");
 }
 

@@ -3,7 +3,7 @@
  * proxy.ts so the matching logic can be unit tested without booting a
  * Supabase client.
  */
-export const PROTECTED_PATH_PREFIXES = ["/dashboard"] as const;
+export const PROTECTED_PATH_PREFIXES = ["/dashboard", "/onboarding"] as const;
 
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_PATH_PREFIXES.some(

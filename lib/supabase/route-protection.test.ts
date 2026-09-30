@@ -15,6 +15,14 @@ describe("isProtectedPath", () => {
     expect(isProtectedPath("/dashboardish")).toBe(false);
   });
 
+  it("protects onboarding (D-071)", () => {
+    expect(isProtectedPath("/onboarding")).toBe(true);
+  });
+
+  it("does not protect unrelated paths that merely share the onboarding prefix", () => {
+    expect(isProtectedPath("/onboardingish")).toBe(false);
+  });
+
   it("does not protect public routes", () => {
     expect(isProtectedPath("/")).toBe(false);
     expect(isProtectedPath("/login")).toBe(false);

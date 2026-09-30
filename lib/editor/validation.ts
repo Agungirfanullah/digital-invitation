@@ -201,7 +201,8 @@ export const templateSelectionSchema = z.object({
 
 export type TemplateSelectionInput = z.infer<typeof templateSelectionSchema>;
 
-const dateOnlySchema = z
+/** Exported so other domains (e.g. onboarding) validate a date-only string without duplicating the rule. */
+export const dateOnlySchema = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Tanggal tidak valid.");
