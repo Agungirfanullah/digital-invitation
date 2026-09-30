@@ -27,6 +27,7 @@ export interface PreviewSource {
   identity: IdentityProfileData;
   sectionOverrides: SectionOverrides;
   sectionOrder: InvitationSectionKey[] | null;
+  openingEnabled: boolean;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;
@@ -67,6 +68,7 @@ export function buildPreviewInvitation(source: PreviewSource): PublicInvitation 
     identity: buildPublicIdentity(source.type, source.identity),
     sections: resolveEnabledSections(source.type, { sections: source.sectionOverrides }),
     sectionOrder: resolveSectionOrder({ sectionOrder: source.sectionOrder }),
+    openingEnabled: source.openingEnabled,
     schedules: source.schedules,
     loveStory: source.loveStory,
     galleries: source.gallery ? [source.gallery] : [],

@@ -5,6 +5,8 @@ import { config as loadEnv } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * The Playwright test runner process doesn't load .env.local the way the
  * `next dev` server it drives does (see vitest.setup.ts for the same
@@ -115,17 +117,24 @@ test.describe("public invitation", () => {
 
   test("renders a published event's real data", async ({ page }) => {
     await page.goto(`/invite/${fixtures.publishedEvent.slug}`);
-    await expect(page.getByText("Ayu & Budi")).toBeVisible();
-    await expect(page.getByText("Pernikahan", { exact: true })).toBeVisible();
+    await revealInvitation(page);
+    // Scoped to the Hero section specifically — the Opening gate (D-069)
+    // shows the same couple name and event-type label, which would
+    // otherwise collide with a page-wide text query.
+    const hero = page.getByLabel("Sampul undangan");
+    await expect(hero.getByText("Ayu & Budi")).toBeVisible();
+    await expect(hero.getByText("Pernikahan", { exact: true })).toBeVisible();
   });
 
   test("shows a generic greeting with no personalization token", async ({ page }) => {
     await page.goto(`/invite/${fixtures.publishedEvent.slug}`);
+    await revealInvitation(page);
     await expect(page.getByText("Bapak/Ibu/Saudara/i Tamu Undangan")).toBeVisible();
   });
 
   test("personalizes the greeting for a valid guest token", async ({ page }) => {
     await page.goto(`/invite/${fixtures.publishedEvent.slug}?to=${fixtures.guestInvitation.token}`);
+    await revealInvitation(page);
     // Since Phase 6, a personalized guest's name legitimately appears twice
     // on the page (the greeting and the RSVP section's own "Halo ..."
     // prompt) — .first() keeps this assertion about the greeting specifically.
@@ -136,6 +145,7 @@ test.describe("public invitation", () => {
     page,
   }) => {
     await page.goto(`/invite/${fixtures.publishedEvent.slug}?to=${fixtures.foreignToken.token}`);
+    await revealInvitation(page);
     await expect(page.getByText("Bapak/Ibu/Saudara/i Tamu Undangan")).toBeVisible();
     await expect(page.getByText("Foreign Guest")).toHaveCount(0);
   });
@@ -154,5 +164,31 @@ test.describe("public invitation", () => {
     await page.goto(`/invite/${fixtures.publishedEvent.slug}`);
     await expect(page.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Keluar" })).toHaveCount(0);
+  });
+
+  test("Opening/Reveal: gate hides content until the CTA is clicked, then the page scrolls normally", async ({
+    page,
+  }) => {
+    await page.goto(`/invite/${fixtures.publishedEvent.slug}`);
+
+    const gate = page.getByRole("dialog");
+    const hero = page.getByLabel("Sampul undangan");
+    await expect(gate).toBeVisible();
+    await expect(gate.getByRole("button", { name: "Buka Undangan" })).toBeVisible();
+    // The Hero section's own heading (same text as the gate's) exists in
+    // the DOM but is not yet visible/interactive.
+    await expect(hero.getByText("Ayu & Budi")).toBeHidden();
+
+    await revealInvitation(page);
+
+    await expect(gate).toBeHidden();
+    await expect(hero.getByText("Ayu & Budi")).toBeVisible();
+    // The page can now scroll — the gate's scroll lock has been released.
+    const scrollableHeight = await page.evaluate(
+      () => document.documentElement.scrollHeight - window.innerHeight,
+    );
+    expect(scrollableHeight).toBeGreaterThan(0);
+    await page.mouse.wheel(0, 300);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
   });
 });

@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * The gallery editor is authenticated dashboard functionality — real
  * login, admin-provisioned (docs/DECISIONS.md D-022), same pattern as
@@ -169,6 +171,7 @@ test.describe("gallery", () => {
 
     // The public invitation shows both, in the new order.
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByRole("heading", { name: "Galeri", exact: true })).toBeVisible();
 
     // Opens the in-page lightbox rather than a new tab.
@@ -189,6 +192,7 @@ test.describe("gallery", () => {
 
     // Gone from the public invitation too.
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByText("Foto pertama")).toHaveCount(0);
   });
 
@@ -240,6 +244,7 @@ test.describe("gallery", () => {
     const event = await createTestEvent(owner.userId, "PUBLISHED");
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByRole("heading", { name: "Galeri", exact: true })).toHaveCount(0);
   });
 });

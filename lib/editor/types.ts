@@ -93,6 +93,8 @@ export interface EditorEventData {
   sectionOverrides: SectionOverrides;
   /** Raw persisted section order, or `null` if none is stored yet; resolve with `resolveSectionOrder()`. */
   sectionOrder: InvitationSectionKey[] | null;
+  /** Whether the Opening/Reveal gate is enabled (docs/PRD.md §17, D-069); resolve with `resolveOpeningEnabled()`. */
+  openingEnabled: boolean;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;

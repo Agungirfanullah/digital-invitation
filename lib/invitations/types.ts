@@ -141,6 +141,8 @@ export interface PublicInvitation {
   sections: InvitationSections;
   /** Display order of the configurable sections (docs/PRD.md §15 "Reorder") — Closing is never included; it always renders last. */
   sectionOrder: InvitationSectionKey[];
+  /** Whether the Opening/Reveal gate is active (docs/PRD.md §17, D-069). Structural — not a member of `sections`/`sectionOrder`. */
+  openingEnabled: boolean;
   schedules: PublicSchedule[];
   loveStory: PublicLoveStory | null;
   galleries: PublicGallery[];

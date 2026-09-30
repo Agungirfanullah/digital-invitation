@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * The authenticated RSVP dashboard, unlike e2e/rsvp.spec.ts (the public
  * guest-facing flow), requires a real login — same admin-provisioning
@@ -114,6 +116,7 @@ test.describe("RSVP dashboard", () => {
 
     // The real Phase 6 guest-facing flow — proves it hasn't regressed.
     await page.goto(`/invite/${event.slug}?to=${invitation.token}`);
+    await revealInvitation(page);
     await page.getByRole("radio", { name: "Ya, saya akan hadir" }).check();
     await page.getByLabel("Jumlah tamu yang hadir").fill("2");
     await page.getByRole("button", { name: "Kirim RSVP" }).click();

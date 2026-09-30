@@ -24,6 +24,7 @@ export function buildMinimalInvitation(
     identity: null,
     sections: resolveEnabledSections(overrides.type ?? "WEDDING", null),
     sectionOrder: resolveSectionOrder(null),
+    openingEnabled: true,
     schedules: [],
     loveStory: null,
     galleries: [],

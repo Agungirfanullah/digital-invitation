@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * Unlike e2e/auth.spec.ts and e2e/events.spec.ts, this suite drives a
  * REAL authenticated session through the actual /login page — no cookie
@@ -148,7 +150,10 @@ test.describe("invitation editor", () => {
     await expect(page.getByText("Perubahan tersimpan")).toBeVisible({ timeout: 10_000 });
 
     await page.goto(`/invite/${event.slug}`);
-    await expect(page.getByText("Ayu Ganti & Budi")).toBeVisible();
+    await revealInvitation(page);
+    // Scoped to the Hero section — the Opening gate (D-069) shows the same
+    // name and would otherwise collide with a page-wide text query.
+    await expect(page.getByLabel("Sampul undangan").getByText("Ayu Ganti & Budi")).toBeVisible();
   });
 
   test("a VIEWER-role member cannot open the editor", async ({ page }) => {

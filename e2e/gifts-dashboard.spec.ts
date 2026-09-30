@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * The authenticated gift-method dashboard requires a real login — same
  * admin-provisioning pattern as e2e/guests.spec.ts and
@@ -194,6 +196,7 @@ test.describe("gift method dashboard", () => {
     });
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
 
     await expect(page.getByRole("heading", { name: "Kirim Hadiah" })).toBeVisible();
     await expect(page.getByText("Bank Contoh")).toBeVisible();
@@ -208,6 +211,7 @@ test.describe("gift method dashboard", () => {
     const event = await createTestEvent(owner.userId, "PUBLISHED");
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByRole("heading", { name: "Kirim Hadiah" })).toHaveCount(0);
   });
 
@@ -225,6 +229,7 @@ test.describe("gift method dashboard", () => {
     });
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByRole("heading", { name: "Kirim Hadiah" })).toHaveCount(0);
     await expect(page.getByText("Bank Nonaktif")).toHaveCount(0);
   });

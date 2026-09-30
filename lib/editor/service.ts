@@ -18,6 +18,7 @@ import {
   type SectionOverrides,
 } from "@/lib/event-types/sections";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
+import { resolveOpeningEnabled } from "@/lib/invitations/opening";
 import {
   EventNotFoundError,
   IdentityFamilyMismatchError,
@@ -164,6 +165,7 @@ export async function getEditorEvent(eventId: string, userId: string): Promise<E
     identity: toIdentityProfileData(event),
     sectionOverrides: parseSectionOverrides(event.settings),
     sectionOrder: parseSectionOrder(event.settings),
+    openingEnabled: resolveOpeningEnabled(event.settings),
     theme: event.theme
       ? {
           primaryColor: event.theme.primaryColor,

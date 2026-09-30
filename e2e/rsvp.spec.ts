@@ -5,6 +5,8 @@ import { config as loadEnv } from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * The guest-facing RSVP flow is public and unauthenticated (the guest
  * never logs in — their identity comes entirely from the `?to=` token),
@@ -100,6 +102,7 @@ test.describe("RSVP", () => {
 
   test("a non-personalized invitation cannot submit a guest-specific RSVP", async ({ page }) => {
     await page.goto(`/invite/${fixtures.event.slug}`);
+    await revealInvitation(page);
     await expect(
       page.getByText("RSVP hanya dapat diisi melalui tautan undangan pribadi Anda."),
     ).toBeVisible();
@@ -110,6 +113,7 @@ test.describe("RSVP", () => {
     page,
   }) => {
     await page.goto(`/invite/${fixtures.event.slug}?to=${fixtures.foreignInvitation.token}`);
+    await revealInvitation(page);
     await expect(
       page.getByText("RSVP hanya dapat diisi melalui tautan undangan pribadi Anda."),
     ).toBeVisible();
@@ -122,6 +126,7 @@ test.describe("RSVP", () => {
   // the same guest race each other.
   test("a personalized guest can submit, reload, and update their RSVP", async ({ page }) => {
     await page.goto(`/invite/${fixtures.event.slug}?to=${fixtures.invitation.token}`);
+    await revealInvitation(page);
 
     await expect(page.getByRole("heading", { name: "Apakah Anda akan hadir?" })).toBeVisible();
     await expect(page.getByText("Halo Dewi Kartika")).toBeVisible();
@@ -134,6 +139,7 @@ test.describe("RSVP", () => {
 
     // Persisted server-side, not just local state.
     await page.reload();
+    await revealInvitation(page);
     await expect(page.getByRole("radio", { name: "Ya, saya akan hadir" })).toBeChecked();
     await expect(page.getByLabel("Jumlah tamu yang hadir")).toHaveValue("2");
 
@@ -144,6 +150,7 @@ test.describe("RSVP", () => {
     await expect(page.getByLabel("Jumlah tamu yang hadir")).toHaveCount(0);
 
     await page.reload();
+    await revealInvitation(page);
     await expect(page.getByRole("radio", { name: "Maaf, saya tidak dapat hadir" })).toBeChecked();
   });
 });

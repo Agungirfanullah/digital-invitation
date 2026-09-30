@@ -17,6 +17,7 @@ function baseSource(overrides: Partial<PreviewSource> = {}): PreviewSource {
     identity: emptyIdentityFor("WEDDING"),
     sectionOverrides: {},
     sectionOrder: null,
+    openingEnabled: true,
     theme: null,
     schedules: [],
     loveStory: null,

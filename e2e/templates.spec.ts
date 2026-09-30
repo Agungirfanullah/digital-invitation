@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test, type Page } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * Phase 3 — Template System. Covers the two things unit tests can't:
  * (a) the real editor UI can select each new template and it persists,
@@ -190,8 +192,12 @@ test.describe("template system", () => {
 
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(`/invite/${event.slug}?to=${invitation.token}`);
+      await revealInvitation(page);
 
-      await expect(page.getByText("Ayu & Budi")).toBeVisible();
+      // Scoped past the Hero section — the Opening gate (D-069) shows the
+      // same couple name and would otherwise collide with a page-wide
+      // text query.
+      await expect(page.getByLabel("Sampul undangan").getByText("Ayu & Budi")).toBeVisible();
       await expect(page.getByText("Citra Dewi").first()).toBeVisible();
       await expect(page.getByText("Akad Nikah")).toBeVisible();
       await expect(page.getByText("Gedung Serbaguna")).toBeVisible();

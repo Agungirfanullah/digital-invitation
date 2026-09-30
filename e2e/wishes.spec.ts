@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * The guest-facing wish submission flow is public/unauthenticated (Prisma
  * fixtures, no login needed — same pattern as e2e/rsvp.spec.ts), while
@@ -118,6 +120,7 @@ test.describe("wishes", () => {
     const event = await createTestEvent(owner.id);
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(
       page.getByText("Ucapan hanya dapat dikirim melalui tautan undangan pribadi Anda."),
     ).toBeVisible();
@@ -140,6 +143,7 @@ test.describe("wishes", () => {
     const { invitation: foreignInvitation } = await createTestGuest(otherEvent.id, "Tamu Asing");
 
     await page.goto(`/invite/${event.slug}?to=${foreignInvitation.token}`);
+    await revealInvitation(page);
     await expect(
       page.getByText("Ucapan hanya dapat dikirim melalui tautan undangan pribadi Anda."),
     ).toBeVisible();
@@ -160,6 +164,7 @@ test.describe("wishes", () => {
 
     // The real guest-facing flow — no login for this half.
     await page.goto(`/invite/${event.slug}?to=${invitation.token}`);
+    await revealInvitation(page);
     await expect(page.getByRole("heading", { name: "Kirim Ucapan & Doa" })).toBeVisible();
     await page.getByLabel("Nama").fill("Dewi Kartika");
     // exact: true — otherwise this also matches the section's own
@@ -170,6 +175,7 @@ test.describe("wishes", () => {
 
     // Not visible publicly yet — still PENDING.
     await page.reload();
+    await revealInvitation(page);
     await expect(page.getByText("Selamat menempuh hidup baru!")).toHaveCount(0);
 
     await login(page, owner.email);
@@ -185,6 +191,7 @@ test.describe("wishes", () => {
     await expect(wishRow.getByText("Disetujui", { exact: true })).toBeVisible();
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByText("Selamat menempuh hidup baru!")).toBeVisible();
 
     await page.goto(`/dashboard/events/${event.id}/wishes`);
@@ -192,6 +199,7 @@ test.describe("wishes", () => {
     await expect(wishRow.getByText("Disembunyikan", { exact: true })).toBeVisible();
 
     await page.goto(`/invite/${event.slug}`);
+    await revealInvitation(page);
     await expect(page.getByText("Selamat menempuh hidup baru!")).toHaveCount(0);
   });
 

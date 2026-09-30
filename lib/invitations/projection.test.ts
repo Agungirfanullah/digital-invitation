@@ -150,6 +150,7 @@ describe("toPublicInvitation — identity", () => {
         identity: toIdentityProfileData(record),
         sectionOverrides: {},
         sectionOrder: null,
+        openingEnabled: true,
         theme: null,
         schedules: [],
         loveStory: null,

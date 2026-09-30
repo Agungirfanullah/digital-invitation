@@ -71,6 +71,7 @@ export function EditorShell({
         identity,
         sectionOverrides,
         sectionOrder,
+        openingEnabled: initialEvent.openingEnabled,
         theme,
         schedules,
         loveStory,

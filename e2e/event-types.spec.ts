@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient, type EventType } from "@prisma/client";
 import { expect, test, type Page } from "@playwright/test";
 
+import { revealInvitation } from "./reveal-invitation";
+
 /**
  * All eight MVP event types through the real stack (Phase 0.9): public
  * rendering from each type's own identity table, and the type-aware editor
@@ -150,9 +152,14 @@ test.describe("all eight event types", () => {
     for (const type of Object.keys(EXPECTED) as EventType[]) {
       const event = await createPublishedEvent(owner.userId, type);
       await page.goto(`/invite/${event.slug}`);
+      await revealInvitation(page);
 
+      // Scoped past the Hero section — the Opening gate (D-069) shows the
+      // same heading text and would otherwise collide with a page-wide
+      // role query for some types.
+      const hero = page.getByLabel("Sampul undangan");
       await expect(
-        page.getByRole("heading", { level: 1, name: EXPECTED[type].hero }),
+        hero.getByRole("heading", { level: 1, name: EXPECTED[type].hero }),
       ).toBeVisible();
       const identity = EXPECTED[type].identity;
       if (identity) {

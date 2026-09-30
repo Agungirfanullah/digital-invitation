@@ -6,6 +6,10 @@ import { InvitationRenderer } from "@/components/invitation/invitation-renderer"
  * `/invite/[slug]` route uses (see lib/editor/preview.ts for how the
  * `invitation` prop is assembled from live, possibly-unsaved editor
  * state) — there is no separate preview-only template.
+ *
+ * `bypassOpening` (docs/PRD.md §17, D-069): the owner must see and edit
+ * content immediately, not click "Buka Undangan" on every keystroke-
+ * triggered re-render — this never affects the actual public invitation.
  */
 export function EditorPreview({ invitation }: { invitation: PublicInvitation }) {
   return (
@@ -14,7 +18,7 @@ export function EditorPreview({ invitation }: { invitation: PublicInvitation }) 
         Pratinjau langsung — perubahan yang belum tersimpan tetap tampil di sini.
       </div>
       <div className="mx-auto max-w-sm origin-top">
-        <InvitationRenderer invitation={invitation} />
+        <InvitationRenderer invitation={invitation} bypassOpening />
       </div>
     </div>
   );

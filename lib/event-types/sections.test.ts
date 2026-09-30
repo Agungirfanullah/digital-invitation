@@ -428,3 +428,22 @@ describe("getReorderableSectionKeys", () => {
     );
   });
 });
+
+// --- D-069: Opening/Reveal is structural, not a section ---------------------
+
+describe("Opening/Reveal is structural (D-069)", () => {
+  it("is never a member of INVITATION_SECTION_KEYS", () => {
+    expect(INVITATION_SECTION_KEYS).not.toContain("opening");
+  });
+
+  it("is never a reorderable key for any event type", () => {
+    for (const type of ALL_TYPES) {
+      expect(getReorderableSectionKeys(type)).not.toContain("opening");
+    }
+  });
+
+  it("cannot be resolved as a section state (not a valid InvitationSectionKey)", () => {
+    const states = resolveSectionStates("WEDDING", null);
+    expect(Object.keys(states)).not.toContain("opening");
+  });
+});
