@@ -30,7 +30,7 @@ test.describe("authentication foundation", () => {
 
   test("homepage links to register and login", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Buat Akun" }).click();
+    await page.getByRole("link", { name: "Buat Undangan" }).first().click();
     await expect(page).toHaveURL(/\/register$/);
   });
 });
