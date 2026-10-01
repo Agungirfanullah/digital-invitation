@@ -13,11 +13,14 @@ import {
   updateEventForUser,
 } from "@/lib/events/service";
 import { EventNotFoundError, mapEventErrorMessage } from "@/lib/events/errors";
+import { checkEventMutationRateLimit } from "@/lib/events/rate-limit";
 
 export interface EventFormState {
   error?: string;
   fieldErrors?: Record<string, string[]>;
 }
+
+const RATE_LIMIT_MESSAGE = "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.";
 
 function parseEventFormData(formData: FormData) {
   return {
@@ -38,6 +41,10 @@ export async function createEventAction(
   formData: FormData,
 ): Promise<EventFormState> {
   const user = await requireAppUser();
+
+  if (!checkEventMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
 
   const parsed = createEventSchema.safeParse(parseEventFormData(formData));
   if (!parsed.success) {
@@ -66,6 +73,10 @@ export async function updateEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
+  if (!checkEventMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
+
   const parsed = updateEventSchema.safeParse(parseEventFormData(formData));
   if (!parsed.success) {
     return {
@@ -93,6 +104,10 @@ export async function publishEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
+  if (!checkEventMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
+
   try {
     await publishEventForUser(eventId, user.id);
   } catch (error) {
@@ -112,6 +127,10 @@ export async function unpublishEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
+  if (!checkEventMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
+
   try {
     await unpublishEventForUser(eventId, user.id);
   } catch (error) {
@@ -130,6 +149,10 @@ export async function deleteEventAction(
   _formData: FormData,
 ): Promise<EventFormState> {
   const user = await requireAppUser();
+
+  if (!checkEventMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
 
   try {
     await deleteEventForUser(eventId, user.id);

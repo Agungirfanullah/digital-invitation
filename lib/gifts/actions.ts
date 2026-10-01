@@ -15,11 +15,14 @@ import {
   GiftMethodNotFoundError,
   mapGiftErrorMessage,
 } from "@/lib/gifts/errors";
+import { checkGiftMutationRateLimit } from "@/lib/gifts/rate-limit";
 
 export interface GiftMethodFormState {
   error?: string;
   fieldErrors?: Record<string, string[]>;
 }
+
+const RATE_LIMIT_MESSAGE = "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.";
 
 function parseGiftMethodFormData(formData: FormData) {
   return {
@@ -39,6 +42,10 @@ export async function createGiftMethodAction(
   formData: FormData,
 ): Promise<GiftMethodFormState> {
   const user = await requireAppUser();
+
+  if (!checkGiftMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
 
   const parsed = giftMethodInputSchema.safeParse(parseGiftMethodFormData(formData));
   if (!parsed.success) {
@@ -66,6 +73,10 @@ export async function updateGiftMethodAction(
   formData: FormData,
 ): Promise<GiftMethodFormState> {
   const user = await requireAppUser();
+
+  if (!checkGiftMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
 
   const parsed = giftMethodInputSchema.safeParse(parseGiftMethodFormData(formData));
   if (!parsed.success) {
@@ -95,6 +106,10 @@ export async function deleteGiftMethodAction(
   _formData: FormData,
 ): Promise<GiftMethodFormState> {
   const user = await requireAppUser();
+
+  if (!checkGiftMutationRateLimit(user.id)) {
+    return { error: RATE_LIMIT_MESSAGE };
+  }
 
   try {
     await deleteGiftMethodForUser(eventId, user.id, giftMethodId);

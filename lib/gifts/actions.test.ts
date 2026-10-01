@@ -28,17 +28,28 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
+import { resetRateLimit } from "@/lib/rate-limit";
 import {
   createGiftMethodAction,
   deleteGiftMethodAction,
   updateGiftMethodAction,
 } from "@/lib/gifts/actions";
 
+// D-077: these actions share the real, un-mocked rate limiter
+// (checkGiftMutationRateLimit → consumeRateLimit), keyed by the mocked
+// user id — reset before each test so one test's calls never count
+// toward another's limit.
+function resetGiftMutationRateLimit(userId = "user-1"): void {
+  resetRateLimit(`gift-mutation:${userId}`);
+}
+
 beforeEach(() => {
   requireAppUserMock.mockReset().mockResolvedValue({ id: "user-1" });
   createGiftMethodForUserMock.mockReset();
   updateGiftMethodForUserMock.mockReset();
   deleteGiftMethodForUserMock.mockReset();
+  resetGiftMutationRateLimit("user-1");
+  resetGiftMutationRateLimit("user-2");
 });
 
 function giftMethodFormData(overrides: Record<string, string> = {}): FormData {
@@ -124,5 +135,56 @@ describe("deleteGiftMethodAction", () => {
     await expect(deleteGiftMethodAction("event-1", "gift-1", {}, new FormData())).rejects.toThrow(
       "NEXT_NOT_FOUND",
     );
+  });
+});
+
+describe("gift mutation rate limiting (D-077)", () => {
+  it("rejects the 31st request within the window, without calling the service, even with otherwise-valid input", async () => {
+    for (let i = 0; i < 30; i += 1) {
+      await createGiftMethodAction("event-1", {}, giftMethodFormData({ accountNumber: "" }));
+    }
+
+    const result = await createGiftMethodAction("event-1", {}, giftMethodFormData());
+
+    expect(result).toEqual({
+      error: "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.",
+    });
+    expect(result.fieldErrors).toBeUndefined();
+    expect(createGiftMethodForUserMock).not.toHaveBeenCalled();
+  });
+
+  it("does not reject a request before the limit is reached", async () => {
+    for (let i = 0; i < 29; i += 1) {
+      await createGiftMethodAction("event-1", {}, giftMethodFormData({ accountNumber: "" }));
+    }
+
+    const result = await createGiftMethodAction(
+      "event-1",
+      {},
+      giftMethodFormData({ accountNumber: "" }),
+    );
+
+    expect(result.fieldErrors?.accountNumber).toBeDefined();
+    expect(result.error).toBe("Periksa kembali data yang kamu masukkan.");
+  });
+
+  it("isolates rate limits per authenticated user — exhausting user-1's limit never affects user-2", async () => {
+    for (let i = 0; i < 30; i += 1) {
+      await createGiftMethodAction("event-1", {}, giftMethodFormData({ accountNumber: "" }));
+    }
+    const user1Result = await createGiftMethodAction("event-1", {}, giftMethodFormData());
+    expect(user1Result.error).toBe(
+      "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.",
+    );
+
+    requireAppUserMock.mockResolvedValue({ id: "user-2" });
+    const user2Result = await createGiftMethodAction(
+      "event-1",
+      {},
+      giftMethodFormData({ accountNumber: "" }),
+    );
+
+    expect(user2Result.fieldErrors?.accountNumber).toBeDefined();
+    expect(user2Result.error).toBe("Periksa kembali data yang kamu masukkan.");
   });
 });
