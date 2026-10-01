@@ -2,6 +2,10 @@ import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
 import type { InvitationSectionKey } from "@/lib/event-types/sections";
 import { CountdownSection } from "@/components/invitation/sections/countdown-section";
+import {
+  CoverPhotoLayer,
+  coverPhotoTextStyle,
+} from "@/components/invitation/sections/cover-photo-background";
 import type {
   PublicGallery,
   PublicGiftMethod,
@@ -52,28 +56,31 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {
   const heroDate = getHeroScheduleDate(invitation);
+  const coverPhotoUrl = invitation.theme.backgroundImageUrl;
 
   return (
     <section
       aria-label="Sampul undangan"
-      className="flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-20 text-center"
+      className="relative flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-20 text-center"
+      style={coverPhotoTextStyle(coverPhotoUrl)}
     >
-      <p className="text-xs font-medium tracking-[0.5em] text-[color:var(--ii-accent)] uppercase">
+      <CoverPhotoLayer imageUrl={coverPhotoUrl} />
+      <p className="relative text-xs font-medium tracking-[0.5em] text-[color:var(--ii-accent)] uppercase">
         {EVENT_TYPE_LABELS[invitation.type]}
       </p>
       <h1
-        className="max-w-2xl text-4xl font-medium tracking-wide text-balance text-[color:var(--ii-primary)] sm:text-6xl"
+        className="relative max-w-2xl text-4xl font-medium tracking-wide text-balance text-[color:var(--ii-primary)] sm:text-6xl"
         style={{ fontFamily: "var(--ii-heading-font)" }}
       >
         {getHeroHeading(invitation)}
       </h1>
-      <HairlineRule className="w-16" />
+      <HairlineRule className="relative w-16" />
       {heroDate && (
-        <p className="text-sm tracking-widest text-[color:var(--ii-text)] uppercase">
+        <p className="relative text-sm tracking-widest text-[color:var(--ii-text)] uppercase">
           {formatIndonesianDate(heroDate)}
         </p>
       )}
-      <div className="mt-8 space-y-1">
+      <div className="relative mt-8 space-y-1">
         <p className="text-xs tracking-[0.3em] text-[color:var(--ii-text)] uppercase opacity-60">
           Kepada Yth.
         </p>

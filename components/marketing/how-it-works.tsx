@@ -35,11 +35,11 @@ export function HowItWorks() {
         </h2>
         <ol className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((step, index) => (
-            <li key={step.title} className="bg-background rounded-lg border p-5">
-              <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
-                Langkah {index + 1}
-              </p>
-              <p className="mt-1 font-medium">{step.title}</p>
+            <li key={step.title} className="bg-background rounded-xl border p-5">
+              <div className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-full text-sm font-semibold">
+                {index + 1}
+              </div>
+              <p className="mt-4 font-medium">{step.title}</p>
               <p className="text-muted-foreground mt-1 text-sm">{step.description}</p>
             </li>
           ))}

@@ -34,14 +34,25 @@ export function Faq() {
         >
           Pertanyaan yang Sering Diajukan
         </h2>
-        <dl className="mt-10 space-y-6">
+        <div className="mt-10 space-y-3">
           {FAQ_ITEMS.map((item) => (
-            <div key={item.question} className="bg-background rounded-lg border p-5">
-              <dt className="font-medium">{item.question}</dt>
-              <dd className="text-muted-foreground mt-1 text-sm">{item.answer}</dd>
-            </div>
+            <details
+              key={item.question}
+              className="group bg-background rounded-xl border p-5 open:pb-5"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium marker:content-none">
+                {item.question}
+                <span
+                  aria-hidden
+                  className="text-muted-foreground shrink-0 text-lg transition-transform group-open:rotate-45"
+                >
+                  +
+                </span>
+              </summary>
+              <p className="text-muted-foreground mt-3 text-sm">{item.answer}</p>
+            </details>
           ))}
-        </dl>
+        </div>
       </div>
     </section>
   );

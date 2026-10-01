@@ -31,6 +31,15 @@ export function buildGalleryObjectPath(eventId: string, extension: string): stri
   return `events/${eventId}/gallery/${fileName}`;
 }
 
+/** Same shape as `buildGalleryObjectPath`, under its own `cover/` prefix — the Theme form's cover/background photo, not a `GalleryItem`. */
+export function buildCoverPhotoObjectPath(eventId: string, extension: string): string {
+  assertSafePathSegment(eventId, "eventId");
+  assertSafePathSegment(extension, "extension");
+
+  const fileName = `${randomBytes(16).toString("hex")}.${extension}`;
+  return `events/${eventId}/cover/${fileName}`;
+}
+
 /**
  * The inverse of uploading: given a stored `GalleryItem.url`, recovers the
  * bucket-relative object path — but only when the URL is genuinely one of

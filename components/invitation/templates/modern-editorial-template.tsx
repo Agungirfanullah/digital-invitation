@@ -2,6 +2,10 @@ import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
 import type { InvitationSectionKey } from "@/lib/event-types/sections";
 import { CountdownSection } from "@/components/invitation/sections/countdown-section";
+import {
+  CoverPhotoLayer,
+  coverPhotoTextStyle,
+} from "@/components/invitation/sections/cover-photo-background";
 import type {
   PublicGallery,
   PublicGiftMethod,
@@ -49,21 +53,28 @@ function Rule() {
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {
   const heroDate = getHeroScheduleDate(invitation);
+  const coverPhotoUrl = invitation.theme.backgroundImageUrl;
 
   return (
     <section
       aria-label="Sampul undangan"
-      className="mx-auto flex min-h-[85vh] max-w-5xl flex-col justify-center gap-6 px-6 py-20 sm:px-10"
+      className="relative mx-auto flex min-h-[85vh] max-w-5xl flex-col justify-center gap-6 px-6 py-20 sm:px-10"
+      style={coverPhotoTextStyle(coverPhotoUrl)}
     >
-      <Eyebrow>{EVENT_TYPE_LABELS[invitation.type]}</Eyebrow>
+      <CoverPhotoLayer imageUrl={coverPhotoUrl} />
+      <div className="relative">
+        <Eyebrow>{EVENT_TYPE_LABELS[invitation.type]}</Eyebrow>
+      </div>
       <h1
-        className="max-w-3xl text-5xl leading-[1.05] font-semibold text-balance text-[color:var(--ii-primary)] sm:text-7xl"
+        className="relative max-w-3xl text-5xl leading-[1.05] font-semibold text-balance text-[color:var(--ii-primary)] sm:text-7xl"
         style={{ fontFamily: "var(--ii-heading-font)" }}
       >
         {getHeroHeading(invitation)}
       </h1>
-      <Rule />
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="relative">
+        <Rule />
+      </div>
+      <div className="relative flex flex-wrap items-end justify-between gap-4">
         {heroDate && (
           <p className="text-sm tracking-wide text-[color:var(--ii-text)]">
             {formatIndonesianDate(heroDate)}

@@ -87,6 +87,70 @@ export async function saveThemeAction(
   return withEditorAuth((userId) => editorService.updateTheme(eventId, userId, parsed.data));
 }
 
+/**
+ * Uploads the Theme's cover/background photo. Same real-file-upload shape
+ * as `uploadGalleryImageAction` (`FormData`, not a plain object) and
+ * reuses its rate limit/validation — this is still just an image upload,
+ * not a separate risk surface. Returns the new public URL only; the
+ * client persists it into `Theme.backgroundImageUrl` through the existing
+ * `saveThemeAction` autosave, the same as every other theme field.
+ */
+export async function uploadCoverPhotoAction(
+  eventId: string,
+  formData: FormData,
+): Promise<ActionResult<{ publicUrl: string }>> {
+  const user = await requireAppUser();
+
+  if (!(await checkGalleryUploadRateLimit(user.id))) {
+    return { ok: false, error: GALLERY_UPLOAD_RATE_LIMIT_MESSAGE };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return {
+      ok: false,
+      error: "Pilih berkas gambar untuk diunggah.",
+      fieldErrors: { file: ["Pilih berkas gambar untuk diunggah."] },
+    };
+  }
+
+  const previousUrlRaw = formData.get("previousUrl");
+  const previousUrl =
+    typeof previousUrlRaw === "string" && previousUrlRaw !== "" ? previousUrlRaw : null;
+
+  let validated;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    validated = validateGalleryImageUpload({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      buffer,
+    });
+  } catch (error) {
+    const message = mapStorageErrorMessage(error);
+    return { ok: false, error: message, fieldErrors: { file: [message] } };
+  }
+
+  try {
+    const data = await editorService.uploadCoverPhoto(eventId, user.id, validated, previousUrl);
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: mapEditorErrorMessage(error) };
+  }
+}
+
+/** Removes the Theme's current cover/background photo from storage. The client still clears `backgroundImageUrl` itself via `saveThemeAction`. */
+export async function removeCoverPhotoAction(
+  eventId: string,
+  currentUrl: string,
+): Promise<ActionResult<null>> {
+  return withEditorAuth(async (userId) => {
+    await editorService.removeCoverPhoto(eventId, userId, currentUrl);
+    return null;
+  });
+}
+
 export async function selectTemplateAction(
   eventId: string,
   input: unknown,

@@ -2,6 +2,10 @@ import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
 import type { InvitationSectionKey } from "@/lib/event-types/sections";
 import { CountdownSection } from "@/components/invitation/sections/countdown-section";
+import {
+  CoverPhotoLayer,
+  coverPhotoTextStyle,
+} from "@/components/invitation/sections/cover-photo-background";
 import type {
   PublicGallery,
   PublicGiftMethod,
@@ -64,26 +68,31 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {
   const heroDate = getHeroScheduleDate(invitation);
+  const coverPhotoUrl = invitation.theme.backgroundImageUrl;
 
   return (
     <section
       aria-label="Sampul undangan"
-      className="flex min-h-[85vh] flex-col items-center justify-center gap-5 px-6 py-16 text-center"
+      className="relative flex min-h-[85vh] flex-col items-center justify-center gap-5 px-6 py-16 text-center"
+      style={coverPhotoTextStyle(coverPhotoUrl)}
     >
-      <BotanicalFlourish className="h-8 w-28" />
-      <p className="text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
+      <CoverPhotoLayer imageUrl={coverPhotoUrl} />
+      <BotanicalFlourish className="relative h-8 w-28" />
+      <p className="relative text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
         {EVENT_TYPE_LABELS[invitation.type]}
       </p>
       <h1
-        className="max-w-md text-3xl text-balance text-[color:var(--ii-primary)] sm:text-4xl"
+        className="relative max-w-md text-3xl text-balance text-[color:var(--ii-primary)] sm:text-4xl"
         style={{ fontFamily: "var(--ii-script-font)" }}
       >
         {getHeroHeading(invitation)}
       </h1>
       {heroDate && (
-        <p className="text-sm text-[color:var(--ii-text)]">{formatIndonesianDate(heroDate)}</p>
+        <p className="relative text-sm text-[color:var(--ii-text)]">
+          {formatIndonesianDate(heroDate)}
+        </p>
       )}
-      <div className="mt-4 space-y-1">
+      <div className="relative mt-4 space-y-1">
         <p className="text-xs tracking-wide text-[color:var(--ii-text)] uppercase opacity-70">
           Kepada Yth.
         </p>
@@ -91,7 +100,7 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
           {invitation.guest?.displayName ?? "Bapak/Ibu/Saudara/i Tamu Undangan"}
         </p>
       </div>
-      <BotanicalFlourish className="h-8 w-28 rotate-180" />
+      <BotanicalFlourish className="relative h-8 w-28 rotate-180" />
     </section>
   );
 }

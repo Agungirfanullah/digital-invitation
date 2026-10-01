@@ -28,8 +28,10 @@ export function InvitationPreview() {
 
       <figure className="mx-auto mt-10 max-w-sm">
         <figcaption className="sr-only">Contoh undangan digital</figcaption>
-        <div className="h-[700px] overflow-hidden overflow-y-auto rounded-2xl border shadow-sm">
-          <InvitationRenderer invitation={invitation} bypassOpening />
+        <div className="bg-foreground/90 rounded-[2.5rem] border-8 border-black/80 p-2 shadow-xl">
+          <div className="h-[650px] overflow-hidden overflow-y-auto rounded-[1.75rem]">
+            <InvitationRenderer invitation={invitation} bypassOpening />
+          </div>
         </div>
       </figure>
     </section>

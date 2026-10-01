@@ -20,9 +20,8 @@ import type { PublicInvitation } from "@/lib/invitations/types";
  * that renders correctly with no guest token, which is what this preview
  * relies on instead.
  */
-export function buildDemoInvitation(): PublicInvitation {
+export function buildDemoInvitation(templateKey: string = "minimal-elegant"): PublicInvitation {
   const type = "WEDDING" as const;
-  const templateKey = "minimal-elegant";
 
   return {
     eventId: "demo-invitation",

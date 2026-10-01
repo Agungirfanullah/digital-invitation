@@ -2,6 +2,10 @@ import { Fragment, type ReactNode } from "react";
 import type { InvitationTemplateProps } from "@/lib/invitations/templates/registry";
 import type { InvitationSectionKey } from "@/lib/event-types/sections";
 import { CountdownSection } from "@/components/invitation/sections/countdown-section";
+import {
+  CoverPhotoLayer,
+  coverPhotoTextStyle,
+} from "@/components/invitation/sections/cover-photo-background";
 import type {
   PublicGallery,
   PublicGiftMethod,
@@ -54,12 +58,15 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {
   const heroDate = getHeroScheduleDate(invitation);
+  const coverPhotoUrl = invitation.theme.backgroundImageUrl;
 
   return (
     <section
       aria-label="Sampul undangan"
       className="relative flex min-h-[80vh] flex-col items-center justify-center gap-4 overflow-hidden px-6 py-16 text-center"
+      style={coverPhotoTextStyle(coverPhotoUrl)}
     >
+      <CoverPhotoLayer imageUrl={coverPhotoUrl} />
       <SoftShape className="pointer-events-none absolute top-6 left-1/2 h-40 w-40 -translate-x-1/2" />
       <p className="relative text-xs font-medium tracking-[0.25em] text-[color:var(--ii-accent)] uppercase">
         {EVENT_TYPE_LABELS[invitation.type]}

@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import type { PublicPlan } from "@/lib/plans/service";
 import { Button } from "@/components/ui/button";
+import { CheckCircleIcon } from "@/components/marketing/icons";
+
+/** The plan visually highlighted as the suggested default — an editorial choice, not a claim about sales/popularity data we don't have. */
+const RECOMMENDED_PLAN_SLUG = "premium";
 
 /**
  * Homepage Pricing (docs/PRD.md §8 item 10, §42, D-073). `plans` comes
@@ -52,27 +56,53 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
       </div>
 
       <ul className="mx-auto mt-10 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
-        {plans.map((plan) => (
-          <li key={plan.slug} className="bg-background flex flex-col rounded-lg border p-6">
-            <p className="font-medium">{plan.name}</p>
-            <p className="mt-2 text-2xl font-semibold tracking-tight">
-              {formatRupiah(plan.price)}
-              {plan.price > 0 && (
-                <span className="text-muted-foreground text-sm font-normal">/bulan</span>
+        {plans.map((plan) => {
+          const isRecommended = plan.slug === RECOMMENDED_PLAN_SLUG;
+          return (
+            <li
+              key={plan.slug}
+              className={`bg-background relative flex flex-col rounded-xl border p-6 ${
+                isRecommended ? "border-primary ring-primary/20 ring-2" : ""
+              }`}
+            >
+              {isRecommended && (
+                <span className="bg-primary text-primary-foreground absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-medium">
+                  Direkomendasikan
+                </span>
               )}
-            </p>
-            <ul className="text-muted-foreground mt-4 space-y-1.5 text-sm">
-              {plan.maxEvents !== null && <li>Hingga {plan.maxEvents} acara</li>}
-              {plan.maxGuests !== null && <li>Hingga {plan.maxGuests} tamu</li>}
-              {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
-                <li key={feature}>{feature}</li>
-              ))}
-            </ul>
-            <Button asChild className="mt-6">
-              <Link href={ctaHref}>Buat Undangan</Link>
-            </Button>
-          </li>
-        ))}
+              <p className="font-medium">{plan.name}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight">
+                {formatRupiah(plan.price)}
+                {plan.price > 0 && (
+                  <span className="text-muted-foreground text-sm font-normal">/bulan</span>
+                )}
+              </p>
+              <ul className="text-muted-foreground mt-4 space-y-2 text-sm">
+                {plan.maxEvents !== null && (
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
+                    Hingga {plan.maxEvents} acara
+                  </li>
+                )}
+                {plan.maxGuests !== null && (
+                  <li className="flex items-start gap-2">
+                    <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
+                    Hingga {plan.maxGuests} tamu
+                  </li>
+                )}
+                {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
+                  <li key={feature} className="flex items-start gap-2">
+                    <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Button asChild className="mt-6" variant={isRecommended ? "default" : "outline"}>
+                <Link href={ctaHref}>Buat Undangan</Link>
+              </Button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

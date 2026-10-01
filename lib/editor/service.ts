@@ -27,7 +27,11 @@ import {
 } from "@/lib/editor/errors";
 import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
 import { GalleryStorageDeletionError } from "@/lib/storage/errors";
-import { buildGalleryObjectPath, derivePathFromPublicUrl } from "@/lib/storage/paths";
+import {
+  buildCoverPhotoObjectPath,
+  buildGalleryObjectPath,
+  derivePathFromPublicUrl,
+} from "@/lib/storage/paths";
 import { getStorageProvider } from "@/lib/storage/provider";
 import type { ValidatedGalleryImage } from "@/lib/storage/validation";
 import type {
@@ -359,6 +363,70 @@ export async function updateTheme(eventId: string, userId: string, input: ThemeI
     update: input,
     create: { eventId, ...input },
   });
+}
+
+/**
+ * Uploads a new cover/background photo for the event's Theme and returns
+ * its public URL. Deliberately does not itself write
+ * `Theme.backgroundImageUrl` — the caller (`ThemeForm`'s existing
+ * autosave, via `updateTheme`) persists it exactly like every other theme
+ * field, keeping a single write path for `Theme` data instead of two.
+ *
+ * `previousUrl` (the value being replaced, if any) is best-effort cleaned
+ * up from storage *after* the new upload succeeds. Unlike
+ * `deleteGalleryItem`'s storage-first/fail-closed ordering (there,
+ * removal is the entire point of the call), a failed cleanup here must
+ * never cost the caller the photo they just successfully uploaded, so it
+ * is logged and swallowed instead of thrown.
+ */
+export async function uploadCoverPhoto(
+  eventId: string,
+  userId: string,
+  validated: ValidatedGalleryImage,
+  previousUrl: string | null,
+): Promise<{ publicUrl: string }> {
+  await requireEditorAccess(eventId, userId);
+
+  const path = buildCoverPhotoObjectPath(eventId, validated.extension);
+  const { publicUrl } = await getStorageProvider().upload(
+    path,
+    validated.buffer,
+    validated.contentType,
+  );
+
+  const previousPath = previousUrl ? derivePathFromPublicUrl(previousUrl) : null;
+  if (previousPath) {
+    try {
+      await getStorageProvider().remove(previousPath);
+    } catch (error) {
+      console.error("[theme] Failed to remove previous cover photo object", error);
+    }
+  }
+
+  return { publicUrl };
+}
+
+/**
+ * Removes the event's current cover photo object from storage
+ * (best-effort — see `uploadCoverPhoto`'s doc comment). The caller still
+ * persists `backgroundImageUrl: null` itself via the normal `updateTheme`
+ * autosave path.
+ */
+export async function removeCoverPhoto(
+  eventId: string,
+  userId: string,
+  currentUrl: string,
+): Promise<void> {
+  await requireEditorAccess(eventId, userId);
+
+  const path = derivePathFromPublicUrl(currentUrl);
+  if (!path) return;
+
+  try {
+    await getStorageProvider().remove(path);
+  } catch (error) {
+    console.error("[theme] Failed to remove cover photo object", error);
+  }
 }
 
 export async function selectTemplate(eventId: string, userId: string, templateSlug: string | null) {

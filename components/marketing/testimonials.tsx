@@ -1,3 +1,5 @@
+import { QuoteIcon } from "@/components/marketing/icons";
+
 /**
  * Homepage Testimonials section (docs/PRD.md §8 item 11, D-073). No real
  * customer testimonials exist yet — inventing names/quotes/ratings
@@ -24,8 +26,9 @@ export function Testimonials() {
         </h2>
         <ul className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-3">
           {STATEMENTS.map((statement) => (
-            <li key={statement} className="rounded-lg border p-5 text-center text-sm">
-              {statement}
+            <li key={statement} className="bg-card rounded-xl border p-6 text-sm">
+              <QuoteIcon className="text-primary/40 size-6" />
+              <p className="mt-3">{statement}</p>
             </li>
           ))}
         </ul>

@@ -1,3 +1,5 @@
+import type { ComponentType } from "react";
+
 /**
  * A single-message marketing section — shared shape for the Homepage's
  * Guest Management / RSVP / Digital Gift / Analytics sections
@@ -8,17 +10,22 @@ export function FeatureSection({
   id,
   heading,
   description,
+  icon: Icon,
   className,
 }: {
   id: string;
   heading: string;
   description: string;
+  icon: ComponentType<{ className?: string }>;
   className?: string;
 }) {
   return (
     <section aria-labelledby={`${id}-heading`} className={`px-6 py-14 ${className ?? ""}`.trim()}>
       <div className="mx-auto max-w-2xl text-center">
-        <h2 id={`${id}-heading`} className="text-2xl font-semibold tracking-tight sm:text-3xl">
+        <div className="bg-primary/10 text-primary mx-auto flex size-12 items-center justify-center rounded-full">
+          <Icon className="size-6" />
+        </div>
+        <h2 id={`${id}-heading`} className="mt-4 text-2xl font-semibold tracking-tight sm:text-3xl">
           {heading}
         </h2>
         <p className="text-muted-foreground mt-3">{description}</p>
