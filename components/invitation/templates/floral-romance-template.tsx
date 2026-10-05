@@ -60,10 +60,28 @@ function BotanicalFlourish({ className = "" }: { className?: string }) {
   );
 }
 
+/** A tiny leaf tick flanking section labels — the same botanical idiom as BotanicalFlourish, scaled down for inline use. */
+function LeafTick({ flip = false }: { flip?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 16"
+      className={`inline-block h-3 w-3 shrink-0 ${flip ? "-scale-x-100" : ""}`}
+      fill="none"
+      stroke="var(--ii-accent)"
+      strokeWidth="1.25"
+    >
+      <path d="M2 14 C2 8, 6 2, 14 2 C14 8, 10 14, 2 14 Z" />
+    </svg>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-center text-xs font-medium tracking-[0.25em] text-[color:var(--ii-accent)] uppercase">
+    <p className="flex items-center justify-center gap-2 text-center text-xs font-medium tracking-[0.25em] text-[color:var(--ii-accent)] uppercase">
+      <LeafTick />
       {children}
+      <LeafTick flip />
     </p>
   );
 }

@@ -19,6 +19,16 @@ async function main() {
     { name: "Dark Luxury", slug: "dark-luxury", category: "wedding" },
     { name: "Traditional Nusantara", slug: "traditional-nusantara", category: "wedding" },
     { name: "Soft Romantic", slug: "soft-romantic", category: "wedding" },
+    { name: "Cinematic Journey", slug: "cinematic-journey", category: "wedding" },
+    { name: "Rustic Earth", slug: "rustic-earth", category: "wedding" },
+    { name: "Playful Pop", slug: "playful-pop", category: "general" },
+    { name: "Royal Gold", slug: "royal-gold", category: "formal" },
+    { name: "Blue Bloom", slug: "blue-bloom", category: "wedding" },
+    { name: "Mono Frame", slug: "mono-frame", category: "wedding" },
+    { name: "Garden Tropical", slug: "garden-tropical", category: "wedding" },
+    { name: "Art Deco", slug: "art-deco", category: "formal" },
+    { name: "Vintage Sepia", slug: "vintage-sepia", category: "wedding" },
+    { name: "Industrial Loft", slug: "industrial-loft", category: "general" },
   ];
 
   for (const template of templates) {

@@ -51,6 +51,10 @@
   --border: oklch(0.88 0.02 165);
   --input: oklch(0.88 0.02 165);
   --ring: oklch(0.55 0.08 165);
+  /* Width of the public invitation's scrolling column on desktop (lg+),
+     beside the fixed cover panel — shared by InvitationRenderer, the
+     Opening gate, and the floating section nav. */
+  --invite-column: clamp(420px, 34vw, 520px);
 }
 
 .dark {

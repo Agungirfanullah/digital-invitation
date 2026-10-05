@@ -6,6 +6,16 @@ import { FloralRomanceTemplate } from "@/components/invitation/templates/floral-
 import { DarkLuxuryTemplate } from "@/components/invitation/templates/dark-luxury-template";
 import { TraditionalNusantaraTemplate } from "@/components/invitation/templates/traditional-nusantara-template";
 import { SoftRomanticTemplate } from "@/components/invitation/templates/soft-romantic-template";
+import { CinematicJourneyTemplate } from "@/components/invitation/templates/cinematic-journey-template";
+import { RusticEarthTemplate } from "@/components/invitation/templates/rustic-earth-template";
+import { PlayfulPopTemplate } from "@/components/invitation/templates/playful-pop-template";
+import { RoyalGoldTemplate } from "@/components/invitation/templates/royal-gold-template";
+import { BlueBloomTemplate } from "@/components/invitation/templates/blue-bloom-template";
+import { MonoFrameTemplate } from "@/components/invitation/templates/mono-frame-template";
+import { GardenTropicalTemplate } from "@/components/invitation/templates/garden-tropical-template";
+import { ArtDecoTemplate } from "@/components/invitation/templates/art-deco-template";
+import { VintageSepiaTemplate } from "@/components/invitation/templates/vintage-sepia-template";
+import { IndustrialLoftTemplate } from "@/components/invitation/templates/industrial-loft-template";
 import type { PublicInvitation } from "@/lib/invitations/types";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 
@@ -46,6 +56,16 @@ const TEMPLATE_REGISTRY: Record<string, ComponentType<InvitationTemplateProps>> 
   "dark-luxury": DarkLuxuryTemplate,
   "traditional-nusantara": TraditionalNusantaraTemplate,
   "soft-romantic": SoftRomanticTemplate,
+  "cinematic-journey": CinematicJourneyTemplate,
+  "rustic-earth": RusticEarthTemplate,
+  "playful-pop": PlayfulPopTemplate,
+  "royal-gold": RoyalGoldTemplate,
+  "blue-bloom": BlueBloomTemplate,
+  "mono-frame": MonoFrameTemplate,
+  "garden-tropical": GardenTropicalTemplate,
+  "art-deco": ArtDecoTemplate,
+  "vintage-sepia": VintageSepiaTemplate,
+  "industrial-loft": IndustrialLoftTemplate,
 };
 
 const DEFAULT_TEMPLATE_KEY = "minimal-elegant";

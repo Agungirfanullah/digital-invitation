@@ -16,8 +16,8 @@ import {
 } from "@/components/invitation/templates/test-fixtures";
 
 /**
- * Cross-cutting edge-case coverage for all 6 registered templates at
- * once, rather than duplicating the same scenario 6 times per template
+ * Cross-cutting edge-case coverage for all registered templates at
+ * once, rather than duplicating the same scenario per template
  * file — see the Phase 3 design audit §13's "do not demand a huge number
  * of tests without justification." Horizontal-overflow verification
  * itself happens in Playwright (a real layout engine); these tests verify
@@ -31,6 +31,16 @@ const ALL_SLUGS = [
   "dark-luxury",
   "traditional-nusantara",
   "soft-romantic",
+  "cinematic-journey",
+  "rustic-earth",
+  "playful-pop",
+  "royal-gold",
+  "blue-bloom",
+  "mono-frame",
+  "garden-tropical",
+  "art-deco",
+  "vintage-sepia",
+  "industrial-loft",
 ];
 
 describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {

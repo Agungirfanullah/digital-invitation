@@ -152,7 +152,7 @@ export function FloatingSectionNav({ invitation }: { invitation: PublicInvitatio
   return (
     <nav
       aria-label="Navigasi cepat undangan"
-      className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2"
+      className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 lg:left-[calc(100%-var(--invite-column)/2)]"
     >
       <ul className="flex items-center gap-1 rounded-full border border-[color:var(--ii-secondary)] bg-[color:var(--ii-background)]/95 p-1.5 shadow-lg backdrop-blur">
         {items.map((item) => (

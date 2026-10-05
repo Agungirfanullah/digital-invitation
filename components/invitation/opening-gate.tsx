@@ -97,7 +97,7 @@ export function OpeningGate({
         aria-modal="true"
         aria-labelledby={headingId}
         aria-hidden={revealed}
-        className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[color:var(--ii-background)] px-6 text-center transition-opacity duration-500 motion-reduce:transition-none motion-reduce:duration-0 ${
+        className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[color:var(--ii-background)] px-6 text-center transition-opacity duration-500 motion-reduce:transition-none motion-reduce:duration-0 lg:left-auto lg:w-[var(--invite-column)] ${
           revealed ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >

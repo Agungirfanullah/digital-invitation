@@ -42,10 +42,19 @@ import type { RsvpGuestView } from "@/lib/rsvp/types";
  * insufficient contrast — see `lib/invitations/templates/default-themes.test.ts`.
  */
 
+/**
+ * Still deliberately abstract (no botanical/geometric motif — see the
+ * file doc comment above), just a more considered silhouette than a
+ * perfect circle: an asymmetric organic blob.
+ */
 function SoftShape({ className = "" }: { className?: string }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 100 100" className={className}>
-      <circle cx="50" cy="50" r="46" fill="var(--ii-accent)" opacity="0.18" />
+      <path
+        d="M50 7c19 0 35 13 40 31 5 18-4 39-24 48-20 9-43 1-52-17C5 51 9 30 25 17 33 11 41 7 50 7Z"
+        fill="var(--ii-accent)"
+        opacity="0.18"
+      />
     </svg>
   );
 }

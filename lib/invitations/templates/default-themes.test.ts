@@ -15,11 +15,21 @@ describe("TEMPLATE_DEFAULT_THEMES", () => {
     const slugs = Object.keys(TEMPLATE_DEFAULT_THEMES).filter((slug) => slug !== "minimal-elegant");
     expect(slugs.sort()).toEqual(
       [
+        "art-deco",
+        "blue-bloom",
+        "cinematic-journey",
         "dark-luxury",
         "floral-romance",
+        "garden-tropical",
+        "industrial-loft",
         "modern-editorial",
+        "mono-frame",
+        "playful-pop",
+        "royal-gold",
+        "rustic-earth",
         "soft-romantic",
         "traditional-nusantara",
+        "vintage-sepia",
       ].sort(),
     );
   });

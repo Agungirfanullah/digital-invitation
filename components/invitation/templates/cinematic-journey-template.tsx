@@ -34,56 +34,48 @@ import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 
 /**
- * Cinematic / restrained-premium composition — dark surface, generous
- * negative space, one recurring hairline motif as the only decoration.
- * See the Phase 3 design audit §4.3. Deliberately NOT "Minimal Elegant in
- * black" — spacing, letter-spacing, and the hairline-rule idiom are all
- * distinct compositional choices, not a palette swap. Text/background
- * contrast is verified in `lib/invitations/templates/default-themes.test.ts`.
+ * Editorial/cinematic composition — bottom-anchored full-bleed hero text
+ * (a movie-poster idiom, not centered like every other template here),
+ * large thin "chapter" numerals marking Love Story entries, and a
+ * film-frame double-rule border around the gallery. Deliberately not a
+ * recolor of Modern Editorial or Dark Luxury: the bottom-anchored hero,
+ * numbered-chapter idiom, and film-frame motif are distinct compositional
+ * choices of their own. Text/background contrast is verified in
+ * `lib/invitations/templates/default-themes.test.ts`.
  */
 
-function HairlineRule({ className = "" }: { className?: string }) {
+function ChapterNumber({ n }: { n: number }) {
   return (
-    <hr aria-hidden="true" className={`border-t border-[color:var(--ii-accent)]/50 ${className}`} />
-  );
-}
-
-/** A symmetric scrollwork flourish — the Hero/Closing's richer counterpart to the plain HairlineRule used elsewhere. */
-function OrnamentalFlourish({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 160 28"
-      className={className}
-      fill="none"
-      stroke="var(--ii-accent)"
-      strokeWidth="1"
+    <span
+      aria-hidden
+      className="block text-5xl leading-none font-light text-[color:var(--ii-accent)]/40"
+      style={{ fontFamily: "var(--ii-heading-font)" }}
     >
-      <path d="M4 14h38" strokeLinecap="round" />
-      <path d="M118 14h38" strokeLinecap="round" />
-      <path
-        d="M42 14c0-6.5 6-11 12-11s10.5 4.5 10.5 11-6 11-10.5 11M94.5 14c0-6.5 4-11 10.5-11s12 4.5 12 11-6 11-12 11"
-        strokeLinecap="round"
-      />
-      <circle cx="80" cy="14" r="2.5" fill="var(--ii-accent)" stroke="none" />
-    </svg>
-  );
-}
-
-/** A tiny four-point sparkle mark — scattered near the Hero heading, purely decorative. */
-function Sparkle({ className = "" }: { className?: string }) {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className={className} fill="var(--ii-accent)">
-      <path d="M8 0c0 4.2.5 7.8 4 8-3.5.2-4 3.8-4 8 0-4.2-.5-7.8-4-8 3.5-.2 4-3.8 4-8Z" />
-    </svg>
+      {String(n).padStart(2, "0")}
+    </span>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-center text-xs font-medium tracking-[0.4em] text-[color:var(--ii-accent)] uppercase">
+    <p className="text-center text-xs font-medium tracking-[0.35em] text-[color:var(--ii-accent)] uppercase">
       {children}
     </p>
+  );
+}
+
+/** A vertical strip of small sprocket-hole squares, run down each edge of the Hero — a 35mm film-strip detail, complementing (not replacing) the chapter-number idiom. */
+function FilmSprockets({ className = "" }: { className?: string }) {
+  return (
+    <div className={`flex flex-col justify-between py-10 ${className}`} aria-hidden>
+      {Array.from({ length: 8 }).map((_, i) => (
+        <span
+          key={i}
+          className="size-2 rounded-[2px] opacity-50"
+          style={{ backgroundColor: "var(--ii-accent)" }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -94,32 +86,31 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
   return (
     <section
       aria-label="Sampul undangan"
-      className="relative flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-20 text-center"
+      className="relative flex min-h-screen flex-col items-center justify-end gap-4 px-6 pt-20 pb-16 text-center"
       style={coverPhotoTextStyle(coverPhotoUrl)}
     >
       <CoverPhotoLayer imageUrl={coverPhotoUrl} />
-      <Sparkle className="absolute top-[18%] left-[18%] size-3 opacity-70" />
-      <Sparkle className="absolute top-[28%] right-[20%] size-2 opacity-50" />
+      <FilmSprockets className="absolute top-0 bottom-0 left-2" />
+      <FilmSprockets className="absolute top-0 right-2 bottom-0" />
       <p className="relative text-xs font-medium tracking-[0.5em] text-[color:var(--ii-accent)] uppercase">
         {EVENT_TYPE_LABELS[invitation.type]}
       </p>
       <h1
-        className="relative max-w-2xl text-4xl font-medium tracking-wide text-balance text-[color:var(--ii-primary)] sm:text-6xl"
+        className="relative max-w-2xl text-5xl font-medium text-balance text-[color:var(--ii-primary)] sm:text-7xl"
         style={{ fontFamily: "var(--ii-heading-font)" }}
       >
         {getHeroHeading(invitation)}
       </h1>
-      <OrnamentalFlourish className="relative w-40" />
       {heroDate && (
         <p className="relative text-sm tracking-widest text-[color:var(--ii-text)] uppercase">
           {formatIndonesianDate(heroDate)}
         </p>
       )}
-      <div className="relative mt-8 space-y-1">
+      <div className="relative mt-6 space-y-1">
         <p className="text-xs tracking-[0.3em] text-[color:var(--ii-text)] uppercase opacity-60">
           Kepada Yth.
         </p>
-        <p className="text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
+        <p className="text-lg font-medium text-[color:var(--ii-primary)]">
           {invitation.guest?.displayName ?? "Bapak/Ibu/Saudara/i Tamu Undangan"}
         </p>
       </div>
@@ -135,10 +126,13 @@ function Identity({ identity }: { identity: PublicIdentity }) {
       </h2>
       <SectionLabel>{identity.heading}</SectionLabel>
       {identity.members.length > 0 && (
-        <div className="mx-auto mt-10 flex max-w-lg flex-col items-center gap-10 sm:flex-row sm:justify-center sm:gap-16">
+        <div className="mx-auto mt-10 flex max-w-lg flex-col items-center divide-y divide-[color:var(--ii-secondary)] sm:flex-row sm:divide-x sm:divide-y-0">
           {identity.members.map((member, index) => (
-            <div key={`${index}-${member.name}`}>
-              <p className="text-2xl font-medium tracking-wide text-[color:var(--ii-primary)]">
+            <div key={`${index}-${member.name}`} className="px-8 py-6">
+              <p
+                className="text-3xl font-medium text-[color:var(--ii-primary)]"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
+              >
                 {member.name}
               </p>
               {member.instagram && (
@@ -175,52 +169,54 @@ function Schedule({ schedules }: { schedules: PublicSchedule[] }) {
         Rangkaian Acara
       </h2>
       <SectionLabel>Rangkaian Acara</SectionLabel>
-      <div className="mx-auto mt-12 flex max-w-md flex-col gap-12">
-        {schedules.map((schedule) => (
-          <div
-            key={schedule.id}
-            className="border border-[color:var(--ii-secondary)] p-8 text-center"
-          >
-            <p className="text-xl font-medium tracking-wide text-[color:var(--ii-primary)]">
-              {schedule.title}
-            </p>
-            <HairlineRule className="mx-auto my-4 w-10" />
-            <p className="text-sm tracking-wide text-[color:var(--ii-text)]">
-              {formatIndonesianDate(schedule.date)}
-            </p>
-            <p className="text-sm text-[color:var(--ii-text)] opacity-70">
-              {formatTimeRange(schedule.startTime, schedule.endTime)}
-            </p>
-            {schedule.description && (
-              <p className="mt-3 text-sm text-[color:var(--ii-text)] opacity-70">
-                {schedule.description}
-              </p>
-            )}
-            {schedule.venue && (
-              <div className="mt-4 space-y-1 text-sm">
-                <p className="font-medium text-[color:var(--ii-primary)]">{schedule.venue.name}</p>
-                <p className="text-[color:var(--ii-text)] opacity-70">{schedule.venue.address}</p>
-              </div>
-            )}
-            <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
-              <a
-                href={buildGoogleCalendarUrl(schedule)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block text-[color:var(--ii-accent)] underline underline-offset-4"
+      <div className="mx-auto mt-12 flex max-w-2xl flex-col gap-0 divide-y divide-[color:var(--ii-secondary)]">
+        {schedules.map((schedule, index) => (
+          <div key={schedule.id} className="flex gap-6 py-8 text-left">
+            <ChapterNumber n={index + 1} />
+            <div className="flex-1">
+              <p
+                className="text-xl font-medium text-[color:var(--ii-primary)]"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
               >
-                Simpan Tanggal
-              </a>
-              {schedule.venue?.mapUrl && (
+                {schedule.title}
+              </p>
+              <p className="mt-1 text-sm tracking-wide text-[color:var(--ii-text)]">
+                {formatIndonesianDate(schedule.date)} ·{" "}
+                {formatTimeRange(schedule.startTime, schedule.endTime)}
+              </p>
+              {schedule.description && (
+                <p className="mt-2 text-sm text-[color:var(--ii-text)] opacity-70">
+                  {schedule.description}
+                </p>
+              )}
+              {schedule.venue && (
+                <div className="mt-3 space-y-1 text-sm">
+                  <p className="font-medium text-[color:var(--ii-primary)]">
+                    {schedule.venue.name}
+                  </p>
+                  <p className="text-[color:var(--ii-text)] opacity-70">{schedule.venue.address}</p>
+                </div>
+              )}
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
                 <a
-                  href={schedule.venue.mapUrl}
+                  href={buildGoogleCalendarUrl(schedule)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-block text-[color:var(--ii-accent)] underline underline-offset-4"
                 >
-                  Buka Peta
+                  Simpan Tanggal
                 </a>
-              )}
+                {schedule.venue?.mapUrl && (
+                  <a
+                    href={schedule.venue.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block text-[color:var(--ii-accent)] underline underline-offset-4"
+                  >
+                    Buka Peta
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         ))}
@@ -244,31 +240,39 @@ function LoveStory({
         {loveStory.title ?? defaultTitle}
       </h2>
       <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
-      <ol className="mx-auto mt-12 flex max-w-md flex-col gap-10">
-        {loveStory.items.map((item) => (
-          <li key={item.id} className="text-center">
+      <ol className="mx-auto mt-12 flex max-w-2xl flex-col gap-12">
+        {loveStory.items.map((item, index) => (
+          <li key={item.id} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-8">
+            <ChapterNumber n={index + 1} />
             {item.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
-              <img
-                src={item.imageUrl}
-                alt={item.title}
-                loading="lazy"
-                className="mx-auto mb-4 aspect-[4/5] w-48 object-cover"
-              />
+              <div className="border-2 border-[color:var(--ii-accent)]/40 p-1.5">
+                {/* eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL. */}
+                <img
+                  src={item.imageUrl}
+                  alt={item.title}
+                  loading="lazy"
+                  className="aspect-[4/5] w-40 object-cover"
+                />
+              </div>
             )}
-            {item.dateLabel && (
-              <p className="text-xs tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
-                {item.dateLabel}
+            <div className="text-left">
+              {item.dateLabel && (
+                <p className="text-xs tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
+                  {item.dateLabel}
+                </p>
+              )}
+              <p
+                className="mt-1 text-xl font-medium text-[color:var(--ii-primary)]"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
+              >
+                {item.title}
               </p>
-            )}
-            <p className="mt-2 text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
-              {item.title}
-            </p>
-            {item.description && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
-                {item.description}
-              </p>
-            )}
+              {item.description && (
+                <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
+                  {item.description}
+                </p>
+              )}
+            </div>
           </li>
         ))}
       </ol>
@@ -287,7 +291,10 @@ function Gallery({ galleries }: { galleries: PublicGallery[] }) {
       </h2>
       <SectionLabel>Galeri</SectionLabel>
       {nonEmpty.map((gallery, index) => (
-        <div key={index} className="mx-auto mt-12 max-w-xl">
+        <div
+          key={index}
+          className="mx-auto mt-12 max-w-xl border-x-2 border-double border-[color:var(--ii-accent)]/50 px-4 py-6"
+        >
           {gallery.title && (
             <p className="mb-4 text-center text-sm tracking-wide text-[color:var(--ii-primary)]">
               {gallery.title}
@@ -338,7 +345,10 @@ function Gift({ giftMethods }: { giftMethods: PublicGiftMethod[] }) {
             <p className="text-xs tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
               {GIFT_METHOD_TYPE_LABELS[method.type]}
             </p>
-            <p className="mt-2 text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
+            <p
+              className="mt-2 text-lg font-medium text-[color:var(--ii-primary)]"
+              style={{ fontFamily: "var(--ii-heading-font)" }}
+            >
               {method.providerName ?? GIFT_METHOD_TYPE_LABELS[method.type]}
             </p>
             {method.accountName && (
@@ -423,18 +433,20 @@ function Closing({ copy }: { copy: InvitationCopy }) {
       aria-label="Penutup"
       className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-24 text-center"
     >
-      <p className="mx-auto max-w-lg text-2xl leading-relaxed text-balance text-[color:var(--ii-primary)] sm:text-3xl">
+      <p
+        className="mx-auto max-w-lg text-2xl leading-relaxed text-balance text-[color:var(--ii-primary)] sm:text-3xl"
+        style={{ fontFamily: "var(--ii-heading-font)" }}
+      >
         {copy.closingMessage}
       </p>
-      <OrnamentalFlourish className="my-8 w-40" />
-      <p className="text-xs tracking-[0.4em] text-[color:var(--ii-text)] uppercase opacity-70">
+      <p className="mt-8 text-xs tracking-[0.4em] text-[color:var(--ii-text)] uppercase opacity-70">
         {copy.closingThanks}
       </p>
     </section>
   );
 }
 
-export function DarkLuxuryTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
+export function CinematicJourneyTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
   const { sections } = invitation;
   const copy = getInvitationCopy(invitation.type);
 

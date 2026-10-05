@@ -1,3 +1,4 @@
+import { DesktopCoverPanel } from "@/components/invitation/desktop-cover-panel";
 import { FloatingSectionNav } from "@/components/invitation/floating-section-nav";
 import { GuestQrButton } from "@/components/invitation/guest-qr-button";
 import { OpeningGate } from "@/components/invitation/opening-gate";
@@ -54,6 +55,17 @@ export function InvitationRenderer({
   );
 
   if (bypassOpening) return content;
-  return <OpeningGate invitation={invitation}>{content}</OpeningGate>;
+  // Desktop (lg+) guest layout: a fixed cover panel on the left, the
+  // invitation itself in a phone-width scrolling column on the right.
+  // Viewport-based, so it stays out of the bypassOpening previews above,
+  // which render inside narrow containers on a desktop-sized viewport.
+  return (
+    <>
+      <DesktopCoverPanel invitation={invitation} />
+      <div className="lg:ml-auto lg:w-[var(--invite-column)]">
+        <OpeningGate invitation={invitation}>{content}</OpeningGate>
+      </div>
+    </>
+  );
 }
 /* eslint-enable react-hooks/static-components */

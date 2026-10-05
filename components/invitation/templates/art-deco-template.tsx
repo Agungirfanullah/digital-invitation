@@ -34,55 +34,73 @@ import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 
 /**
- * Cinematic / restrained-premium composition — dark surface, generous
- * negative space, one recurring hairline motif as the only decoration.
- * See the Phase 3 design audit §4.3. Deliberately NOT "Minimal Elegant in
- * black" — spacing, letter-spacing, and the hairline-rule idiom are all
- * distinct compositional choices, not a palette swap. Text/background
- * contrast is verified in `lib/invitations/templates/default-themes.test.ts`.
+ * Geometric/structured black-and-gold composition — a radiating sunburst
+ * fan above the Hero and a repeating zigzag-step rule as the one
+ * recurring divider, both strictly geometric/symmetric motifs. Distinct
+ * from Royal Gold's classical corner-flourish-and-frame idiom (organic
+ * curls) — this one is angular and patterned throughout, never a curved
+ * line. Text/background contrast is verified in
+ * `lib/invitations/templates/default-themes.test.ts`.
  */
 
-function HairlineRule({ className = "" }: { className?: string }) {
-  return (
-    <hr aria-hidden="true" className={`border-t border-[color:var(--ii-accent)]/50 ${className}`} />
-  );
-}
-
-/** A symmetric scrollwork flourish — the Hero/Closing's richer counterpart to the plain HairlineRule used elsewhere. */
-function OrnamentalFlourish({ className = "" }: { className?: string }) {
+function ZigzagDivider({ className = "" }: { className?: string }) {
   return (
     <svg
+      viewBox="0 0 120 16"
       aria-hidden="true"
-      viewBox="0 0 160 28"
-      className={className}
+      className={`mx-auto text-[color:var(--ii-accent)] ${className}`}
       fill="none"
-      stroke="var(--ii-accent)"
-      strokeWidth="1"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinejoin="round"
     >
-      <path d="M4 14h38" strokeLinecap="round" />
-      <path d="M118 14h38" strokeLinecap="round" />
-      <path
-        d="M42 14c0-6.5 6-11 12-11s10.5 4.5 10.5 11-6 11-10.5 11M94.5 14c0-6.5 4-11 10.5-11s12 4.5 12 11-6 11-12 11"
-        strokeLinecap="round"
-      />
-      <circle cx="80" cy="14" r="2.5" fill="var(--ii-accent)" stroke="none" />
+      <path d="M0 8 10 2 20 8 30 2 40 8 50 2 60 8 70 2 80 8 90 2 100 8 110 2 120 8" />
     </svg>
   );
 }
 
-/** A tiny four-point sparkle mark — scattered near the Hero heading, purely decorative. */
-function Sparkle({ className = "" }: { className?: string }) {
+function SunRay({ className = "" }: { className?: string }) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 16 16" className={className} fill="var(--ii-accent)">
-      <path d="M8 0c0 4.2.5 7.8 4 8-3.5.2-4 3.8-4 8 0-4.2-.5-7.8-4-8 3.5-.2 4-3.8 4-8Z" />
+    <svg
+      viewBox="0 0 100 50"
+      aria-hidden="true"
+      className={`text-[color:var(--ii-accent)] ${className}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1}
+    >
+      <path d="M50 50 10 0M50 50 30 0M50 50 50 0M50 50 70 0M50 50 90 0" />
+      <path d="M2 50a48 48 0 0 1 96 0" />
+    </svg>
+  );
+}
+
+/** A tiny zigzag-step tick flanking section labels — the same strictly angular idiom as ZigzagDivider, never a curve. */
+function ZigzagTick({ flip = false }: { flip?: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 16 8"
+      className={`inline-block h-2 w-4 shrink-0 text-[color:var(--ii-accent)] ${flip ? "-scale-x-100" : ""}`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      strokeLinejoin="round"
+    >
+      <path d="M0 6 4 2 8 6 12 2 16 6" />
     </svg>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-center text-xs font-medium tracking-[0.4em] text-[color:var(--ii-accent)] uppercase">
+    <p
+      className="flex items-center justify-center gap-3 text-center text-xs font-medium tracking-[0.4em] text-[color:var(--ii-accent)] uppercase"
+      style={{ fontFamily: "var(--ii-heading-font)" }}
+    >
+      <ZigzagTick />
       {children}
+      <ZigzagTick flip />
     </p>
   );
 }
@@ -94,32 +112,31 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
   return (
     <section
       aria-label="Sampul undangan"
-      className="relative flex min-h-screen flex-col items-center justify-center gap-8 px-6 py-20 text-center"
+      className="relative flex min-h-screen flex-col items-center justify-center gap-5 px-6 py-16 text-center"
       style={coverPhotoTextStyle(coverPhotoUrl)}
     >
       <CoverPhotoLayer imageUrl={coverPhotoUrl} />
-      <Sparkle className="absolute top-[18%] left-[18%] size-3 opacity-70" />
-      <Sparkle className="absolute top-[28%] right-[20%] size-2 opacity-50" />
+      <SunRay className="relative h-12 w-24" />
       <p className="relative text-xs font-medium tracking-[0.5em] text-[color:var(--ii-accent)] uppercase">
         {EVENT_TYPE_LABELS[invitation.type]}
       </p>
       <h1
-        className="relative max-w-2xl text-4xl font-medium tracking-wide text-balance text-[color:var(--ii-primary)] sm:text-6xl"
+        className="relative max-w-xl text-4xl tracking-wide text-balance text-[color:var(--ii-primary)] sm:text-6xl"
         style={{ fontFamily: "var(--ii-heading-font)" }}
       >
         {getHeroHeading(invitation)}
       </h1>
-      <OrnamentalFlourish className="relative w-40" />
+      <ZigzagDivider className="relative w-28" />
       {heroDate && (
-        <p className="relative text-sm tracking-widest text-[color:var(--ii-text)] uppercase">
+        <p className="relative text-sm tracking-[0.2em] text-[color:var(--ii-text)] uppercase">
           {formatIndonesianDate(heroDate)}
         </p>
       )}
-      <div className="relative mt-8 space-y-1">
-        <p className="text-xs tracking-[0.3em] text-[color:var(--ii-text)] uppercase opacity-60">
+      <div className="relative mt-6 space-y-1">
+        <p className="text-xs tracking-[0.3em] text-[color:var(--ii-text)] uppercase opacity-70">
           Kepada Yth.
         </p>
-        <p className="text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
+        <p className="text-lg font-medium text-[color:var(--ii-primary)]">
           {invitation.guest?.displayName ?? "Bapak/Ibu/Saudara/i Tamu Undangan"}
         </p>
       </div>
@@ -129,16 +146,19 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
 
 function Identity({ identity }: { identity: PublicIdentity }) {
   return (
-    <section aria-labelledby="identity-heading" className="px-6 py-24 text-center">
+    <section aria-labelledby="identity-heading" className="px-6 py-20 text-center">
       <h2 id="identity-heading" className="sr-only">
         {identity.heading}
       </h2>
       <SectionLabel>{identity.heading}</SectionLabel>
       {identity.members.length > 0 && (
-        <div className="mx-auto mt-10 flex max-w-lg flex-col items-center gap-10 sm:flex-row sm:justify-center sm:gap-16">
+        <div className="mx-auto mt-10 flex max-w-lg flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-16">
           {identity.members.map((member, index) => (
             <div key={`${index}-${member.name}`}>
-              <p className="text-2xl font-medium tracking-wide text-[color:var(--ii-primary)]">
+              <p
+                className="text-2xl tracking-wide text-[color:var(--ii-primary)]"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
+              >
                 {member.name}
               </p>
               {member.instagram && (
@@ -170,21 +190,24 @@ function Schedule({ schedules }: { schedules: PublicSchedule[] }) {
   if (schedules.length === 0) return null;
 
   return (
-    <section aria-labelledby="schedule-heading" className="px-6 py-24">
+    <section aria-labelledby="schedule-heading" className="px-6 py-20">
       <h2 id="schedule-heading" className="sr-only">
         Rangkaian Acara
       </h2>
       <SectionLabel>Rangkaian Acara</SectionLabel>
-      <div className="mx-auto mt-12 flex max-w-md flex-col gap-12">
+      <div className="mx-auto mt-12 flex max-w-md flex-col gap-10">
         {schedules.map((schedule) => (
           <div
             key={schedule.id}
-            className="border border-[color:var(--ii-secondary)] p-8 text-center"
+            className="border border-[color:var(--ii-primary)] p-8 text-center"
           >
-            <p className="text-xl font-medium tracking-wide text-[color:var(--ii-primary)]">
+            <p
+              className="text-xl tracking-wide text-[color:var(--ii-primary)]"
+              style={{ fontFamily: "var(--ii-heading-font)" }}
+            >
               {schedule.title}
             </p>
-            <HairlineRule className="mx-auto my-4 w-10" />
+            <ZigzagDivider className="my-4 w-20" />
             <p className="text-sm tracking-wide text-[color:var(--ii-text)]">
               {formatIndonesianDate(schedule.date)}
             </p>
@@ -239,7 +262,7 @@ function LoveStory({
   if (!loveStory || loveStory.items.length === 0) return null;
 
   return (
-    <section aria-labelledby="love-story-heading" className="px-6 py-24">
+    <section aria-labelledby="love-story-heading" className="px-6 py-20">
       <h2 id="love-story-heading" className="sr-only">
         {loveStory.title ?? defaultTitle}
       </h2>
@@ -253,7 +276,7 @@ function LoveStory({
                 src={item.imageUrl}
                 alt={item.title}
                 loading="lazy"
-                className="mx-auto mb-4 aspect-[4/5] w-48 object-cover"
+                className="mx-auto mb-4 aspect-[4/5] w-44 border border-[color:var(--ii-primary)] object-cover p-1.5"
               />
             )}
             {item.dateLabel && (
@@ -261,7 +284,10 @@ function LoveStory({
                 {item.dateLabel}
               </p>
             )}
-            <p className="mt-2 text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
+            <p
+              className="mt-2 text-lg tracking-wide text-[color:var(--ii-primary)]"
+              style={{ fontFamily: "var(--ii-heading-font)" }}
+            >
               {item.title}
             </p>
             {item.description && (
@@ -281,13 +307,16 @@ function Gallery({ galleries }: { galleries: PublicGallery[] }) {
   if (nonEmpty.length === 0) return null;
 
   return (
-    <section aria-labelledby="gallery-heading" className="px-6 py-24">
+    <section aria-labelledby="gallery-heading" className="px-6 py-20">
       <h2 id="gallery-heading" className="sr-only">
         Galeri
       </h2>
       <SectionLabel>Galeri</SectionLabel>
       {nonEmpty.map((gallery, index) => (
-        <div key={index} className="mx-auto mt-12 max-w-xl">
+        <div
+          key={index}
+          className="mx-auto mt-12 max-w-xl border border-[color:var(--ii-primary)] p-4"
+        >
           {gallery.title && (
             <p className="mb-4 text-center text-sm tracking-wide text-[color:var(--ii-primary)]">
               {gallery.title}
@@ -308,7 +337,7 @@ function Rsvp({
   rsvp: { token: string; view: RsvpGuestView } | null;
 }) {
   return (
-    <section aria-labelledby="rsvp-heading" className="px-6 py-24">
+    <section aria-labelledby="rsvp-heading" className="px-6 py-20">
       <h2 id="rsvp-heading" className="sr-only">
         RSVP
       </h2>
@@ -324,7 +353,7 @@ function Gift({ giftMethods }: { giftMethods: PublicGiftMethod[] }) {
   if (giftMethods.length === 0) return null;
 
   return (
-    <section aria-labelledby="gift-heading" className="px-6 py-24">
+    <section aria-labelledby="gift-heading" className="px-6 py-20">
       <h2 id="gift-heading" className="sr-only">
         Kirim Hadiah
       </h2>
@@ -333,12 +362,15 @@ function Gift({ giftMethods }: { giftMethods: PublicGiftMethod[] }) {
         {giftMethods.map((method) => (
           <div
             key={method.id}
-            className="border border-[color:var(--ii-secondary)] p-6 text-center text-sm"
+            className="border border-[color:var(--ii-primary)] p-6 text-center text-sm"
           >
             <p className="text-xs tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
               {GIFT_METHOD_TYPE_LABELS[method.type]}
             </p>
-            <p className="mt-2 text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
+            <p
+              className="mt-2 text-lg tracking-wide text-[color:var(--ii-primary)]"
+              style={{ fontFamily: "var(--ii-heading-font)" }}
+            >
               {method.providerName ?? GIFT_METHOD_TYPE_LABELS[method.type]}
             </p>
             {method.accountName && (
@@ -384,7 +416,7 @@ function Wishes({
   guest: { token: string; guestName: string } | null;
 }) {
   return (
-    <section aria-labelledby="wishes-heading" className="px-6 py-24">
+    <section aria-labelledby="wishes-heading" className="px-6 py-20">
       <h2 id="wishes-heading" className="sr-only">
         Ucapan &amp; Doa
       </h2>
@@ -393,7 +425,7 @@ function Wishes({
         {guest ? (
           <WishForm eventId={eventId} token={guest.token} guestName={guest.guestName} />
         ) : (
-          <p className="border border-dashed border-[color:var(--ii-secondary)] p-5 text-center text-sm opacity-70">
+          <p className="border border-dashed border-[color:var(--ii-primary)] p-5 text-center text-sm opacity-70">
             Ucapan hanya dapat dikirim melalui tautan undangan pribadi Anda.
           </p>
         )}
@@ -402,7 +434,7 @@ function Wishes({
             {wishes.map((wish) => (
               <li
                 key={wish.id}
-                className="border border-[color:var(--ii-secondary)] p-5 text-center text-sm"
+                className="border border-[color:var(--ii-primary)] p-5 text-center text-sm"
               >
                 <p className="whitespace-pre-wrap">{wish.message}</p>
                 <p className="mt-3 text-xs tracking-[0.2em] opacity-60">
@@ -421,12 +453,15 @@ function Closing({ copy }: { copy: InvitationCopy }) {
   return (
     <section
       aria-label="Penutup"
-      className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-24 text-center"
+      className="flex min-h-[60vh] flex-col items-center justify-center px-6 py-20 text-center"
     >
-      <p className="mx-auto max-w-lg text-2xl leading-relaxed text-balance text-[color:var(--ii-primary)] sm:text-3xl">
+      <p
+        className="mx-auto max-w-lg text-2xl leading-relaxed tracking-wide text-balance text-[color:var(--ii-primary)] sm:text-3xl"
+        style={{ fontFamily: "var(--ii-heading-font)" }}
+      >
         {copy.closingMessage}
       </p>
-      <OrnamentalFlourish className="my-8 w-40" />
+      <ZigzagDivider className="my-8 w-28" />
       <p className="text-xs tracking-[0.4em] text-[color:var(--ii-text)] uppercase opacity-70">
         {copy.closingThanks}
       </p>
@@ -434,7 +469,7 @@ function Closing({ copy }: { copy: InvitationCopy }) {
   );
 }
 
-export function DarkLuxuryTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
+export function ArtDecoTemplate({ invitation, rsvp, wishGuest }: InvitationTemplateProps) {
   const { sections } = invitation;
   const copy = getInvitationCopy(invitation.type);
 

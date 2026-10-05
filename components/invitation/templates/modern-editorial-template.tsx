@@ -49,8 +49,22 @@ function Eyebrow({ index, children }: { index?: string; children: React.ReactNod
   );
 }
 
+/** A typographic rule ending in a small tick cluster (a printer's fleuron idiom) — stays strictly linear/geometric, matching this template's "rule-divided, typography-led" brief (no curls or botanical motifs). */
 function Rule() {
-  return <hr className="border-t border-[color:var(--ii-secondary)]" />;
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 400 10"
+      preserveAspectRatio="none"
+      className="h-2.5 w-full text-[color:var(--ii-secondary)]"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1}
+    >
+      <path d="M0 5h380" />
+      <path d="M386 1v8M392 1v8M398 1v8" stroke="var(--ii-accent)" />
+    </svg>
+  );
 }
 
 function Hero({ invitation }: { invitation: PublicInvitation }) {

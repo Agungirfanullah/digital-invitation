@@ -70,10 +70,30 @@ function GeometricBorder({ className = "" }: { className?: string }) {
   );
 }
 
+/** A tiny diamond tick flanking section labels — the same repeating geometric idiom as GeometricBorder, scaled down for inline use. */
+function DiamondTick() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 10 10" className="inline-block h-2.5 w-2.5 shrink-0">
+      <rect
+        x="1.5"
+        y="1.5"
+        width="7"
+        height="7"
+        fill="none"
+        stroke="var(--ii-accent)"
+        strokeWidth="1.25"
+        transform="rotate(45 5 5)"
+      />
+    </svg>
+  );
+}
+
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-center text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
+    <p className="flex items-center justify-center gap-3 text-center text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
+      <DiamondTick />
       {children}
+      <DiamondTick />
     </p>
   );
 }

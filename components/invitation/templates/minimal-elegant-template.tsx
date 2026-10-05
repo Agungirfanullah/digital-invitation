@@ -15,6 +15,30 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { ClosingSection } from "@/components/invitation/sections/closing-section";
 
 /**
+ * A tiny register-mark tick (a plus-sign cross) at the page's top-left and
+ * bottom-right corners — the one, deliberately understated signature
+ * touch for this template. Minimal Elegant's whole identity is the
+ * plainest/baseline option (it renders the shared section components
+ * directly, with no bespoke composition of its own — see the function
+ * doc comment below), so this stays a single quiet mark rather than any
+ * florid motif that would contradict that.
+ */
+function CornerTick({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="var(--ii-accent)"
+      strokeWidth={1}
+    >
+      <path d="M12 5v6M5 12h6" />
+    </svg>
+  );
+}
+
+/**
  * The first real, working template. Genuinely renders whatever data the
  * event actually has — every section beyond Closing is conditional on
  * real backing data existing (see each section's own guard) and on the
@@ -56,8 +80,10 @@ export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: Invitati
   return (
     <main
       style={themeToCssVars(invitation.theme)}
-      className="min-h-screen bg-[color:var(--ii-background)]"
+      className="relative min-h-screen bg-[color:var(--ii-background)]"
     >
+      <CornerTick className="absolute top-6 left-6 size-4 opacity-60" />
+      <CornerTick className="absolute right-6 bottom-6 size-4 opacity-60" />
       <div style={{ fontFamily: "var(--ii-body-font)" }}>
         {invitation.sectionOrder.map((key) => (
           <Fragment key={key}>{sectionRenderers[key]}</Fragment>

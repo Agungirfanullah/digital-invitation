@@ -131,6 +131,16 @@ const NEW_TEMPLATES: { slug: string; name: string }[] = [
   { slug: "dark-luxury", name: "Dark Luxury" },
   { slug: "traditional-nusantara", name: "Traditional Nusantara" },
   { slug: "soft-romantic", name: "Soft Romantic" },
+  { slug: "cinematic-journey", name: "Cinematic Journey" },
+  { slug: "rustic-earth", name: "Rustic Earth" },
+  { slug: "playful-pop", name: "Playful Pop" },
+  { slug: "royal-gold", name: "Royal Gold" },
+  { slug: "blue-bloom", name: "Blue Bloom" },
+  { slug: "mono-frame", name: "Mono Frame" },
+  { slug: "garden-tropical", name: "Garden Tropical" },
+  { slug: "art-deco", name: "Art Deco" },
+  { slug: "vintage-sepia", name: "Vintage Sepia" },
+  { slug: "industrial-loft", name: "Industrial Loft" },
 ];
 
 test.describe("template system", () => {
@@ -142,7 +152,7 @@ test.describe("template system", () => {
     await prisma.$disconnect();
   });
 
-  test("the editor offers all six templates as selectable, and a new selection persists", async ({
+  test("the editor offers every template as selectable, and a new selection persists", async ({
     page,
   }) => {
     const owner = await createAuthenticatedTestUser("owner-editor");
