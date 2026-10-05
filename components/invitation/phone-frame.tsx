@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 
 /**
  * Shared iPhone-style mockup chrome around a rendered invitation preview —
- * used by the Hero, Template Showcase, and Invitation Preview sections.
+ * used by the Homepage's Hero, Template Showcase, and Invitation Preview sections
+ * and by the editor's template gallery.
  * Pure CSS (no image asset): rounded chassis and a Dynamic Island
  * overlapping the top of the screen content.
  *

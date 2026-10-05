@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 import type { EditorEventData, EditorTemplateOption } from "@/lib/editor/types";
@@ -26,9 +26,12 @@ import { GalleryForm } from "@/components/editor/sections/gallery-form";
 export function EditorShell({
   initialEvent,
   templates,
+  templatePreviews,
 }: {
   initialEvent: EditorEventData;
   templates: EditorTemplateOption[];
+  /** Server-rendered demo of each implemented template, keyed by slug (see the editor page). */
+  templatePreviews: Record<string, ReactNode>;
 }) {
   const { eventId, type } = initialEvent;
 
@@ -160,6 +163,7 @@ export function EditorShell({
           {activeSection === "theme" && (
             <ThemeForm
               eventId={eventId}
+              templateKey={templateKey}
               value={theme}
               onSaved={setTheme}
               onStatusChange={reportStatus}
@@ -169,6 +173,7 @@ export function EditorShell({
             <TemplateForm
               eventId={eventId}
               templates={templates}
+              previews={templatePreviews}
               value={templateKey}
               onSaved={setTemplateKey}
             />

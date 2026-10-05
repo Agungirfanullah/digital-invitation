@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
-import { PhoneFrame } from "@/components/marketing/phone-frame";
+import { PhoneFrame } from "@/components/invitation/phone-frame";
 import { buildDemoInvitation } from "@/lib/marketing/demo-invitation";
 
 /**

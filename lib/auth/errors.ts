@@ -3,6 +3,8 @@ import "server-only";
 interface AuthErrorLike {
   code?: string | null;
   message: string;
+  name?: string;
+  status?: number;
 }
 
 const GENERIC_MESSAGE = "Terjadi kesalahan saat memproses permintaan. Coba lagi.";
@@ -27,6 +29,21 @@ export function mapSupabaseAuthError(error: AuthErrorLike | null | undefined): s
     return MESSAGES[error.code];
   }
 
-  console.error("[auth] Supabase auth error", { code: error.code, message: error.message });
+  // Some Supabase responses (notably the email send limit) arrive as a bare
+  // 429 / "rate limit exceeded" with no `code`, so match on those too.
+  if (!error.code && (error.status === 429 || /rate limit/i.test(error.message))) {
+    return MESSAGES.over_email_send_rate_limit;
+  }
+
+  // Serialized to one string: structured objects get flattened to `{}` by some
+  // log pipelines (Next dev, Vercel), which hides the only clue to the cause.
+  console.error(
+    `[auth] Supabase auth error ${JSON.stringify({
+      code: error.code ?? null,
+      status: error.status ?? null,
+      name: error.name ?? null,
+      message: error.message,
+    })}`,
+  );
   return GENERIC_MESSAGE;
 }

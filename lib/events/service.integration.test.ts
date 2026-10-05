@@ -23,8 +23,10 @@ import {
   createEventForUser,
   deleteEventForUser,
   getEventForUser,
+  getEventStatsForUser,
   getPublishReadinessForUser,
   listEventsForUser,
+  listEventsWithStatsForUser,
   publishEventForUser,
   unpublishEventForUser,
   updateEventForUser,
@@ -509,5 +511,70 @@ describe("publish readiness (integration)", () => {
     await expect(getPublishReadinessForUser(event.id, userB.id)).rejects.toThrow(
       EventNotFoundError,
     );
+  });
+});
+
+describe("event stats (integration — live Supabase DEV database)", () => {
+  async function addGuest(eventId: string, name: string) {
+    return prisma.guest.create({
+      data: { eventId, name, normalizedName: name.toLowerCase(), seatQuota: 4 },
+    });
+  }
+
+  it("counts real guests, attending people, and visible wishes — nothing else", async () => {
+    const userA = await createTestUser("a");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+    const [g1, g2, g3] = await Promise.all([
+      addGuest(event.id, "Satu"),
+      addGuest(event.id, "Dua"),
+      addGuest(event.id, "Tiga"),
+    ]);
+
+    await prisma.rSVP.createMany({
+      data: [
+        { eventId: event.id, guestId: g1.id, attendance: "ATTENDING", attendeeCount: 3 },
+        { eventId: event.id, guestId: g2.id, attendance: "NOT_ATTENDING", attendeeCount: 0 },
+        { eventId: event.id, guestId: g3.id, attendance: "MAYBE", attendeeCount: 2 },
+      ],
+    });
+    await prisma.wish.createMany({
+      data: [
+        { eventId: event.id, guestId: g1.id, name: "Satu", message: "a", status: "APPROVED" },
+        { eventId: event.id, guestId: g2.id, name: "Dua", message: "b", status: "PENDING" },
+        { eventId: event.id, guestId: g3.id, name: "Tiga", message: "c", status: "HIDDEN" },
+        { eventId: event.id, guestId: g3.id, name: "Tiga", message: "d", status: "DELETED" },
+      ],
+    });
+
+    await expect(getEventStatsForUser(event.id, userA.id)).resolves.toEqual({
+      guests: 3,
+      attendingPeople: 3,
+      wishes: 2,
+    });
+  });
+
+  it("returns zeros for an event with no guests, and lists stats per event without mixing them up", async () => {
+    const userA = await createTestUser("a");
+    const empty = trackEvent(await createEventForUser(userA.id, validInput()));
+    const busy = trackEvent(await createEventForUser(userA.id, validInput()));
+    await addGuest(busy.id, "Hanya Satu");
+
+    const list = await listEventsWithStatsForUser(userA.id);
+    expect(list.find((e) => e.id === empty.id)?.stats).toEqual({
+      guests: 0,
+      attendingPeople: 0,
+      wishes: 0,
+    });
+    expect(list.find((e) => e.id === busy.id)?.stats.guests).toBe(1);
+  });
+
+  it("is IDOR-safe: a stranger cannot read another owner's stats", async () => {
+    const userA = await createTestUser("a");
+    const userB = await createTestUser("b");
+    const event = trackEvent(await createEventForUser(userA.id, validInput()));
+
+    await expect(getEventStatsForUser(event.id, userB.id)).rejects.toThrow(EventNotFoundError);
+    const listB = await listEventsWithStatsForUser(userB.id);
+    expect(listB.map((e) => e.id)).not.toContain(event.id);
   });
 });

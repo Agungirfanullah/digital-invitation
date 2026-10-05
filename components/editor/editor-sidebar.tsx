@@ -23,8 +23,8 @@ export function getEditorSections(type: EventType): { key: EditorSectionKey; lab
     { key: "story", label: config.storyNavLabel },
     { key: "gallery", label: "Galeri" },
     { key: "sections", label: "Bagian Undangan" },
-    { key: "theme", label: "Tema" },
-    { key: "template", label: "Template" },
+    { key: "template", label: "Tema" },
+    { key: "theme", label: "Warna & Font" },
   ];
 }
 

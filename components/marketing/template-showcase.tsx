@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { PhoneFrame } from "@/components/marketing/phone-frame";
+import { PhoneFrame } from "@/components/invitation/phone-frame";
 
 interface TemplateOption {
   slug: string;

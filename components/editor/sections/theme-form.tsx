@@ -8,6 +8,7 @@ import {
   uploadCoverPhotoAction,
 } from "@/lib/editor/actions";
 import type { EditorTheme } from "@/lib/editor/types";
+import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
 import { GALLERY_UPLOAD_MAX_BYTES } from "@/lib/storage/limits";
 import { useAutosave, type SaveStatus } from "@/components/editor/use-autosave";
 import { Button } from "@/components/ui/button";
@@ -45,12 +46,21 @@ const FONT_FIELDS: { key: keyof EditorTheme; label: string }[] = [
 
 interface ThemeFormProps {
   eventId: string;
+  /** The selected template, whose own default palette/fonts are shown as placeholders. */
+  templateKey: string | null;
   value: EditorTheme | null;
   onSaved: (value: EditorTheme) => void;
   onStatusChange?: (status: SaveStatus, error?: string) => void;
 }
 
-export function ThemeForm({ eventId, value, onSaved, onStatusChange }: ThemeFormProps) {
+export function ThemeForm({
+  eventId,
+  templateKey,
+  value,
+  onSaved,
+  onStatusChange,
+}: ThemeFormProps) {
+  const defaults = getTemplateDefaultTheme(templateKey);
   const [form, setForm] = useState<EditorTheme>(value ?? EMPTY_THEME);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
@@ -82,9 +92,10 @@ export function ThemeForm({ eventId, value, onSaved, onStatusChange }: ThemeForm
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold tracking-tight">Tema</h2>
+        <h2 className="text-lg font-semibold tracking-tight">Warna &amp; Font</h2>
         <p className="text-muted-foreground text-sm">
-          Warna dan tipografi undangan. Kosongkan untuk memakai tampilan bawaan.
+          Warna dan tipografi undangan. Kosongkan untuk memakai tampilan bawaan tema yang dipilih
+          (ditampilkan sebagai petunjuk di kolom).
         </p>
       </div>
 
@@ -96,7 +107,7 @@ export function ThemeForm({ eventId, value, onSaved, onStatusChange }: ThemeForm
             label={label}
             name={key}
             type="text"
-            placeholder="#7a5c3e"
+            placeholder={defaults[key] ?? ""}
             value={form[key] ?? ""}
             onChange={(e) => setField(key, e.target.value)}
             error={fieldErrors[key]?.[0]}
@@ -112,7 +123,7 @@ export function ThemeForm({ eventId, value, onSaved, onStatusChange }: ThemeForm
             label={label}
             name={key}
             type="text"
-            placeholder="Georgia, serif"
+            placeholder={defaults[key] ?? ""}
             value={form[key] ?? ""}
             onChange={(e) => setField(key, e.target.value)}
             error={fieldErrors[key]?.[0]}

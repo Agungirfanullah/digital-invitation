@@ -13,6 +13,7 @@ import {
   SlugConflictError,
 } from "@/lib/events/errors";
 import type { CreateEventInput, UpdateEventInput } from "@/lib/events/validation";
+import { normalizeConfirmedSeats } from "@/lib/rsvp/service";
 
 const EVENT_SUMMARY_SELECT = {
   id: true,
@@ -48,6 +49,72 @@ export async function listEventsForUser(userId: string) {
     orderBy: { createdAt: "desc" },
     select: EVENT_SUMMARY_SELECT,
   });
+}
+
+export interface EventStats {
+  guests: number;
+  /** People confirmed as attending (sum of `attendeeCount` over ATTENDING RSVPs), not RSVP rows. */
+  attendingPeople: number;
+  /** Wishes still visible to the owner: pending or approved (hidden/deleted ones are excluded). */
+  wishes: number;
+}
+
+/** Only ever called with ids the caller was already authorized for — it does no authorization itself. */
+async function loadEventStats(eventIds: string[]): Promise<Map<string, EventStats>> {
+  const stats = new Map<string, EventStats>(
+    eventIds.map((id) => [id, { guests: 0, attendingPeople: 0, wishes: 0 }]),
+  );
+  if (eventIds.length === 0) return stats;
+
+  const [guestGroups, attendingGroups, wishGroups] = await Promise.all([
+    prisma.guest.groupBy({
+      by: ["eventId"],
+      where: { eventId: { in: eventIds } },
+      _count: { _all: true },
+    }),
+    prisma.rSVP.groupBy({
+      by: ["eventId"],
+      where: { eventId: { in: eventIds }, attendance: "ATTENDING" },
+      _sum: { attendeeCount: true },
+    }),
+    prisma.wish.groupBy({
+      by: ["eventId"],
+      where: { eventId: { in: eventIds }, status: { in: ["PENDING", "APPROVED"] } },
+      _count: { _all: true },
+    }),
+  ]);
+
+  for (const group of guestGroups) {
+    const entry = stats.get(group.eventId);
+    if (entry) entry.guests = group._count._all;
+  }
+  for (const group of attendingGroups) {
+    const entry = stats.get(group.eventId);
+    if (entry) entry.attendingPeople = normalizeConfirmedSeats(group._sum.attendeeCount);
+  }
+  for (const group of wishGroups) {
+    const entry = stats.get(group.eventId);
+    if (entry) entry.wishes = group._count._all;
+  }
+  return stats;
+}
+
+/** Same events as `listEventsForUser`, each with real guest/attending/wish counts (three grouped queries total, not one per event). */
+export async function listEventsWithStatsForUser(userId: string) {
+  const events = await listEventsForUser(userId);
+  const stats = await loadEventStats(events.map((event) => event.id));
+  return events.map((event) => ({
+    ...event,
+    stats: stats.get(event.id) ?? { guests: 0, attendingPeople: 0, wishes: 0 },
+  }));
+}
+
+/** Throws `EventNotFoundError` if the event doesn't exist or the user isn't authorized to view it. */
+export async function getEventStatsForUser(eventId: string, userId: string): Promise<EventStats> {
+  const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.VIEWER);
+  if (!event) throw new EventNotFoundError();
+  const stats = await loadEventStats([event.id]);
+  return stats.get(event.id) ?? { guests: 0, attendingPeople: 0, wishes: 0 };
 }
 
 /** Throws `EventNotFoundError` if the event doesn't exist or the user isn't authorized to view it. */

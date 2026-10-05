@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EventType } from "@prisma/client";
 
 import { buildPreviewInvitation, type PreviewSource } from "@/lib/editor/preview";
+import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
 import { buildPublicIdentity, emptyIdentityFor } from "@/lib/event-types/identity";
 import { resolveEnabledSections } from "@/lib/event-types/sections";
 import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
@@ -43,6 +44,40 @@ describe("buildPreviewInvitation", () => {
     const invitation = buildPreviewInvitation(baseSource({ theme: null }));
     expect(invitation.theme.primaryColor).toBeTruthy();
     expect(invitation.theme.backgroundImageUrl).toBeNull();
+  });
+
+  it("falls back to the selected template's own default palette, like the public page", () => {
+    const dark = buildPreviewInvitation(baseSource({ templateKey: "dark-luxury", theme: null }));
+    const light = buildPreviewInvitation(
+      baseSource({ templateKey: "minimal-elegant", theme: null }),
+    );
+
+    expect(dark.theme).toEqual(getTemplateDefaultTheme("dark-luxury"));
+    expect(dark.theme.backgroundColor).not.toBe(light.theme.backgroundColor);
+  });
+
+  it("lets an explicit owner color win over the template default, field by field", () => {
+    const invitation = buildPreviewInvitation(
+      baseSource({
+        templateKey: "dark-luxury",
+        theme: {
+          primaryColor: "#123456",
+          secondaryColor: null,
+          backgroundColor: null,
+          textColor: null,
+          accentColor: null,
+          headingFont: null,
+          bodyFont: null,
+          scriptFont: null,
+          backgroundImageUrl: null,
+        },
+      }),
+    );
+
+    expect(invitation.theme.primaryColor).toBe("#123456");
+    expect(invitation.theme.backgroundColor).toBe(
+      getTemplateDefaultTheme("dark-luxury").backgroundColor,
+    );
   });
 
   it("passes through raw (unsaved) theme edits", () => {

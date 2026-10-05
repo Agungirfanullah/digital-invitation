@@ -169,18 +169,30 @@ test.describe("template system", () => {
 
     await login(page, owner.email);
     await page.goto(`/dashboard/events/${event.id}/editor`);
-    await page.getByRole("button", { name: "Template", exact: true }).click();
+    await page.getByRole("button", { name: "Tema", exact: true }).click();
 
-    // No template should show the "coming soon" disabled state anymore.
-    await expect(page.getByText("Segera hadir")).toHaveCount(0);
+    // Every shipped template is selectable (none shows the "coming soon"
+    // disabled state). Checked per known template rather than as "no
+    // 'Segera hadir' anywhere": a shared DEV database can hold older,
+    // never-implemented Template rows that legitimately render as disabled.
+    for (const { name } of [{ name: "Minimal Elegant" }, ...NEW_TEMPLATES]) {
+      const option = page.getByRole("button", { name: new RegExp(name) });
+      await expect(option).toBeEnabled();
+      await expect(option).not.toContainText("Segera hadir");
+    }
 
     const darkLuxuryOption = page.getByRole("button", { name: /Dark Luxury/ });
     await expect(darkLuxuryOption).toBeEnabled();
     await darkLuxuryOption.click();
     await expect(page.getByText("Dipakai")).toBeVisible();
+    await expect(page.getByText("Tema Aktif").locator("..")).toContainText("Dark Luxury");
+    await expect(page.getByRole("link", { name: "Lihat demo Dark Luxury" })).toHaveAttribute(
+      "href",
+      "/demo/dark-luxury",
+    );
 
     await page.reload();
-    await page.getByRole("button", { name: "Template", exact: true }).click();
+    await page.getByRole("button", { name: "Tema", exact: true }).click();
     await expect(page.getByRole("button", { name: /Dark Luxury/ })).toHaveAttribute(
       "aria-pressed",
       "true",

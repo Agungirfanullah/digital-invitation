@@ -69,7 +69,7 @@ export interface WishModerationFormState {
  * itself (`app/dashboard/events/[eventId]/wishes`), not a separate
  * create/edit page — so, unlike `lib/gifts/actions.ts`, they revalidate
  * and re-render the same page rather than redirecting, matching
- * `components/events/publish-toggle-button.tsx`'s inline-toggle pattern.
+ * `components/dashboard/publish-switch.tsx`'s inline-toggle pattern.
  */
 export async function approveWishAction(
   eventId: string,

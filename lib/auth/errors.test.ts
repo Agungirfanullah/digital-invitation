@@ -21,6 +21,13 @@ describe("mapSupabaseAuthError", () => {
     );
   });
 
+  it("recognizes a rate-limit error that arrives without a code", () => {
+    expect(mapSupabaseAuthError({ message: "email rate limit exceeded", status: 429 })).toMatch(
+      /Terlalu banyak/,
+    );
+    expect(mapSupabaseAuthError({ message: "anything", status: 429 })).toMatch(/Terlalu banyak/);
+  });
+
   it("falls back to a generic message and logs unknown codes without leaking them to the caller", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -31,9 +38,7 @@ describe("mapSupabaseAuthError", () => {
 
     expect(message).not.toMatch(/raw internal detail/);
     expect(message).toMatch(/kesalahan/i);
-    expect(spy).toHaveBeenCalledWith(
-      "[auth] Supabase auth error",
-      expect.objectContaining({ code: "some_unknown_code" }),
-    );
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('"code":"some_unknown_code"'));
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining("raw internal detail"));
   });
 });

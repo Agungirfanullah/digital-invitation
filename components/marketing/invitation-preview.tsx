@@ -1,6 +1,6 @@
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
 import { buildDemoInvitation } from "@/lib/marketing/demo-invitation";
-import { PhoneFrame } from "@/components/marketing/phone-frame";
+import { PhoneFrame } from "@/components/invitation/phone-frame";
 
 /**
  * Homepage Invitation Preview (docs/PRD.md §8 item 5, D-073). Renders a

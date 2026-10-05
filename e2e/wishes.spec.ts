@@ -169,7 +169,9 @@ test.describe("wishes", () => {
     await page.getByLabel("Nama").fill("Dewi Kartika");
     // exact: true — otherwise this also matches the section's own
     // aria-labelledby region ("Ucapan & Doa"), whose name contains "Ucapan".
-    await page.getByLabel("Ucapan", { exact: true }).fill("Selamat menempuh hidup baru!");
+    await page
+      .getByRole("textbox", { name: "Ucapan", exact: true })
+      .fill("Selamat menempuh hidup baru!");
     await page.getByRole("button", { name: "Kirim Ucapan" }).click();
     await expect(page.getByRole("status")).toContainText("Terima kasih!");
 

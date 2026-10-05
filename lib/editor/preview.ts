@@ -7,6 +7,7 @@ import {
   type InvitationSectionKey,
   type SectionOverrides,
 } from "@/lib/event-types/sections";
+import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
 import { parseTheme } from "@/lib/invitations/theme";
 import type { PublicInvitation } from "@/lib/invitations/types";
 import { stripDisabledSectionContent } from "@/lib/invitations/visibility";
@@ -46,7 +47,9 @@ export interface PreviewSource {
  * `EditorSchedule`/etc. are structural supersets of their `Public*`
  * counterparts (entity ids included, for the editor's own use), so they
  * pass through unchanged; only the theme needs `parseTheme()`'s
- * default-fallback treatment, same as production.
+ * default-fallback treatment — including the selected template's own
+ * default palette (`getTemplateDefaultTheme`), same as production, so
+ * switching templates in the editor previews that template's real colors.
  *
  * Gift methods and wishes are intentionally not part of `PreviewSource` —
  * both are managed on their own dedicated dashboard pages
@@ -64,7 +67,7 @@ export function buildPreviewInvitation(source: PreviewSource): PublicInvitation 
     title: source.title,
     description: source.description,
     templateKey: source.templateKey,
-    theme: parseTheme(source.theme),
+    theme: parseTheme(source.theme, getTemplateDefaultTheme(source.templateKey)),
     identity: buildPublicIdentity(source.type, source.identity),
     sections: resolveEnabledSections(source.type, { sections: source.sectionOverrides }),
     sectionOrder: resolveSectionOrder({ sectionOrder: source.sectionOrder }),
