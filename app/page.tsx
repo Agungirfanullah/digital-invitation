@@ -15,6 +15,12 @@ import {
   UsersIcon,
   WalletIcon,
 } from "@/components/marketing/icons";
+import {
+  AnalyticsMockup,
+  GiftMockup,
+  GuestListMockup,
+  RsvpMockup,
+} from "@/components/marketing/feature-mockups";
 import { InvitationPreview } from "@/components/marketing/invitation-preview";
 import { Pricing } from "@/components/marketing/pricing";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -78,12 +84,15 @@ export default async function Home() {
           heading="Kelola Tamu Tanpa Ribet"
           description="Tambahkan tamu satu per satu atau impor dari CSV, lengkap dengan tautan undangan pribadi untuk masing-masing tamu."
           icon={UsersIcon}
+          visual={<GuestListMockup />}
         />
         <FeatureSection
           id="marketing-rsvp"
           heading="RSVP Langsung dari Undangan"
           description="Tamu mengisi kehadiran langsung dari undangan digital, dan kamu bisa memantau jawabannya secara langsung."
           icon={CalendarCheckIcon}
+          visual={<RsvpMockup />}
+          reverse
           className="bg-muted/30"
         />
         <FeatureSection
@@ -91,12 +100,15 @@ export default async function Home() {
           heading="Digital Gift"
           description="Tampilkan informasi rekening atau e-wallet untuk hadiah digital langsung di undanganmu."
           icon={WalletIcon}
+          visual={<GiftMockup />}
         />
         <FeatureSection
           id="analytics"
           heading="Analitik Undangan"
           description="Pantau berapa banyak tamu yang membuka undanganmu, langsung dari dashboard."
           icon={ChartBarIcon}
+          visual={<AnalyticsMockup />}
+          reverse
           className="bg-muted/30"
         />
         <Pricing plans={plans} ctaHref={ctaHref} />

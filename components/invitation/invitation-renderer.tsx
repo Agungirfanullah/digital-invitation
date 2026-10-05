@@ -1,3 +1,5 @@
+import { FloatingSectionNav } from "@/components/invitation/floating-section-nav";
+import { GuestQrButton } from "@/components/invitation/guest-qr-button";
 import { OpeningGate } from "@/components/invitation/opening-gate";
 import { resolveTemplateComponent } from "@/lib/invitations/templates/registry";
 import type { PublicInvitation } from "@/lib/invitations/types";
@@ -35,7 +37,21 @@ export function InvitationRenderer({
   bypassOpening?: boolean;
 }) {
   const Template = resolveTemplateComponent(invitation.templateKey);
-  const content = <Template invitation={invitation} rsvp={rsvp} wishGuest={wishGuest} />;
+  // Both floating overlays are real-guest-experience-only — suppressed
+  // whenever `bypassOpening` is set (the editor's live preview, and the
+  // Homepage's small marketing thumbnails), the same signal that already
+  // distinguishes those internal preview contexts from a real visit.
+  const content = (
+    <>
+      <Template invitation={invitation} rsvp={rsvp} wishGuest={wishGuest} />
+      {!bypassOpening && (
+        <>
+          <FloatingSectionNav invitation={invitation} />
+          {invitation.guest && <GuestQrButton guestName={invitation.guest.displayName} />}
+        </>
+      )}
+    </>
+  );
 
   if (bypassOpening) return content;
   return <OpeningGate invitation={invitation}>{content}</OpeningGate>;

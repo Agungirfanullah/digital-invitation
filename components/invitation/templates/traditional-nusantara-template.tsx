@@ -20,9 +20,11 @@ import { getHeroHeading, getHeroScheduleDate } from "@/lib/event-types/identity"
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { GIFT_METHOD_TYPE_LABELS } from "@/lib/gifts/labels";
 import {
+  buildGoogleCalendarUrl,
   formatIndonesianDate,
   formatIndonesianDateTime,
   formatTimeRange,
+  toInstagramProfileUrl,
 } from "@/lib/invitations/format";
 import { themeToCssVars } from "@/components/invitation/theme-vars";
 import { GalleryGrid } from "@/components/invitation/sections/gallery-grid";
@@ -138,9 +140,14 @@ function Identity({ identity }: { identity: PublicIdentity }) {
                 {member.name}
               </p>
               {member.instagram && (
-                <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
+                <a
+                  href={toInstagramProfileUrl(member.instagram)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 text-sm text-[color:var(--ii-text)] underline-offset-2 opacity-70 hover:underline"
+                >
                   @{member.instagram}
-                </p>
+                </a>
               )}
             </div>
           ))}
@@ -188,18 +195,28 @@ function Schedule({ schedules }: { schedules: PublicSchedule[] }) {
               <div className="mt-3 space-y-1 text-sm">
                 <p className="font-medium text-[color:var(--ii-primary)]">{schedule.venue.name}</p>
                 <p className="text-[color:var(--ii-text)] opacity-80">{schedule.venue.address}</p>
-                {schedule.venue.mapUrl && (
-                  <a
-                    href={schedule.venue.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block text-[color:var(--ii-accent)] underline underline-offset-4"
-                  >
-                    Buka Peta
-                  </a>
-                )}
               </div>
             )}
+            <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-sm">
+              <a
+                href={buildGoogleCalendarUrl(schedule)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-[color:var(--ii-accent)] underline underline-offset-4"
+              >
+                Simpan Tanggal
+              </a>
+              {schedule.venue?.mapUrl && (
+                <a
+                  href={schedule.venue.mapUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-[color:var(--ii-accent)] underline underline-offset-4"
+                >
+                  Buka Peta
+                </a>
+              )}
+            </div>
             <GeometricBorder className="mx-auto mt-4 h-3 w-32" />
           </li>
         ))}

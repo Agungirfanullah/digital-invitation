@@ -1,5 +1,6 @@
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
 import { buildDemoInvitation } from "@/lib/marketing/demo-invitation";
+import { PhoneFrame } from "@/components/marketing/phone-frame";
 
 /**
  * Homepage Invitation Preview (docs/PRD.md §8 item 5, D-073). Renders a
@@ -28,11 +29,9 @@ export function InvitationPreview() {
 
       <figure className="mx-auto mt-10 max-w-sm">
         <figcaption className="sr-only">Contoh undangan digital</figcaption>
-        <div className="bg-foreground/90 rounded-[2.5rem] border-8 border-black/80 p-2 shadow-xl">
-          <div className="h-[650px] overflow-hidden overflow-y-auto rounded-[1.75rem]">
-            <InvitationRenderer invitation={invitation} bypassOpening />
-          </div>
-        </div>
+        <PhoneFrame>
+          <InvitationRenderer invitation={invitation} bypassOpening />
+        </PhoneFrame>
       </figure>
     </section>
   );

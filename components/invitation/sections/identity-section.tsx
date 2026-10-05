@@ -1,4 +1,5 @@
 import type { PublicIdentity, PublicIdentityMember } from "@/lib/invitations/types";
+import { toInstagramProfileUrl } from "@/lib/invitations/format";
 
 function Member({ member }: { member: PublicIdentityMember }) {
   return (
@@ -10,7 +11,14 @@ function Member({ member }: { member: PublicIdentityMember }) {
       )}
       <p className="text-2xl font-medium text-[color:var(--ii-primary)]">{member.name}</p>
       {member.instagram && (
-        <p className="text-sm text-[color:var(--ii-text)] opacity-70">@{member.instagram}</p>
+        <a
+          href={toInstagramProfileUrl(member.instagram)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-[color:var(--ii-text)] underline-offset-2 opacity-70 hover:underline"
+        >
+          @{member.instagram}
+        </a>
       )}
     </div>
   );

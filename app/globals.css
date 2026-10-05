@@ -83,3 +83,16 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  /* Keeps scrolling but hides the scrollbar track/arrows — used by the
+     marketing phone mockup (components/marketing/phone-frame.tsx) so a
+     scrollable preview still looks like a real phone screen. */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -47,6 +47,52 @@ const SHORT_MONTHS_ID = [
  * between a developer's machine and production and isn't necessarily WIB
  * either way.
  */
+/**
+ * Builds a Google Calendar "add event" template link for a schedule.
+ * Deliberately emits dates with NO trailing "Z" (`YYYYMMDDTHHmmss`, not
+ * `YYYYMMDDTHHmmssZ`) — Google's add-event template treats a date without
+ * a zone suffix as a "floating" local time, resolved in whichever
+ * timezone the person who clicks the link is in. That's the same
+ * no-assumed-timezone stance `formatTimeRange()`'s doc comment already
+ * takes (the schema stores a bare `HH:mm` with no zone — assuming WIB
+ * would be wrong for an event outside western Indonesia), carried through
+ * here rather than guessing a UTC offset.
+ */
+export function buildGoogleCalendarUrl(schedule: {
+  title: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  venue: { name: string; address: string } | null;
+}): string {
+  const toCompact = (time: string) =>
+    `${schedule.date.replace(/-/g, "")}T${time.replace(":", "")}00`;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: schedule.title,
+    dates: `${toCompact(schedule.startTime)}/${toCompact(schedule.endTime)}`,
+  });
+  if (schedule.venue) {
+    params.set("location", `${schedule.venue.name}, ${schedule.venue.address}`);
+  }
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/**
+ * Builds a safe instagram.com profile link from a free-text handle field
+ * (identity `instagram` columns have no format validation beyond a max
+ * length — see `lib/editor/validation.ts` — so this tolerates a leading
+ * "@", stray whitespace, or a pasted full profile URL instead of a bare
+ * handle). Always resolves to instagram.com regardless of input, so
+ * there's no injection concern the way trusting an arbitrary URL as-is
+ * would have (see `lib/invitations/url-safety.ts`'s doc comment).
+ */
+export function toInstagramProfileUrl(rawHandle: string): string {
+  const withoutUrlPrefix = rawHandle.trim().replace(/^https?:\/\/(www\.)?instagram\.com\//i, "");
+  const handle = withoutUrlPrefix.replace(/^@+/, "").replace(/\/+$/, "").trim();
+  return `https://instagram.com/${encodeURIComponent(handle)}`;
+}
+
 export function formatIndonesianDateTime(date: Date): string {
   const day = date.getUTCDate();
   const month = SHORT_MONTHS_ID[date.getUTCMonth()];
