@@ -77,3 +77,11 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
     guest: null,
   };
 }
+
+/** "modern-editorial" -> "Modern Editorial" — purely cosmetic, no DB round trip for a static demo page. */
+export function templateDisplayName(slug: string): string {
+  return slug
+    .split("-")
+    .map((word) => word[0].toUpperCase() + word.slice(1))
+    .join(" ");
+}

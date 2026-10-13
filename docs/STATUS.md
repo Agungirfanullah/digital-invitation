@@ -70,6 +70,8 @@ digital-gift display) do not become MVP-defining by that fact.
   Undangan list, event hub with icon grid and publish switch (D-081);
   editor "Tema" tab is now a visual template gallery and the colors/fonts
   form is "Warna & Font" (D-082).
+- Link-preview images for public invitations, template demos and the site
+  root (D-083): generated cards with an optional, safely-fetched cover photo.
 - Bug fixes found along the way: the editor preview ignored the selected
   template's default palette (preview now resolves the theme exactly like
   the public projection, D-082); Supabase email rate-limit errors arriving
@@ -87,8 +89,9 @@ digital-gift display) do not become MVP-defining by that fact.
    On Vercel it is not shared across serverless instances, so it is a weak
    control; per-IP keys also trust the first `x-forwarded-for` value. Needs
    a shared store before real traffic.
-3. **No OG image** on public invitations (title, description and canonical
-   are set; CLAUDE.md §18 asks for an image).
+3. ~~No OG image on public invitations~~ — done (D-083). Remaining work:
+   confirm `NEXT_PUBLIC_APP_URL` is the production origin in Vercel (it
+   builds the absolute image URLs), and spot-check a real WhatsApp share.
 4. **No error monitoring or audit logging** (`AuditLog` unused).
 5. **Supabase's built-in SMTP is heavily rate limited** (a few emails per
    hour per project): sign-up fails with "Terlalu banyak permintaan email"
@@ -3603,18 +3606,18 @@ See "Remaining Manual Configuration" under Phase 1 above.
 
 ## Latest Verification
 
-Last full green run: 2026-10-13, on `be8b908` (the 2026-10-13
-documentation edits touched no code). See the note after the block for the
+Last full green run: 2026-10-13, on `be8b908` plus the link-preview image
+work (D-083). See the note after the block for the
 DEV-database outage found during that run.
 
 ```text
 TypeScript:            PASS
 Lint:                  PASS
 Build:                 PASS (next build, Turbopack)
-Unit/integration:      PASS (Vitest — 91 files, 1630 tests; the integration
+Unit/integration:      PASS (Vitest — 93 files, 1648 tests; the integration
                        files run against the live Supabase DEV database and
                        clean up every row/object they create)
-E2E:                   PASS (Playwright — 102 tests against a production
+E2E:                   PASS (Playwright — 106 tests against a production
                        build served on port 3100 with E2E_TEST_MODE=true;
                        includes the dashboard shell spec). One earlier
                        full run had a single onboarding test fail under
@@ -3631,7 +3634,8 @@ of 1630 tests, all in the suites that use the live Supabase DEV database
 in DNS. The free-tier project had been paused after about a week without
 activity (last use 2026-10-05). After it was restored from the Supabase
 dashboard, the full re-run was green: typecheck, lint, build, Vitest
-91 files / 1630 tests, Playwright 102 tests. Production uses a separate
+91 files / 1630 tests, Playwright 102 tests (the figures in the block
+above include the later OG-image tests). Production uses a separate
 project that was not affected, but the same inactivity rule applies to it
 unless it is on a paid plan.
 

@@ -3,19 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
-import { buildDemoInvitation } from "@/lib/marketing/demo-invitation";
+import { buildDemoInvitation, templateDisplayName } from "@/lib/marketing/demo-invitation";
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
 
 interface DemoPageProps {
   params: Promise<{ slug: string }>;
-}
-
-/** "modern-editorial" -> "Modern Editorial" — purely cosmetic, no DB round trip for a static demo page. */
-function templateDisplayName(slug: string): string {
-  return slug
-    .split("-")
-    .map((word) => word[0].toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 /**
@@ -63,7 +55,14 @@ export async function generateMetadata({ params }: DemoPageProps): Promise<Metad
   return {
     title,
     description,
-    openGraph: { title, description, type: "website" },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: "Digital Invitation",
+      locale: "id_ID",
+    },
+    twitter: { card: "summary_large_image", title, description },
     alternates: { canonical: `/demo/${slug}` },
   };
 }

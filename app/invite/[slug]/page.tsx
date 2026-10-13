@@ -35,7 +35,15 @@ export async function generateMetadata({
     return {
       title,
       description,
-      openGraph: { title, description, type: "website" },
+      openGraph: {
+        title,
+        description,
+        type: "website",
+        siteName: "Digital Invitation",
+        locale: "id_ID",
+        url: `/invite/${invitation.slug}`,
+      },
+      twitter: { card: "summary_large_image", title, description },
       alternates: { canonical: `/invite/${invitation.slug}` },
     };
   } catch {

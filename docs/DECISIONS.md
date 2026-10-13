@@ -2772,3 +2772,51 @@ the template default, while the public projection uses
 therefore showed the generic palette whatever template was selected. It now
 applies the same per-field fallback (regression tests in
 `lib/editor/preview.test.ts`).
+
+---
+
+## D-083 — Link-Preview (Open Graph) Images
+
+**Status:** IMPLEMENTED
+
+**Context:** public invitations had title, description and canonical but no
+preview image (CLAUDE.md §18 asks for one), and WhatsApp — the main way
+invitations are shared — shows that image beside the link.
+
+**Decision:** dynamic images through Next's `opengraph-image` convention:
+
+- `/invite/[slug]/opengraph-image` — a card built from data the page already
+  shows publicly: the hero heading and first schedule date (both honoring the
+  owner's disabled sections, D-064), the event type, and the theme's colors.
+  Colors are accepted only as plain hex (anything else falls back to the
+  brand color) so owner-controlled text never reaches the renderer.
+- A cover photo is added only when its URL is one of **our own** Supabase
+  Storage public URLs (`derivePathFromPublicUrl`), is fetched ahead of
+  rendering with a 4 s timeout and a 4 MB cap, accepts JPEG/PNG only, and
+  refuses redirects. Any failure drops the photo; the card still renders.
+- The image never uses `?to=` or a guest name: previews are fetched and
+  cached by crawlers, so they must be identical for everyone.
+- A malformed, nonexistent or unpublished slug returns the same generic card
+  (byte-identical, verified by an E2E test), so the route reveals nothing the
+  page does not.
+- `/demo/[slug]/opengraph-image` draws the demo in that template's own
+  palette; `/opengraph-image` is the static site-wide default.
+- `app/layout.tsx` sets `metadataBase` from `NEXT_PUBLIC_APP_URL` so image
+  URLs are absolute. **That variable must be the production origin on
+  Vercel**, or shared links will point at the wrong host.
+- Responses are `dynamic = "force-dynamic"` with `Cache-Control: public,
+  s-maxage=300` (so an unpublished event drops out of previews within five
+  minutes); an unexpected failure returns the generic card with `no-store`.
+
+**Size budget:** a text card is about 40 KB; the photo arch is kept at
+260 x 420 so the photo variant is about 250 KB, under the ~300 KB at which
+WhatsApp tends to drop previews.
+
+**Rejected:** embedding any owner-pasted photo URL (the server would fetch an
+arbitrary host); letting the renderer fetch the photo lazily (a slow or broken
+image would fail the whole response and the crawler would get no preview);
+per-guest previews.
+
+**Known limits:** the renderer's default font only (templates' own fonts are
+not used); a WebP cover photo is skipped; there is no rate limit on the route
+beyond the CDN cache (see STATUS "Open items").
