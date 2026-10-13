@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { ensureAppUser } from "@/lib/auth/provisioning";
 import { checkAuthRateLimit } from "@/lib/auth/rate-limit";
-import { mapSupabaseAuthError } from "@/lib/auth/errors";
+import {
+  EMAIL_ALREADY_REGISTERED_MESSAGE,
+  isObfuscatedExistingUser,
+  mapSupabaseAuthError,
+} from "@/lib/auth/errors";
 import { getAuthCallbackUrl, isSafeRedirectPath } from "@/lib/auth/urls";
 import {
   forgotPasswordSchema,
@@ -60,6 +64,10 @@ export async function registerAction(
 
   if (error) {
     return { error: mapSupabaseAuthError(error) };
+  }
+
+  if (isObfuscatedExistingUser(data.user)) {
+    return { error: EMAIL_ALREADY_REGISTERED_MESSAGE };
   }
 
   if (!data.user) {

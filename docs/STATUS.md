@@ -72,6 +72,11 @@ digital-gift display) do not become MVP-defining by that fact.
   form is "Warna & Font" (D-082).
 - Link-preview images for public invitations, template demos and the site
   root (D-083): generated cards with an optional, safely-fetched cover photo.
+- Sign-up now reports an already-registered email (D-084); the Supabase
+  Auth Site URL and Redirect URLs of the production project were set to the
+  deployed origin, which fixed confirmation and reset links that landed on
+  `localhost` (the full reset-password round trip was verified on
+  production).
 - Bug fixes found along the way: the editor preview ignored the selected
   template's default palette (preview now resolves the theme exactly like
   the public projection, D-082); Supabase email rate-limit errors arriving
@@ -88,7 +93,8 @@ digital-gift display) do not become MVP-defining by that fact.
 2. **Rate limiting is in-memory per process** (`lib/rate-limit/index.ts`).
    On Vercel it is not shared across serverless instances, so it is a weak
    control; per-IP keys also trust the first `x-forwarded-for` value. Needs
-   a shared store before real traffic.
+   a shared store before real traffic. This also weakens the only brake on
+   the account-enumeration exposure accepted in D-084.
 3. ~~No OG image on public invitations~~ — done (D-083). Remaining work:
    confirm `NEXT_PUBLIC_APP_URL` is the production origin in Vercel (it
    builds the absolute image URLs), and spot-check a real WhatsApp share.

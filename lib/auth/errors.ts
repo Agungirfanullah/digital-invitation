@@ -21,6 +21,22 @@ const MESSAGES: Record<string, string> = {
   session_not_found: "Sesi tidak valid atau sudah kedaluwarsa. Silakan masuk kembali.",
 };
 
+export const EMAIL_ALREADY_REGISTERED_MESSAGE = MESSAGES.email_exists;
+
+/**
+ * With email confirmation on, Supabase does not return an error for an
+ * address that already has a confirmed account: it answers "success" with an
+ * obfuscated user whose `identities` list is empty, and sends no email. The
+ * sign-up screen reports that case explicitly (docs/DECISIONS.md D-084). An
+ * existing but still unconfirmed account is not matched here — Supabase
+ * re-sends its confirmation email and returns a normal, non-empty user.
+ */
+export function isObfuscatedExistingUser(
+  user: { identities?: readonly unknown[] | null } | null | undefined,
+): boolean {
+  return Array.isArray(user?.identities) && user.identities.length === 0;
+}
+
 /** Maps a Supabase Auth error to an Indonesian, user-safe message. Logs the raw error for operators. */
 export function mapSupabaseAuthError(error: AuthErrorLike | null | undefined): string {
   if (!error) return GENERIC_MESSAGE;

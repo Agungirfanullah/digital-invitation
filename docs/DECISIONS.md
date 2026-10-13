@@ -2820,3 +2820,36 @@ per-guest previews.
 **Known limits:** the renderer's default font only (templates' own fonts are
 not used); a WebP cover photo is skipped; there is no rate limit on the route
 beyond the CDN cache (see STATUS "Open items").
+
+---
+
+## D-084 — Sign-Up Says So When the Email Already Has an Account
+
+**Status:** IMPLEMENTED — product-owner choice
+
+**Context:** with email confirmation on, Supabase answers a sign-up for an
+already-registered address with a normal "success" and sends nothing (an
+anti-enumeration measure), so the screen said "Akun berhasil dibuat" and the
+person waited for an email that never came. A second sign-up with a
+different name/password silently changed nothing.
+
+**Decision:** the sign-up screen now says "Email ini sudah terdaftar. Coba
+masuk atau atur ulang kata sandi." The case is detected from Supabase's own
+answer — a returned user whose `identities` list is empty
+(`isObfuscatedExistingUser`, `lib/auth/errors.ts`) — and the explicit
+`user_already_exists`/`email_exists` error is still mapped to the same text
+(it is what Supabase returns when confirmation is off). An existing account
+that is still *unconfirmed* is deliberately not matched: Supabase re-sends
+its confirmation email, which is the right outcome.
+
+**Trade-off accepted:** the sign-up form now reveals whether an address is
+registered (account enumeration). It is bounded by the existing per-IP
+sign-up limit (5 per 10 minutes, `lib/auth/rate-limit.ts`), which is
+in-memory and per instance (see STATUS "Open items"), so it is a weak
+bound until a shared limiter exists. Login ("Email atau kata sandi salah")
+and forgot-password ("Jika email tersebut terdaftar…") stay generic.
+
+**Rejected:** keeping the ambiguous success and only rewording it (safer
+against enumeration, less clear to the user); checking the app's own `User`
+table (it only gains a row at first login, so confirmed-but-never-logged-in
+accounts would be missed).

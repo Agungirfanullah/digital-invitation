@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { mapSupabaseAuthError } from "@/lib/auth/errors";
+import { isObfuscatedExistingUser, mapSupabaseAuthError } from "@/lib/auth/errors";
 
 describe("mapSupabaseAuthError", () => {
   afterEach(() => {
@@ -40,5 +40,19 @@ describe("mapSupabaseAuthError", () => {
     expect(message).toMatch(/kesalahan/i);
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('"code":"some_unknown_code"'));
     expect(spy).toHaveBeenCalledWith(expect.stringContaining("raw internal detail"));
+  });
+});
+
+describe("isObfuscatedExistingUser", () => {
+  it("is true only for a user with an empty identities list", () => {
+    expect(isObfuscatedExistingUser({ identities: [] })).toBe(true);
+  });
+
+  it("is false for a normal new user, a missing list, or no user", () => {
+    expect(isObfuscatedExistingUser({ identities: [{ id: "x" }] })).toBe(false);
+    expect(isObfuscatedExistingUser({})).toBe(false);
+    expect(isObfuscatedExistingUser({ identities: null })).toBe(false);
+    expect(isObfuscatedExistingUser(null)).toBe(false);
+    expect(isObfuscatedExistingUser(undefined)).toBe(false);
   });
 });
