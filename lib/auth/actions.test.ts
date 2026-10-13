@@ -63,6 +63,50 @@ describe("registerAction — email that is already registered", () => {
   });
 });
 
+describe("registerAction — keeps what was typed when it fails", () => {
+  it("returns the trimmed name and email, never a password, when validation fails", async () => {
+    const form = registerForm();
+    form.set("name", "  Budi Santoso ");
+    form.set("confirmPassword", "Berbeda12345");
+
+    const result = await registerAction({}, form);
+
+    expect(result.error).toBeTruthy();
+    expect(result.values).toEqual({ name: "Budi Santoso", email: "Budi@Example.com" });
+    expect(JSON.stringify(result)).not.toContain("Password123");
+    expect(JSON.stringify(result)).not.toContain("Berbeda12345");
+    expect(signUp).not.toHaveBeenCalled();
+  });
+
+  it("also returns them for an already-registered email and for a Supabase error", async () => {
+    signUp.mockResolvedValueOnce({
+      data: { user: { id: "u1", identities: [] }, session: null },
+      error: null,
+    });
+    const existing = await registerAction({}, registerForm());
+    expect(existing.values).toEqual({ name: "Budi", email: "Budi@Example.com" });
+
+    signUp.mockResolvedValueOnce({
+      data: { user: null, session: null },
+      error: { code: "weak_password", message: "weak" },
+    });
+    const weak = await registerAction({}, registerForm());
+    expect(weak.values).toEqual({ name: "Budi", email: "Budi@Example.com" });
+  });
+
+  it("does not attach values to a successful sign-up", async () => {
+    signUp.mockResolvedValue({
+      data: { user: { id: "u2", identities: [{ id: "i1" }] }, session: null },
+      error: null,
+    });
+
+    const result = await registerAction({}, registerForm());
+
+    expect(result.success).toBe(true);
+    expect(result.values).toBeUndefined();
+  });
+});
+
 describe("registerAction — normal outcomes are unchanged", () => {
   it("a new address (non-empty identities, no session) shows the check-your-email success", async () => {
     signUp.mockResolvedValue({

@@ -43,6 +43,7 @@ export function LoginForm({
         name="email"
         type="email"
         autoComplete="email"
+        defaultValue={state.values?.email}
         required
         error={state.fieldErrors?.email?.[0]}
       />

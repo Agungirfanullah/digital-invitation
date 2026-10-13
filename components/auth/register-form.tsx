@@ -39,6 +39,7 @@ export function RegisterForm() {
         name="name"
         type="text"
         autoComplete="name"
+        defaultValue={state.values?.name}
         required
         error={state.fieldErrors?.name?.[0]}
       />
@@ -47,6 +48,7 @@ export function RegisterForm() {
         name="email"
         type="email"
         autoComplete="email"
+        defaultValue={state.values?.email}
         required
         error={state.fieldErrors?.email?.[0]}
       />

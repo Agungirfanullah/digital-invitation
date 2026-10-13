@@ -21,8 +21,15 @@ import {
 export interface AuthActionState {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+  /** What the person typed (never a password), returned on failure so the form does not wipe it. */
+  values?: { name?: string; email?: string };
   success?: boolean;
   message?: string;
+}
+
+function submittedField(formData: FormData, key: string): string {
+  const value = formData.get(key);
+  return typeof value === "string" ? value.trim() : "";
 }
 
 const RATE_LIMIT_MESSAGE = "Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.";
@@ -31,8 +38,13 @@ export async function registerAction(
   _prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const values = {
+    name: submittedField(formData, "name"),
+    email: submittedField(formData, "email"),
+  };
+
   if (!(await checkAuthRateLimit("register"))) {
-    return { error: RATE_LIMIT_MESSAGE };
+    return { error: RATE_LIMIT_MESSAGE, values };
   }
 
   const parsed = registerSchema.safeParse({
@@ -48,6 +60,7 @@ export async function registerAction(
     return {
       error: "Periksa kembali data yang kamu masukkan.",
       fieldErrors: parsed.error.flatten().fieldErrors,
+      values,
     };
   }
 
@@ -63,15 +76,15 @@ export async function registerAction(
   });
 
   if (error) {
-    return { error: mapSupabaseAuthError(error) };
+    return { error: mapSupabaseAuthError(error), values };
   }
 
   if (isObfuscatedExistingUser(data.user)) {
-    return { error: EMAIL_ALREADY_REGISTERED_MESSAGE };
+    return { error: EMAIL_ALREADY_REGISTERED_MESSAGE, values };
   }
 
   if (!data.user) {
-    return { error: "Gagal membuat akun. Coba lagi." };
+    return { error: "Gagal membuat akun. Coba lagi.", values };
   }
 
   if (!data.session) {
@@ -92,8 +105,10 @@ export async function loginAction(
   _prevState: AuthActionState,
   formData: FormData,
 ): Promise<AuthActionState> {
+  const values = { email: submittedField(formData, "email") };
+
   if (!(await checkAuthRateLimit("login"))) {
-    return { error: RATE_LIMIT_MESSAGE };
+    return { error: RATE_LIMIT_MESSAGE, values };
   }
 
   const next = formData.get("next");
@@ -109,6 +124,7 @@ export async function loginAction(
     return {
       error: "Email atau kata sandi tidak valid.",
       fieldErrors: parsed.error.flatten().fieldErrors,
+      values,
     };
   }
 
@@ -116,7 +132,7 @@ export async function loginAction(
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error || !data.user?.email) {
-    return { error: mapSupabaseAuthError(error) };
+    return { error: mapSupabaseAuthError(error), values };
   }
 
   await ensureAppUser({
