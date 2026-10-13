@@ -1031,7 +1031,8 @@ Do not put business-critical relational data into JSON.
 ```
 
 - Keys: `hero`, `identity`, `schedule`, `story`, `gallery`, `rsvp`,
-  `gift`, `wishes`. Only owner overrides are stored; an absent key means
+  `gift`, `wishes`, and `countdown` (D-068 — the only key whose default is
+  *disabled*). Only owner overrides are stored; an absent key means
   "use the type's default". Unknown keys / non-boolean values are
   ignored when read (fail safe) and rejected when written.
 
@@ -1054,6 +1055,18 @@ originally sketched above:
   canonical key order; a partial order is padded with the missing keys,
   canonically ordered, at the end; unknown keys and duplicates are
   dropped.
+
+**Opening/Reveal** (D-069) is not a section key: whether the opening gate
+is shown is stored as `openingEnabled` in the same `Event.settings` object
+(default enabled).
+
+**Implementation usage (checked 2026-10-13):** these models and enums are
+defined but have no feature code reading or writing them yet —
+`GiftTransaction`, `GiftRegistry`, `GiftItem`, `GiftReservation`,
+`Subscription`, `Payment`, `Coupon`, `Notification`, `AuditLog`, and the
+`UserRole` enum (`User.role` is never checked). They are schema ahead of the
+roadmap phases that will use them (16–19), not dead design. `Plan` is only
+read, for Homepage pricing.
 
 ---
 

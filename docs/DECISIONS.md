@@ -2139,7 +2139,10 @@ unchanged. **Open product decision:** per-type defaults (e.g. whether
 Gift should default off for Corporate) — a one-line change in
 `sectionDefault()` once decided.
 
-**Not implemented:** section reordering (PRD §15 "Reorder").
+**Not implemented:** section reordering (PRD §15 "Reorder"). *(Update:
+reordering was implemented afterwards — D-066/D-067. Countdown is the one
+documented exception to "all sections default enabled": it defaults to
+disabled for every type — D-068 point 9, PRD §15.2.)*
 
 ## D-063 --- EventType Is Immutable After Creation
 
@@ -2167,6 +2170,12 @@ the missing items shown on the event page. Wedding requires both couple
 names but, to keep the Wedding baseline's existing behavior, not a
 schedule; every other type also requires at least one schedule (the
 date). Already-published events are not retroactively unpublished.
+
+**Superseded in part (schedule requirement):** the per-type agenda and
+venue rules for publishing are now defined by
+`docs/F4_CANONICAL_PUBLISH_CONTRACT.md` (§4.4 and F4-09), not by the
+sentence above. The rest of this decision (type immutability, requiredness
+enforced at publish rather than on autosave) stands.
 
 ## D-064 --- Hero/Cover Is an Independently Toggleable Section; Hero Must Not Consume a Disabled Identity/Schedule Section's Content
 
@@ -2584,3 +2593,182 @@ requirement — `docs/PRD.md` §10 only specifies "after registration," not
 `components/onboarding/onboarding-wizard.tsx`, `lib/onboarding/`).
 `docs/STATUS.md` and `docs/ARCHITECTURE.md` §38 are updated to reflect
 this. No schema, migration, or dependency change was introduced.
+
+---
+
+## Index notes — decisions cited elsewhere without an entry of their own
+
+*Added 2026-10-13 during a documentation reconciliation. These IDs are
+cited by code comments and other documents but were never written up here.
+Only facts recoverable from the repository are recorded; nothing below is a
+new decision.*
+
+- **D-067 / D-067-FIX** — the implementation of D-066 (section
+  reordering): `sectionOrder` stored as a sibling key of `Event.settings`,
+  editor up/down controls, identical resolution in preview and templates;
+  the "FIX" makes a move skip sections that are hidden for the event type.
+  The record is D-066's "Implementation update" and `docs/DATABASE.md` §32.
+- **D-070** — a "Product Decision Resolution Audit" (cited as PD-01 by
+  D-071 point 5, and by `components/marketing/template-showcase.tsx`). Its
+  original text was not recorded in this file. Known outcomes only:
+  onboarding's schedule defaults (08:00–10:00, title from the event type
+  label) are an engineering default, not a product decision; the Homepage
+  Template Showcase uses the full, uncurated template list.
+- **D-072 / D-073** — Homepage MVP (implemented in `a9b1646`; PRD §7–8).
+  Recoverable from `components/marketing/*` and PRD §8: static copy may
+  only describe already-shipped capabilities; no fabricated social proof
+  (testimonials are generic, non-attributed statements); FAQ answers must
+  be grounded in implemented behavior; pricing comes from the `Plan` table,
+  never hardcoded; the CTA resolves to `/register` for an anonymous visitor
+  and `/dashboard` for an authenticated one. **Known tension:** paid plans
+  are displayed although no purchase flow exists (see STATUS "Open items").
+- **D-077** — mutation rate limiting (Phase 20 Batch 1, `4ea674a`): one
+  shared per-user bucket across the five event mutations
+  (create/update/publish/unpublish/delete) and one across the three gift
+  mutations (create/update/delete), 30 per 10 minutes each, keyed by the
+  authenticated user id (`lib/events/rate-limit.ts`,
+  `lib/gifts/rate-limit.ts`); plus an expired-bucket sweep every 100 calls
+  in `lib/rate-limit/index.ts`. The limiter is in-memory per process, so it
+  is not shared across serverless instances — see STATUS "Open items".
+
+---
+
+## D-078 — Public Demo Route `/demo/[slug]` for Every Template
+
+**Status:** IMPLEMENTED (`e9f85da`)
+
+**Context:** the Homepage previews are small, non-interactive thumbnails
+(`bypassOpening`). A prospective customer had no shareable way to see one
+template's full guest experience.
+
+**Decision:** `/demo/[slug]` is a public, unauthenticated page per
+registered template slug (unknown slugs 404 with `noindex`). It renders
+the fabricated "Ayu & Budi" demo invitation (`buildDemoInvitation`)
+through the real `InvitationRenderer` **without** `bypassOpening`, so the
+visitor gets the real Opening gate, floating navigation and full scroll. It
+adds a generic guest ("Tamu Undangan", to show personalization and the QR
+check-in button), a cover photo and a four-item gallery, under a banner
+stating it is a demo with a link to register. The fake guest does not make
+RSVP or Wishes submittable (those read the separate `rsvp`/`wishGuest`
+props, which the page omits).
+
+**Photos:** two small sets of specific Picsum photo IDs (elegant `[1027,
+338]`, warm `[64, 1012, 823]`), each viewed individually and chosen because
+it shows a person, assigned per template mood. Never a real customer's or
+couple's photo (this product has no rights to one).
+
+**Rejected:** `picsum.photos/seed/...` (inspected: returned scenery,
+animals and objects as often as people); using real customer photos.
+
+**Consequences:** the demo depends on an external image host
+(`picsum.photos`) and renders with plain `<img>`.
+
+---
+
+## D-079 — Template Catalog Grown from 6 to 16
+
+**Status:** IMPLEMENTED (`e9f85da`)
+
+**Decision:** ten additional bespoke templates were added —
+`cinematic-journey`, `rustic-earth`, `playful-pop`, `royal-gold`,
+`blue-bloom`, `mono-frame`, `garden-tropical`, `art-deco`, `vintage-sepia`,
+`industrial-loft` — at the product owner's request for a 16-template
+catalog. Each is a real composition (CLAUDE.md §9.2), registered in
+`lib/invitations/templates/registry.ts`, seeded in `prisma/seed.ts`, given
+a default theme in `default-themes.ts` (WCAG AA text/background contrast
+and no duplicate palette are tested), and carries a top-of-file comment
+stating how it differs from its siblings.
+
+**Ornament rule:** decoration is purely presentational (`aria-hidden`
+SVG/CSS colored from the theme variables) and must respect each template's
+own brief: straight-edged templates (Mono Frame, Art Deco, Industrial Loft,
+Modern Editorial, Minimal Elegant) use no curves or botanical motifs, and
+Soft Romantic allows only one abstract shape (Phase 3 design audit §4.5).
+
+**Maintenance contract:** adding a template means updating the slug lists
+in `default-themes.test.ts`, `registry.test.ts`, `cross-template.test.tsx`
+(`ALL_SLUGS`) and `e2e/templates.spec.ts` (`NEW_TEMPLATES`), and running the
+(idempotent, additive) seed against every environment — seeding DEV does
+not seed production.
+
+---
+
+## D-080 — Desktop Guest Layout: Fixed Cover Panel Beside a Phone-Width Column
+
+**Status:** IMPLEMENTED (`e9f85da`)
+
+**Context:** the templates are mobile-first; on a wide screen the Hero and
+sections stretched across the whole viewport.
+
+**Decision:** in `InvitationRenderer`'s guest path (not `bypassOpening`),
+at `lg` and wider, `DesktopCoverPanel` is fixed on the left (arched cover
+photo, event-type label, heading, date; `aria-hidden`, colored from the
+event's theme variables) and the invitation renders in a right-hand column
+whose width is the CSS variable `--invite-column`
+(`clamp(420px, 34vw, 520px)`, `app/globals.css`). The Opening gate and the
+floating section navigation are confined to that column. The panel has
+three variants chosen by template: ornate (default), geometric (the
+straight-edged templates of D-079), and plain (Soft Romantic). Below `lg`
+nothing changes, and the `bypassOpening` previews (editor, Homepage
+thumbnails, template gallery) are unaffected.
+
+**Rejected:** wrapping the page in the `PhoneFrame` chassis. A `transform`ed
+ancestor becomes the containing block of `position: fixed` descendants, so
+the floating navigation and QR button would pin to the scaled content box
+instead of the screen; this was built and reverted.
+
+---
+
+## D-081 — Dashboard Shell: Sidebar, Beranda, Undangan List, Event Hub
+
+**Status:** IMPLEMENTED (`be8b908`)
+
+**Decision:**
+
+- A sidebar (Beranda `/dashboard`, Undangan `/dashboard/events`, Acara Baru
+  `/dashboard/events/new`) with the user block and "Keluar"; a top bar on
+  small screens.
+- **Beranda:** real totals (events, guests, confirmed attendees), "Buat
+  Undangan Baru", a "Check-in Tamu" shortcut to the most recently created
+  event, and the three most recent events.
+- **Undangan:** every event, with server-side search (`?q=`, title or slug,
+  capped at 100 characters).
+- **Event hub** (`/dashboard/events/[eventId]`): a phone-width card; the
+  header holds the publish switch (the same server actions and the same
+  server-side readiness check as the previous button), the public link and
+  the stats; below it an eight-tile grid — Editor Undangan, Tamu, RSVP,
+  Hadiah, Ucapan, Check-in, Analitik, Edit Acara.
+- Stats come from `listEventsWithStatsForUser` / `getEventStatsForUser`
+  (three grouped queries, VIEWER-and-above authorization): guests, people
+  confirmed attending (sum of `attendeeCount` over ATTENDING RSVPs), and
+  wishes still visible to the owner (PENDING + APPROVED).
+
+**Deliberately not built** (no backing feature; CLAUDE.md §1.4–§1.5):
+quota/upgrade banners, Transaksi, Customer Service, private mode and access
+code, collaborator management, music, streaming.
+
+---
+
+## D-082 — Editor "Tema" Is the Template Gallery; Preview Resolves the Template Theme
+
+**Status:** IMPLEMENTED
+
+**Decision:** the editor tab "Tema" (internal key `template`) is a visual
+gallery: each implemented template is shown as its server-rendered demo in
+a compact, inert `PhoneFrame`, with a "Tema Aktif" header, an "Aktifkan"
+button (`selectTemplateAction`) and a "Lihat Demo" link to `/demo/[slug]`;
+unimplemented rows stay disabled ("Segera hadir"). The colors/fonts form,
+previously called "Tema", is now "Warna & Font" (key `theme`), and its
+placeholders show the selected template's own defaults. The previews are
+rendered on the editor page (a Server Component) because
+`buildDemoInvitation` is `server-only`; the editor page's HTML is about
+213 KB with the previews included, and its load time (about 2.1 s on a
+production build against the remote DEV database) matched an ordinary
+event page.
+
+**Bug fixed with it:** `buildPreviewInvitation` called `parseTheme` without
+the template default, while the public projection uses
+`parseTheme(event.theme, getTemplateDefaultTheme(slug))`; the live preview
+therefore showed the generic palette whatever template was selected. It now
+applies the same per-field fallback (regression tests in
+`lib/editor/preview.test.ts`).

@@ -1064,9 +1064,10 @@ Server-side guards:
   is rejected.
 - EventType is immutable after creation (D-063), enforced in
   `updateEventForUser`.
-- Publishing requires each type's core identity (and, except Wedding, at
-  least one schedule for the date) — `getMissingPublishRequirements()`.
-  Drafts may be saved incomplete because the editor autosaves.
+- Publishing requires each type's core identity plus the agenda/venue
+  rules of `docs/F4_CANONICAL_PUBLISH_CONTRACT.md` (§4.4, F4-09) —
+  `getMissingPublishRequirements()`. Drafts may be saved incomplete
+  because the editor autosaves.
 
 ---
 
@@ -1095,8 +1096,9 @@ Onboarding is a post-registration, authenticated flow that creates a
 draft `Event` immediately (`docs/PRD.md` §10) — it reuses the existing
 event-creation service layer (§9-10), not a separate one.
 
-**Implementation status:** the homepage is still the original stub. The
-onboarding route now exists (`/onboarding`, D-071): immediate-session
+**Implementation status:** the homepage is implemented
+(`app/page.tsx`, `components/marketing/*`; D-073, see the index notes in
+`docs/DECISIONS.md`). The onboarding route exists (`/onboarding`, D-071): immediate-session
 registration redirects there; a protected, authenticated, eventless user
 is walked through type/name/date/identity/template into a real DRAFT
 event and the existing editor. Login is unchanged — it continues to land
@@ -1104,3 +1106,25 @@ on `/dashboard` (see `docs/DECISIONS.md` D-071 for why the entry-point
 scope stops at registration). Event creation itself
 (`/dashboard/events/new`) supports all eight types and leads into the
 type-aware editor (§37.1).
+
+---
+
+# 39. Presentation Layers Added After Phase 0.9
+
+None of these adds a new architectural pattern; each reuses the template
+registry, `InvitationRenderer` and the existing services.
+
+- **Public demo** (`/demo/[slug]`, D-078): the real renderer and Opening
+  gate over fabricated demo data; unauthenticated, one page per registered
+  template.
+- **Desktop guest layout** (D-080): `InvitationRenderer` renders
+  `DesktopCoverPanel` (fixed, left) beside a phone-width column whose width
+  is `--invite-column`; guest path only, never under `bypassOpening`.
+- **Dashboard shell** (D-081): `app/dashboard/layout.tsx` (sidebar) around
+  Beranda, the Undangan list and the event hub; stats come from three
+  grouped queries in `lib/events/service.ts`.
+- **Editor template gallery** (D-082): demo previews are rendered by the
+  editor page and passed down as nodes; the live preview resolves its theme
+  with the same template-default fallback as the public projection.
+- **Template catalog** (D-079): 16 registered templates; the maintenance
+  contract for adding one is recorded in D-079.

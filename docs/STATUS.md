@@ -12,9 +12,103 @@ PostgreSQL + Supabase Storage + Vercel
 
 **Development Mode:** Autonomous Claude Code agentic execution
 
-**Current Phase:** Phase 0.9 — Generalize Invitation Engine for All 8 MVP
-Event Types (core engine done; homepage/opening still open; onboarding
-implemented — D-071)
+**Current Phase:** Post-Phase-0.9 stabilization and presentation polish —
+all MVP-scope items in `docs/PRD.md` §45 are implemented and the product is
+deployed (see "Snapshot — 2026-10-13" below). The per-phase status notes
+that follow the snapshot are historical; where one conflicts with the
+snapshot, the snapshot wins.
+
+## Snapshot — 2026-10-13
+
+**Deployment:** Vercel (application) + a separate production Supabase
+project (PostgreSQL, Storage). Seeding is per environment and idempotent
+(`npm run db:seed` upserts templates and plans, never deletes): the
+production database was seeded with 16 templates and 3 plans on
+2026-10-13. The DEV database additionally holds 3 orphan `Template` rows
+(`candid-journal`, `rustic-kraft`, `vivid-celebration`) from an older seed
+version — they are not in the registry, render as "Segera hadir" in the
+editor's template gallery on DEV only, and were deliberately left in place.
+
+**Roadmap coverage** (code audit, 2026-10-13; phase numbers are
+`docs/ROADMAP.md`'s own, not this file's older "Phase N" labels):
+
+| Roadmap phase | State |
+|---|---|
+| 0 Foundation, 1 Auth, 2 Event Management | Complete |
+| 3 Templates, 4 Invitation Data, 5 Editor, 6 Public Invitation | Complete (16 templates) |
+| 7 Guest Management, 8 Personalization, 9 RSVP, 10 Wishes, 11 Gallery | Complete |
+| 12 WhatsApp Sharing | Partial — message composition and `wa.me` deep link only; no provider, no automated sending (D-029) |
+| 13 QR Invitation, 14 Check-in, 15 Analytics | Complete |
+| 16 Digital Gift | Partial — `GiftMethod` display only; no transactions or payment confirmation (D-037) |
+| 17 Gift Registry, 18 Subscription, 19 Admin, 21 AI, 22 Future | Not started (schema tables exist, no code) |
+| 20 Production Hardening | Partial — CSP with nonce, RLS lockdown, CI, mutation rate limiting; see "Open items" |
+
+**MVP scope (`docs/PRD.md` §45):** every listed item is implemented —
+authentication, homepage (D-073), onboarding (D-071), all eight event
+types, templates, editor, section reorder (D-066), countdown (D-068),
+opening/reveal (D-069), public invitation, gallery, location, wishes,
+responsive design, SEO metadata, guest management, personalized
+invitations, RSVP, WhatsApp sharing, dashboard. Features built ahead of
+their phase and listed post-MVP by PRD §46 (QR check-in, analytics,
+digital-gift display) do not become MVP-defining by that fact.
+
+**Delivered after the Phase 0.9 engine work** (commit dates 2026-09-29 →
+2026-10-05):
+
+- Section reordering `d1cd56e`, countdown `08ea499` (D-068), opening/reveal
+  `64ca229` (D-069), onboarding `8496d10` (D-071), homepage `a9b1646`
+  (D-073), event/gift mutation rate limiting `4ea674a` (D-077).
+- Template catalog grown from 6 to 16 (`e9f85da`, D-079); public demo route
+  `/demo/[slug]` for every template with the real Opening gate and
+  curated, individually-verified person photos (D-078); cover-photo upload
+  rendered by every template; floating section navigation and a guest-side
+  QR check-in button; Instagram profile links and an "add to Google
+  Calendar" link per schedule item.
+- Desktop guest layout: a fixed cover panel beside a phone-width invitation
+  column (D-080).
+- Dashboard shell redesign `be8b908`: sidebar, Beranda overview, searchable
+  Undangan list, event hub with icon grid and publish switch (D-081);
+  editor "Tema" tab is now a visual template gallery and the colors/fonts
+  form is "Warna & Font" (D-082).
+- Bug fixes found along the way: the editor preview ignored the selected
+  template's default palette (preview now resolves the theme exactly like
+  the public projection, D-082); Supabase email rate-limit errors arriving
+  without an error `code` showed a generic message and the raw error was
+  logged as `{}` — both fixed in `lib/auth/errors.ts`.
+
+**Open items (verified 2026-10-13):**
+
+1. **Pricing is shown but cannot be bought.** The homepage lists Free /
+   Premium / Business prices from the `Plan` table, but there is no
+   checkout, no plan enforcement and no payment provider (Roadmap Phase 18
+   not started). Needs a product decision: hide paid plans until billing
+   exists, or build Phase 18.
+2. **Rate limiting is in-memory per process** (`lib/rate-limit/index.ts`).
+   On Vercel it is not shared across serverless instances, so it is a weak
+   control; per-IP keys also trust the first `x-forwarded-for` value. Needs
+   a shared store before real traffic.
+3. **No OG image** on public invitations (title, description and canonical
+   are set; CLAUDE.md §18 asks for an image).
+4. **No error monitoring or audit logging** (`AuditLog` unused).
+5. **Supabase's built-in SMTP is heavily rate limited** (a few emails per
+   hour per project): sign-up fails with "Terlalu banyak permintaan email"
+   once exhausted. Production needs custom SMTP before many sign-ups.
+6. **Schema ahead of code:** `GiftTransaction`, `GiftRegistry`, `GiftItem`,
+   `GiftReservation`, `Subscription`, `Payment`, `Coupon`, `Notification`,
+   `AuditLog` and the `UserRole` enum are defined but unused (checked: no
+   `prisma.<model>` access and no `UserRole` check in `lib/` or `app/`).
+7. **Open product decisions:** per-type default on/off of sections (D-062);
+   background music (deferred out of MVP, D-069); attribution of the
+   "Nusantara" template motif.
+8. `style-src` still allows `'unsafe-inline'` (`lib/security/headers.ts`).
+9. **Supabase free-tier auto-pause.** The DEV project was paused on
+   2026-10-13 after about a week idle and had to be restored by hand.
+   Production is a separate project subject to the same rule unless it is
+   on a paid plan; a paused production project would take the live site
+   down.
+10. Documentation debt recorded in `docs/DECISIONS.md` ("Index notes"):
+   D-067, D-070, D-072, D-073, D-077 are cited by code and docs but had no
+   entry of their own.
 
 **Status (Phase 0.9):**
 
@@ -44,7 +138,8 @@ implemented — D-071)
   (event-types, editor, gallery, invitation, templates specs) against a
   production build.
 - **Not implemented yet (MVP scope, still open):** launch homepage
-  (PRD §7-8), invitation opening/reveal (PRD §17).
+  (PRD §7-8), invitation opening/reveal (PRD §17). *(Superseded: both were
+  implemented afterwards — see "Snapshot — 2026-10-13".)*
 - **Implemented (D-071):** onboarding route (PRD §10) — `/onboarding`
   exists, is protected, and walks a first-event authenticated user
   through type/name/date/identity/template into a real DRAFT event and
@@ -83,7 +178,8 @@ documentation-only phase; nothing below was built here):**
   `event.type` anywhere. `docs/DATABASE.md` §42 records this as a
   documented schema gap, not a design.
 - Homepage (`app/page.tsx`) remains the Phase-0 placeholder stub. No
-  onboarding route exists.
+  onboarding route exists. *(Historical — both exist now; see the
+  Snapshot.)*
 - No code, schema, migration, test, or configuration file was touched in
   this phase.
 
@@ -3496,90 +3592,51 @@ See "Remaining Manual Configuration" under Phase 1 above.
   `DATABASE_URL`/`DIRECT_URL` that `npx prisma migrate status` does, and
   takes several seconds longer than a purely in-memory suite would.
 
+- The DEV database holds 3 orphan `Template` rows (`candid-journal`,
+  `rustic-kraft`, `vivid-celebration`) that are not in the template
+  registry; `e2e/templates.spec.ts` therefore asserts per known template
+  rather than "no `Segera hadir` anywhere".
+- Sign-up in DEV fails with "Terlalu banyak permintaan email" whenever the
+  project's built-in SMTP quota is exhausted. Local testing of
+  authenticated pages should use a user created through the Supabase admin
+  API (as the E2E suites do) instead of the register form.
+
 ## Latest Verification
 
+Last full green run: 2026-10-13, on `be8b908` (the 2026-10-13
+documentation edits touched no code). See the note after the block for the
+DEV-database outage found during that run.
+
 ```text
-TypeScript:                 PASS
-Lint:                       PASS
-Format check:               PASS
-Unit tests:                 PASS (753/753 — lib/utils, lib/env, lib/auth/*, lib/rate-limit,
-                             lib/supabase, lib/events/*, lib/invitations/*, lib/editor/*,
-                             lib/guests/*, lib/rsvp/*, lib/invitation-delivery/*,
-                             lib/gifts/*, lib/wishes/*, lib/storage/*, lib/checkin/*,
-                             lib/analytics/*; +76 new this update — 11
-                             lib/invitations/color-contrast.test.ts, 6
-                             lib/invitations/templates/default-themes.test.ts (incl. a
-                             real WCAG-AA contrast-ratio check per template, not
-                             eyeballed), +2 registry.test.ts, +3 projection.test.ts
-                             (per-template default-theme merge), 16 across 5 new
-                             per-template render-smoke test files (first use of
-                             @testing-library/react in this codebase), 36
-                             cross-template.test.tsx (describe.each across all 6
-                             registered templates — non-wedding events, 150-char
-                             titles, 120-char guest names, 500-char addresses/wishes,
-                             anonymous visitors), +2 lib/editor/service.integration.test.ts;
-                             229 of the 753 are live-DB integration tests — 15 events, 22
-                             invitations, 43+2 editor, 41 guests, 36 rsvp, 18 gifts, 18
-                             wishes, 22 check-in, 12 analytics — 0 leftover DB rows and 0
-                             leftover Storage objects verified after each run)
-Build:                      PASS (next build; proxy.ts recognized as Proxy/Middleware; all
-                             existing dynamic routes unchanged and correctly dynamic; no
-                             server/client boundary issue from the 5 new template
-                             components or the extended theme-vars.ts/projection.ts import
-                             chain; production build stayed clean)
-E2E:                        PASS (73/73 — homepage smoke test, auth foundation suite,
-                             event-route protection suite, public invitation suite, editor
-                             suite, guest management suite, RSVP suite, guest invitation
-                             delivery suite, RSVP dashboard suite, gift method dashboard
-                             suite, wishes suite, gallery suite, check-in suite, analytics
-                             suite, and template system suite (new, 6 tests — editor
-                             template picker offers and persists all 6 templates; each of
-                             the 5 new templates renders real event data including a
-                             personalized guest, with zero console errors and no
-                             horizontal overflow at 390×844, verified via
-                             document.documentElement.scrollWidth/clientWidth, not just
-                             visual inspection); all database-backed suites exercise the
-                             real Supabase DEV database directly, no mocks. Re-ran
-                             e2e/templates.spec.ts, e2e/editor.spec.ts,
-                             e2e/invitation.spec.ts, e2e/rsvp.spec.ts, e2e/wishes.spec.ts,
-                             and e2e/guest-invitation.spec.ts together (25 tests,
-                             2 workers) specifically to check for regressions from the
-                             shared RsvpForm/WishForm theme-token change — all 25 passed
-                             cleanly, confirming the shared behavior these forms depend on
-                             (seat-quota validation, wish moderation, guest-token
-                             handling) is genuinely unaffected, only their visual styling
-                             changed. The pre-existing, already-documented D-030 "stuck on
-                             /login" full-parallel-load characteristic (see Phase 15's own
-                             entry above) was not re-triggered by this update's own
-                             targeted runs)
-Prisma validate:            PASS
-Prisma migrate status:      PASS ("Database schema is up to date!" — 2 migrations total,
-                             unchanged by this update; no schema/migration change was
-                             needed or made — this was rendering-layer and
-                             theme-resolution work only)
-Vercel deployment:          NOT YET ATTEMPTED
-Supabase connectivity:      PASS (DB via Prisma — including live cross-tenant event,
-                             invitation-token, editor/IDOR, guest/IDOR, RSVP token/
-                             seat-quota/IDOR, guest-invitation token-masking/regeneration
-                             IDOR, RSVP dashboard filter/export/cross-event authorization,
-                             gift-method CRUD/cross-event/public-projection authorization,
-                             wish submission/moderation/cross-event/public-projection
-                             authorization, gallery upload/reorder/delete/cross-event
-                             authorization, check-in authorization/duplicate-prevention/
-                             transactional-sync/concurrency proofs, analytics
-                             tracking/guest-resolution/cross-event-isolation/dashboard-
-                             authorization/aggregation proofs, AND template
-                             selection/default-theme-resolution proofs (new); Storage via
-                             the real, connected Supabase project's `invitation-assets`
-                             bucket; Auth via a real authenticated login in
-                             e2e/editor.spec.ts, e2e/guests.spec.ts,
-                             e2e/guest-invitation.spec.ts, e2e/rsvp-dashboard.spec.ts,
-                             e2e/gifts-dashboard.spec.ts, e2e/wishes.spec.ts,
-                             e2e/gallery.spec.ts, e2e/check-in.spec.ts,
-                             e2e/analytics.spec.ts, and e2e/templates.spec.ts (new, plus a
-                             real unauthenticated public-invitation navigation exercising
-                             proxy.ts's cookie assignment end-to-end))
+TypeScript:            PASS
+Lint:                  PASS
+Build:                 PASS (next build, Turbopack)
+Unit/integration:      PASS (Vitest — 91 files, 1630 tests; the integration
+                       files run against the live Supabase DEV database and
+                       clean up every row/object they create)
+E2E:                   PASS (Playwright — 102 tests against a production
+                       build served on port 3100 with E2E_TEST_MODE=true;
+                       includes the dashboard shell spec). One earlier
+                       full run had a single onboarding test fail under
+                       parallel load; it passed alone and on re-run (same
+                       class as the "stuck on /login" load characteristic
+                       noted in the Phase 15 section).
+Prisma migrate status: up to date (4 migrations)
+Vercel deployment:     LIVE (production Supabase project, 16 templates seeded)
 ```
+
+**Note — 2026-10-13 DEV outage:** the first Vitest run that day failed 293
+of 1630 tests, all in the suites that use the live Supabase DEV database
+(`Can't reach database server`); the project's API host no longer resolved
+in DNS. The free-tier project had been paused after about a week without
+activity (last use 2026-10-05). After it was restored from the Supabase
+dashboard, the full re-run was green: typecheck, lint, build, Vitest
+91 files / 1630 tests, Playwright 102 tests. Production uses a separate
+project that was not affected, but the same inactivity rule applies to it
+unless it is on a paid plan.
+
+Per-phase verification details from earlier work remain in each phase
+section below.
 
 ## Phase 20 (Batch 1) --- CI Reliability & Security Headers / CSP
 
