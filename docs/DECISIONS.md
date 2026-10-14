@@ -2853,3 +2853,63 @@ and forgot-password ("Jika email tersebut terdaftar…") stay generic.
 against enumeration, less clear to the user); checking the app's own `User`
 table (it only gains a row at first login, so confirmed-but-never-logged-in
 accounts would be missed).
+
+---
+
+## D-085 — Calendar and Time-Slot Pickers for Schedule Dates and Times
+
+**Status:** IMPLEMENTED — product-owner request
+
+**Context:** the schedule form and onboarding used the browser's native date
+and time inputs. In the narrow form the calendar icon was clipped, the
+calendar only opened from that tiny icon, and the time field was a clock
+spinner. The owner asked for a proper calendar and a list of time slots.
+
+**Decision:** the date field opens a calendar (`components/ui/calendar.tsx`,
+`react-day-picker` with its Indonesian locale: Monday-first week, "Desember
+2026", full-date labels for screen readers); the start and end time fields
+open a list of 15-minute slots (`components/forms/time-picker.tsx`). Both sit
+in a Radix popover (`@radix-ui/react-popover`), the shadcn stack the project
+already targets (CLAUDE.md §5). The pickers read and write the existing
+strings — `YYYY-MM-DD` and `HH:mm` — so server validation, the database and
+every other consumer are unchanged; a hidden input keeps them usable inside
+plain forms (onboarding). The end-time list disables every slot up to and
+including the start time, mirroring the server rule `startTime < endTime`
+(`lib/editor/validation.ts`). A stored time that is not on the 15-minute grid
+is still displayed as-is until the person picks a slot.
+
+**Rejected:** keeping the native inputs and only widening them (no calendar
+look, locale follows the browser); a free-typed time as well (more states to
+validate, not asked for); a single combined date-and-time popover (the form
+has one date and two times).
+
+**Consequences:** two new runtime dependencies. The native pickers' good
+phone behavior (OS wheel) is traded for one consistent look. E2E tests that
+used to `fill()` a date now go through `e2e/helpers/pickers.ts`.
+
+---
+
+## D-086 — Framework Security Patches Are Applied Promptly; Dev-Tool Advisories Are Tracked
+
+**Status:** IN FORCE
+
+**Context:** `npm audit` flagged Next.js 16.3.5 (exact-pinned) with critical
+advisories, two of which touch features this app ships: a remote code
+execution in Node `next/og` `ImageResponse` (GHSA-vcvr-r3jv-pc5j, fixed in
+16.3.6, exploitable only when attacker-controlled values reach the rendered
+SVG) and an information disclosure in App Router metadata image routes
+(fixed in 16.3.8, webpack builds only). The link-preview images (D-083) feed
+user-chosen event titles into `ImageResponse`.
+
+**Decision:** upgrade `next` and `eslint-config-next` together to 16.3.8, a
+patch-level move inside the same minor, and verify the full suite before
+shipping. Non-breaking fixes are applied with `npm audit fix`. Advisories
+whose only fix is a breaking or downgrading change in a tool that never runs
+in production are recorded in STATUS instead of forced: the Prisma CLI chain
+(`deepmerge-ts`; stack exhaustion when merging recursive objects at CLI/build
+time) and the Vitest/ESLint toolchains (`tinypool`, `braces`).
+
+**Consequences:** `npm audit` is not clean and will not be until Vitest and
+Prisma ship compatible fixes; re-check it whenever dependencies change, and
+treat any new advisory against a runtime dependency (`next`, `react`,
+`@supabase/*`, `@prisma/client`) as urgent.

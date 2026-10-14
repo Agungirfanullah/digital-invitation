@@ -6,6 +6,8 @@ import { createClient } from "@supabase/supabase-js";
 import { PrismaClient } from "@prisma/client";
 import { expect, test, type Page } from "@playwright/test";
 
+import { pickDate } from "./helpers/pickers";
+
 /**
  * D-071 Onboarding MVP. Authenticated-flow fixtures follow the same
  * Supabase-admin-provisioned-user pattern as e2e/templates.spec.ts and
@@ -58,6 +60,13 @@ async function cleanup() {
     await prisma.event.deleteMany({ where: { id: { in: createdEventIds } } });
     createdEventIds.length = 0;
   }
+  // Onboarding creates the event inside the app, so a test that fails before
+  // it records the event id would otherwise leave it behind — and its owner
+  // can't be deleted while it exists. Removing everything the test users own
+  // makes cleanup independent of how far a test got.
+  if (createdSupabaseUserIds.length) {
+    await prisma.event.deleteMany({ where: { ownerId: { in: createdSupabaseUserIds } } });
+  }
   if (createdSupabaseUserIds.length) {
     await prisma.user.deleteMany({ where: { id: { in: createdSupabaseUserIds } } });
     for (const id of createdSupabaseUserIds) {
@@ -106,11 +115,14 @@ test.describe("onboarding", () => {
     await page.getByRole("button", { name: "Lanjut" }).click();
 
     // Step 2: name.
-    await page.getByLabel("Nama acara").fill("Pernikahan E2E Onboarding");
+    // Unique per run: onboarding derives the slug from the title, and a fixed
+    // title collides with any earlier leftover (the slug retry budget is 5).
+    const title = `Pernikahan E2E ${randomUUID().slice(0, 8)}`;
+    await page.getByLabel("Nama acara").fill(title);
     await page.getByRole("button", { name: "Lanjut" }).click();
 
     // Step 3: date.
-    await page.getByLabel("Tanggal acara").fill("2026-12-12");
+    await pickDate(page, "Tanggal acara", "2026-12-12");
     await page.getByRole("button", { name: "Lanjut" }).click();
 
     // Step 4: identity (COUPLE — two names).
@@ -132,7 +144,7 @@ test.describe("onboarding", () => {
 
     expect(event.status).toBe("DRAFT");
     expect(event.publishedAt).toBeNull();
-    expect(event.title).toBe("Pernikahan E2E Onboarding");
+    expect(event.title).toBe(title);
     expect(event.type).toBe("WEDDING");
     expect(event.template).not.toBeNull();
     expect(event.schedules).toHaveLength(1);
@@ -157,7 +169,7 @@ test.describe("onboarding", () => {
     await page.getByLabel("Nama acara").fill("Acara Lainnya E2E");
     await page.getByRole("button", { name: "Lanjut" }).click();
 
-    await page.getByLabel("Tanggal acara").fill("2026-06-01");
+    await pickDate(page, "Tanggal acara", "2026-06-01");
     await page.getByRole("button", { name: "Lanjut" }).click();
 
     // Identity step is skipped — the next click already shows the template step.
@@ -185,7 +197,7 @@ test.describe("onboarding", () => {
     await page.getByRole("button", { name: "Lanjut" }).click();
     await page.getByLabel("Nama acara").fill("Ulang Tahun E2E");
     await page.getByRole("button", { name: "Lanjut" }).click();
-    await page.getByLabel("Tanggal acara").fill("2026-07-01");
+    await pickDate(page, "Tanggal acara", "2026-07-01");
     await page.getByRole("button", { name: "Lanjut" }).click();
 
     await expect(page.getByLabel("Mempelai Wanita")).toHaveCount(0);

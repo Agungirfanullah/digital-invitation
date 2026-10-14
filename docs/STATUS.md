@@ -72,6 +72,10 @@ digital-gift display) do not become MVP-defining by that fact.
   form is "Warna & Font" (D-082).
 - Link-preview images for public invitations, template demos and the site
   root (D-083): generated cards with an optional, safely-fetched cover photo.
+- Calendar and 15-minute time-slot pickers in the schedule form and
+  onboarding (D-085).
+- Next.js upgraded 16.3.5 to 16.3.8 to close critical advisories, two of
+  which touched the OG-image feature (D-086).
 - Sign-up now reports an already-registered email (D-084); the Supabase
   Auth Site URL and Redirect URLs of the production project were set to the
   deployed origin, which fixed confirmation and reset links that landed on
@@ -3556,13 +3560,14 @@ See "Remaining Manual Configuration" under Phase 1 above.
 
 ## Known Issues
 
-- 2 moderate/3 high `npm audit` advisories, both in **devDependencies
-  only** (not shipped to production): `@vitest/mocker` (path traversal in
-  Vitest's mocker) and `deepmerge-ts` via `@prisma/config` (stack
-  exhaustion). Fixing either requires a breaking major-version bump
-  (`vitest@5`, `prisma@6.12` — actually older; resolve via `npm audit
-  fix --force` only after evaluating compatibility). Deferred for now
-  since neither affects the deployed application.
+- `npm audit` (re-run 2026-10-14, after upgrading Next to 16.3.8): no
+  advisory remains against a package that serves requests. What is left is
+  tooling — the Prisma CLI chain (`deepmerge-ts` via `@prisma/config`, stack
+  exhaustion on recursive objects, build/CLI time only), Vitest
+  (`tinypool`, `@vitest/mocker`; critical but dev-only) and ESLint's glob
+  chain (`braces`/`micromatch`). Their fixes are breaking or downgrading
+  (`vitest@5`, `prisma@6.12`); deferred (D-086). Re-run the audit whenever
+  dependencies change.
 - `next dev`/`next build` (Next.js 16.3+) auto-appended a managed
   `<!-- BEGIN:nextjs-agent-rules -->` block to `CLAUDE.md`, pointing
   future coding agents at the version-matched docs bundled in
@@ -3620,10 +3625,10 @@ DEV-database outage found during that run.
 TypeScript:            PASS
 Lint:                  PASS
 Build:                 PASS (next build, Turbopack)
-Unit/integration:      PASS (Vitest — 93 files, 1648 tests; the integration
+Unit/integration:      PASS (Vitest — 97 files, 1683 tests; the integration
                        files run against the live Supabase DEV database and
                        clean up every row/object they create)
-E2E:                   PASS (Playwright — 106 tests against a production
+E2E:                   PASS (Playwright — 110 tests against a production
                        build served on port 3100 with E2E_TEST_MODE=true;
                        includes the dashboard shell spec). One earlier
                        full run had a single onboarding test fail under

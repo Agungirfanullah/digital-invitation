@@ -10,7 +10,9 @@ import {
 import type { EditorSchedule } from "@/lib/editor/types";
 import { formatIndonesianDate, formatTimeRange } from "@/lib/invitations/format";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/forms/date-picker";
 import { FormField } from "@/components/forms/form-field";
+import { TimePicker } from "@/components/forms/time-picker";
 import { FormError } from "@/components/forms/form-error";
 
 interface ScheduleFormProps {
@@ -202,29 +204,29 @@ function ScheduleItemForm({
         error={fieldErrors.description?.[0]}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <FormField
-          label="Tanggal"
-          name="date"
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          error={fieldErrors.date?.[0]}
-        />
-        <FormField
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <DatePicker
+            label="Tanggal"
+            name="date"
+            value={date}
+            onChange={setDate}
+            error={fieldErrors.date?.[0]}
+          />
+        </div>
+        <TimePicker
           label="Mulai"
           name="startTime"
-          type="time"
           value={startTime}
-          onChange={(e) => setStartTime(e.target.value)}
+          onChange={setStartTime}
           error={fieldErrors.startTime?.[0]}
         />
-        <FormField
+        <TimePicker
           label="Selesai"
           name="endTime"
-          type="time"
           value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
+          onChange={setEndTime}
+          min={startTime}
           error={fieldErrors.endTime?.[0]}
         />
       </div>

@@ -6,6 +6,7 @@ import type { EventType } from "@prisma/client";
 import { completeOnboardingAction, type OnboardingActionState } from "@/lib/onboarding/actions";
 import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
 import { EVENT_TYPE_OPTIONS } from "@/lib/events/labels";
+import { DatePicker } from "@/components/forms/date-picker";
 import { FormField } from "@/components/forms/form-field";
 import { FormError } from "@/components/forms/form-error";
 import { Button } from "@/components/ui/button";
@@ -139,12 +140,11 @@ export function OnboardingWizard({ templates }: { templates: OnboardingTemplateO
       </div>
 
       <div hidden={currentStep !== "date"}>
-        <FormField
+        <DatePicker
           label="Tanggal acara"
           name="date"
-          type="date"
           value={date}
-          onChange={(event) => setDate(event.target.value)}
+          onChange={setDate}
           hint="Bisa diubah lagi nanti di editor, termasuk jam dan lokasi."
           error={currentStep === "date" ? state.fieldErrors?.date?.[0] : undefined}
         />

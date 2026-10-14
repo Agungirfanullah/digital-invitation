@@ -11,3 +11,13 @@ import { config as loadEnv } from "dotenv";
 loadEnv({ path: path.join(process.cwd(), ".env.local") });
 
 import "@testing-library/jest-dom/vitest";
+
+// jsdom has no ResizeObserver, which Radix's popover positioning reads. A
+// no-op stand-in is enough: layout itself is never asserted in these tests.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}
