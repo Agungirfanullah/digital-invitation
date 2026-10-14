@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Botanical / garden-romance composition — soft rounded containers,
@@ -139,6 +140,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
               key={`${index}-${member.name}`}
               className="rounded-[2rem] border border-[color:var(--ii-secondary)] px-8 py-6"
             >
+              <MemberPhoto member={member} shape="round" />
               <p
                 className="text-2xl text-[color:var(--ii-primary)]"
                 style={{ fontFamily: "var(--ii-script-font)" }}

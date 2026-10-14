@@ -36,6 +36,18 @@ export class IdentityFamilyMismatchError extends Error {
   }
 }
 
+/**
+ * Thrown when an identity photo URL is not one of this event's own uploaded
+ * files — a pasted external URL, or a file that belongs to another event.
+ * Photos can only be set from our own upload (D-091).
+ */
+export class IdentityPhotoNotOwnedError extends Error {
+  constructor() {
+    super("Identity photo is not an upload of this event");
+    this.name = "IdentityPhotoNotOwnedError";
+  }
+}
+
 /** Thrown when a section override targets a section the event type doesn't let the owner toggle. */
 export class SectionNotToggleableError extends Error {
   constructor() {
@@ -53,6 +65,9 @@ export function mapEditorErrorMessage(error: unknown): string {
   }
   if (error instanceof IdentityFamilyMismatchError) {
     return "Data identitas ini tidak sesuai dengan jenis acara.";
+  }
+  if (error instanceof IdentityPhotoNotOwnedError) {
+    return "Foto tidak valid. Unggah ulang fotonya.";
   }
   if (error instanceof SectionNotToggleableError) {
     return "Bagian ini tidak dapat diatur untuk jenis acara ini.";

@@ -51,8 +51,18 @@ describe("buildPublicIdentity", () => {
       heading: "Mempelai",
       displayName: "Ayu & Budi",
       members: [
-        { role: "Mempelai Wanita", name: "Ayu Lestari", instagram: "ayulestari" },
-        { role: "Mempelai Pria", name: "Budi Santoso", instagram: "budisantoso" },
+        {
+          role: "Mempelai Wanita",
+          name: "Ayu Lestari",
+          instagram: "ayulestari",
+          photoUrl: "https://storage.example/events/e/identity/ayu.jpg",
+        },
+        {
+          role: "Mempelai Pria",
+          name: "Budi Santoso",
+          instagram: "budisantoso",
+          photoUrl: "https://storage.example/events/e/identity/budi.jpg",
+        },
       ],
       pairMembers: true,
       details: [],
@@ -235,6 +245,7 @@ describe("getMissingPublishRequirements", () => {
             motherName: "Nadia",
             birthDate: null,
             birthDetails: null,
+            photoUrl: null,
           },
         },
         1,
@@ -460,5 +471,52 @@ function emptyPerson() {
     milestone: null,
     hostedBy: null,
     instagram: null,
+    photoUrl: null,
   };
 }
+
+describe("identity member photos (D-091)", () => {
+  it("passes the bride's and groom's photos to their own member", () => {
+    const identity = buildPublicIdentity("WEDDING", IDENTITY_BY_TYPE.WEDDING);
+    const [bride, groom] = identity?.members ?? [];
+    expect(bride.photoUrl).toContain("ayu.jpg");
+    expect(groom.photoUrl).toContain("budi.jpg");
+  });
+
+  it.each([
+    ["BIRTHDAY", "citra.jpg"],
+    ["AQIQAH", "rafa.jpg"],
+    ["GATHERING", "wiryo.jpg"],
+    ["CORPORATE", "maju.jpg"],
+  ] as const)("gives the single %s member its photo", (type, file) => {
+    const identity = buildPublicIdentity(type, IDENTITY_BY_TYPE[type]);
+    expect(identity?.members).toHaveLength(1);
+    expect(identity?.members[0].photoUrl).toContain(file);
+  });
+
+  it("leaves photoUrl null when none was uploaded", () => {
+    const identity = buildPublicIdentity("BIRTHDAY", {
+      family: "PERSON",
+      data: { ...emptyPerson(), nickname: "Citra" },
+    });
+    expect(identity?.members[0].photoUrl).toBeNull();
+  });
+});
+
+describe("photo fields in the identity form definitions", () => {
+  it("offers one photo per bride and groom, and one for every other type with an identity", () => {
+    const photoKeys = (type: EventType) =>
+      getIdentityFieldGroups(type)
+        .flatMap((group) => group.fields)
+        .filter((field) => field.kind === "photo")
+        .map((field) => field.key);
+
+    expect(photoKeys("WEDDING")).toEqual(["bridePhotoUrl", "groomPhotoUrl"]);
+    expect(photoKeys("ENGAGEMENT")).toEqual(["bridePhotoUrl", "groomPhotoUrl"]);
+    expect(photoKeys("ANNIVERSARY")).toEqual(["bridePhotoUrl", "groomPhotoUrl"]);
+    for (const type of ["BIRTHDAY", "AQIQAH", "GATHERING", "CORPORATE"] as const) {
+      expect(photoKeys(type), type).toEqual(["photoUrl"]);
+    }
+    expect(photoKeys("OTHER")).toEqual([]);
+  });
+});

@@ -535,6 +535,37 @@ describe.each(ALL_SLUGS)("%s — every event type", (slug) => {
     expect(screen.getByText(EVENT_TYPE_CONFIG[type].closingMessage)).toBeInTheDocument();
   });
 
+  it.each(ALL_TYPES.filter((type) => type !== "OTHER"))(
+    "shows the identity photo(s) of %s, each described by the person's name (D-091)",
+    (type) => {
+      const invitation = buildInvitationForType(type);
+      render(<Template invitation={invitation} />);
+
+      const members = invitation.identity?.members ?? [];
+      expect(members.length).toBeGreaterThan(0);
+      for (const member of members) {
+        const photo = screen.getByRole("img", { name: `Foto ${member.name}` });
+        expect(photo).toHaveAttribute("src", member.photoUrl);
+      }
+    },
+  );
+
+  it("shows no photo frame at all when the members have no photo", () => {
+    const base = buildInvitationForType("WEDDING");
+    const invitation = {
+      ...base,
+      identity: base.identity && {
+        ...base.identity,
+        members: base.identity.members.map((member) => ({ ...member, photoUrl: null })),
+      },
+    };
+    render(<Template invitation={invitation} />);
+
+    for (const member of base.identity?.members ?? []) {
+      expect(screen.queryByRole("img", { name: `Foto ${member.name}` })).not.toBeInTheDocument();
+    }
+  });
+
   it.each(NON_WEDDING_TERMINOLOGY_TYPES)("never shows wedding terminology for %s", (type) => {
     render(<Template invitation={buildInvitationForType(type)} />);
     expect(screen.queryByText(/Mempelai/)).not.toBeInTheDocument();

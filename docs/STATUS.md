@@ -84,6 +84,9 @@ digital-gift display) do not become MVP-defining by that fact.
   `GET /api/health` with a daily keep-alive call (D-089).
 - Countdown as discs, on the cover photo when there is one; the invitation
   column clips horizontal overflow (D-090).
+- Identity photos for every event type — bride and groom, the celebrant, the
+  baby, the host, an organization's logo — shown in all 16 templates (D-091).
+  Cover-photo delete/replace can no longer touch another event's file.
 - Sign-up now reports an already-registered email (D-084); the Supabase
   Auth Site URL and Redirect URLs of the production project were set to the
   deployed origin, which fixed confirmation and reset links that landed on
@@ -3635,10 +3638,10 @@ DEV-database outage found during that run.
 TypeScript:            PASS
 Lint:                  PASS
 Build:                 PASS (next build, Turbopack)
-Unit/integration:      PASS (Vitest — 105 files, 1743 tests; the integration
+Unit/integration:      PASS (Vitest — 108 files, 1914 tests; the integration
                        files run against the live Supabase DEV database and
                        clean up every row/object they create)
-E2E:                   PASS (Playwright — 116 tests against a production
+E2E:                   PASS (Playwright — 119 tests against a production
                        build served on port 3100 with E2E_TEST_MODE=true;
                        includes the dashboard shell spec). One earlier
                        full run had a single onboarding test fail under

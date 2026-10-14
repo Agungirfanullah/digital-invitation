@@ -714,6 +714,8 @@ model WeddingProfile {
   groomFather    String?
   groomMother    String?
   groomInstagram String?
+  bridePhotoUrl  String?
+  groomPhotoUrl  String?
   // ANNIVERSARY only — rejected for the other COUPLE types.
   yearsTogether  Int?
   createdAt      DateTime @default(now())
@@ -732,6 +734,7 @@ model PersonProfile {
   milestone String?
   hostedBy  String?
   instagram String?
+  photoUrl  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -748,6 +751,7 @@ model BabyFamilyProfile {
   motherName   String?
   birthDate    DateTime? @db.Date
   birthDetails String?
+  photoUrl     String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -761,6 +765,7 @@ model HostProfile {
   hostName      String?
   occasionTheme String?
   contactInfo   String?
+  photoUrl      String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -774,6 +779,7 @@ model OrganizationProfile {
   organizationName String?
   contactPerson    String?
   dressCode        String?
+  photoUrl         String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

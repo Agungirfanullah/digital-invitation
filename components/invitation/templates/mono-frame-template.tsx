@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Stark black-on-white "exhibition print" composition — pure monochrome
@@ -142,6 +143,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
         <div className="mx-auto mt-10 flex max-w-lg flex-col items-center divide-y-2 divide-[color:var(--ii-primary)] sm:flex-row sm:divide-x-2 sm:divide-y-0">
           {identity.members.map((member, index) => (
             <div key={`${index}-${member.name}`} className="px-10 py-6">
+              <MemberPhoto member={member} shape="square" />
               <p
                 className="text-3xl text-[color:var(--ii-primary)] uppercase"
                 style={{ fontFamily: "var(--ii-heading-font)" }}

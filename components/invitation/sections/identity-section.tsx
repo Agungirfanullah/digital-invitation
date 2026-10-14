@@ -1,9 +1,11 @@
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 import type { PublicIdentity, PublicIdentityMember } from "@/lib/invitations/types";
 import { toInstagramProfileUrl } from "@/lib/invitations/format";
 
 function Member({ member }: { member: PublicIdentityMember }) {
   return (
     <div className="flex flex-col items-center gap-1 text-center">
+      <MemberPhoto member={member} />
       {member.role && (
         <p className="text-xs tracking-widest text-[color:var(--ii-accent)] uppercase">
           {member.role}

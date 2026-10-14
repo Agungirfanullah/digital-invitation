@@ -71,6 +71,8 @@ function toIdentityProfileInput(input: OnboardingIdentityInput): IdentityProfile
           groomFather: null,
           groomMother: null,
           groomInstagram: null,
+          bridePhotoUrl: null,
+          groomPhotoUrl: null,
           yearsTogether: null,
         },
       };
@@ -84,6 +86,7 @@ function toIdentityProfileInput(input: OnboardingIdentityInput): IdentityProfile
           milestone: null,
           hostedBy: null,
           instagram: null,
+          photoUrl: null,
         },
       };
     case "BABY_FAMILY":
@@ -96,17 +99,23 @@ function toIdentityProfileInput(input: OnboardingIdentityInput): IdentityProfile
           motherName: null,
           birthDate: null,
           birthDetails: null,
+          photoUrl: null,
         },
       };
     case "HOST_GROUP":
       return {
         family: "HOST_GROUP",
-        data: { hostName: input.name, occasionTheme: null, contactInfo: null },
+        data: { hostName: input.name, occasionTheme: null, contactInfo: null, photoUrl: null },
       };
     case "ORGANIZATION":
       return {
         family: "ORGANIZATION",
-        data: { organizationName: input.name, contactPerson: null, dressCode: null },
+        data: {
+          organizationName: input.name,
+          contactPerson: null,
+          dressCode: null,
+          photoUrl: null,
+        },
       };
     case "GENERIC":
       return null;

@@ -40,6 +40,15 @@ export function buildCoverPhotoObjectPath(eventId: string, extension: string): s
   return `events/${eventId}/cover/${fileName}`;
 }
 
+/** Same shape again under `identity/` — the photos of the couple, celebrant, baby, host or organization logo (D-091). */
+export function buildIdentityPhotoObjectPath(eventId: string, extension: string): string {
+  assertSafePathSegment(eventId, "eventId");
+  assertSafePathSegment(extension, "extension");
+
+  const fileName = `${randomBytes(16).toString("hex")}.${extension}`;
+  return `events/${eventId}/identity/${fileName}`;
+}
+
 /**
  * The inverse of uploading: given a stored `GalleryItem.url`, recovers the
  * bucket-relative object path — but only when the URL is genuinely one of
@@ -64,4 +73,18 @@ export function derivePathFromPublicUrl(url: string): string | null {
   if (path.length === 0 || path.includes("..") || path.startsWith("/")) return null;
 
   return path;
+}
+
+/**
+ * Like `derivePathFromPublicUrl`, but only for an object that belongs to
+ * `eventId` (`events/<eventId>/...`). Use it whenever the URL came from the
+ * client: it stops a member of one event from pointing a delete — or a
+ * stored photo reference — at another event's file.
+ */
+export function derivePathForEvent(url: string, eventId: string): string | null {
+  assertSafePathSegment(eventId, "eventId");
+
+  const path = derivePathFromPublicUrl(url);
+  if (!path) return null;
+  return path.startsWith(`events/${eventId}/`) ? path : null;
 }

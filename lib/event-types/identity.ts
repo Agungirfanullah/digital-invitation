@@ -25,6 +25,8 @@ export interface CoupleIdentityData {
   groomFather: string | null;
   groomMother: string | null;
   groomInstagram: string | null;
+  bridePhotoUrl: string | null;
+  groomPhotoUrl: string | null;
   /** ANNIVERSARY only. */
   yearsTogether: number | null;
 }
@@ -36,6 +38,7 @@ export interface PersonIdentityData {
   milestone: string | null;
   hostedBy: string | null;
   instagram: string | null;
+  photoUrl: string | null;
 }
 
 export interface BabyFamilyIdentityData {
@@ -46,18 +49,22 @@ export interface BabyFamilyIdentityData {
   /** ISO date (YYYY-MM-DD). */
   birthDate: string | null;
   birthDetails: string | null;
+  photoUrl: string | null;
 }
 
 export interface HostIdentityData {
   hostName: string | null;
   occasionTheme: string | null;
   contactInfo: string | null;
+  photoUrl: string | null;
 }
 
 export interface OrganizationIdentityData {
   organizationName: string | null;
   contactPerson: string | null;
   dressCode: string | null;
+  /** The organization's logo. */
+  photoUrl: string | null;
 }
 
 export type IdentityProfileData =
@@ -79,6 +86,8 @@ export const EMPTY_COUPLE_IDENTITY: CoupleIdentityData = {
   groomFather: null,
   groomMother: null,
   groomInstagram: null,
+  bridePhotoUrl: null,
+  groomPhotoUrl: null,
   yearsTogether: null,
 };
 
@@ -89,6 +98,7 @@ export const EMPTY_PERSON_IDENTITY: PersonIdentityData = {
   milestone: null,
   hostedBy: null,
   instagram: null,
+  photoUrl: null,
 };
 
 export const EMPTY_BABY_FAMILY_IDENTITY: BabyFamilyIdentityData = {
@@ -98,18 +108,21 @@ export const EMPTY_BABY_FAMILY_IDENTITY: BabyFamilyIdentityData = {
   motherName: null,
   birthDate: null,
   birthDetails: null,
+  photoUrl: null,
 };
 
 export const EMPTY_HOST_IDENTITY: HostIdentityData = {
   hostName: null,
   occasionTheme: null,
   contactInfo: null,
+  photoUrl: null,
 };
 
 export const EMPTY_ORGANIZATION_IDENTITY: OrganizationIdentityData = {
   organizationName: null,
   contactPerson: null,
   dressCode: null,
+  photoUrl: null,
 };
 
 /** The empty identity for an event type — what the editor starts from before any profile row exists. */
@@ -138,8 +151,9 @@ function member(
   role: string | null,
   name: string | null,
   instagram: string | null = null,
+  photoUrl: string | null = null,
 ): PublicIdentityMember[] {
-  return name ? [{ role, name, instagram }] : [];
+  return name ? [{ role, name, instagram, photoUrl }] : [];
 }
 
 function compact(values: (string | null | false)[]): string[] {
@@ -188,8 +202,18 @@ export function buildPublicIdentity(
       const secondRole = labels?.showRolesPublicly ? labels.second : null;
       displayName = coupleDisplayName(data);
       members = [
-        ...member(firstRole, data.brideFullName ?? data.brideNickname, data.brideInstagram),
-        ...member(secondRole, data.groomFullName ?? data.groomNickname, data.groomInstagram),
+        ...member(
+          firstRole,
+          data.brideFullName ?? data.brideNickname,
+          data.brideInstagram,
+          data.bridePhotoUrl,
+        ),
+        ...member(
+          secondRole,
+          data.groomFullName ?? data.groomNickname,
+          data.groomInstagram,
+          data.groomPhotoUrl,
+        ),
       ];
       details = compact([
         type === "ANNIVERSARY" &&
@@ -201,7 +225,7 @@ export function buildPublicIdentity(
     case "PERSON": {
       const { data } = identity;
       displayName = data.nickname ?? data.fullName;
-      members = member(null, data.fullName ?? data.nickname, data.instagram);
+      members = member(null, data.fullName ?? data.nickname, data.instagram, data.photoUrl);
       details = compact([
         data.age !== null && `Ulang tahun ke-${data.age}`,
         data.milestone,
@@ -212,7 +236,7 @@ export function buildPublicIdentity(
     case "BABY_FAMILY": {
       const { data } = identity;
       displayName = data.babyNickname ?? data.babyFullName;
-      members = member(null, data.babyFullName ?? data.babyNickname);
+      members = member(null, data.babyFullName ?? data.babyNickname, null, data.photoUrl);
       details = compact([
         parentsLine(data.fatherName, data.motherName),
         data.birthDate && `Lahir pada ${formatIndonesianDate(data.birthDate)}`,
@@ -223,7 +247,7 @@ export function buildPublicIdentity(
     case "HOST_GROUP": {
       const { data } = identity;
       // The event title is the gathering's purpose and stays the hero heading.
-      members = member(null, data.hostName);
+      members = member(null, data.hostName, null, data.photoUrl);
       details = compact([
         data.occasionTheme && `Tema: ${data.occasionTheme}`,
         data.contactInfo && `Kontak: ${data.contactInfo}`,
@@ -232,7 +256,7 @@ export function buildPublicIdentity(
     }
     case "ORGANIZATION": {
       const { data } = identity;
-      members = member(null, data.organizationName);
+      members = member(null, data.organizationName, null, data.photoUrl);
       details = compact([
         data.contactPerson && `Narahubung: ${data.contactPerson}`,
         data.dressCode && `Dress code: ${data.dressCode}`,

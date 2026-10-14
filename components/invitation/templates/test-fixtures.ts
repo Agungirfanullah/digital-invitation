@@ -129,6 +129,8 @@ const COUPLE_DATA: CoupleIdentityData = {
   groomFather: "Bapak Santoso",
   groomMother: "Ibu Santoso",
   groomInstagram: "budisantoso",
+  bridePhotoUrl: "https://storage.example/events/e/identity/ayu.jpg",
+  groomPhotoUrl: "https://storage.example/events/e/identity/budi.jpg",
   yearsTogether: null,
 };
 
@@ -148,6 +150,7 @@ export const IDENTITY_BY_TYPE: Record<EventType, IdentityProfileData> = {
       milestone: "Sweet Seventeen",
       hostedBy: "Keluarga Bapak Andi",
       instagram: "citra.a",
+      photoUrl: "https://storage.example/events/e/identity/citra.jpg",
     },
   },
   AQIQAH: {
@@ -159,6 +162,7 @@ export const IDENTITY_BY_TYPE: Record<EventType, IdentityProfileData> = {
       motherName: "Nadia Putri",
       birthDate: "2026-08-17",
       birthDetails: "Anak pertama",
+      photoUrl: "https://storage.example/events/e/identity/rafa.jpg",
     },
   },
   GATHERING: {
@@ -167,11 +171,17 @@ export const IDENTITY_BY_TYPE: Record<EventType, IdentityProfileData> = {
       hostName: "Keluarga Besar Wiryo",
       occasionTheme: "Nuansa Putih",
       contactInfo: "0812-0000-0000",
+      photoUrl: "https://storage.example/events/e/identity/wiryo.jpg",
     },
   },
   CORPORATE: {
     family: "ORGANIZATION",
-    data: { organizationName: "PT Maju Bersama", contactPerson: "Dewi (HR)", dressCode: "Batik" },
+    data: {
+      organizationName: "PT Maju Bersama",
+      contactPerson: "Dewi (HR)",
+      dressCode: "Batik",
+      photoUrl: "https://storage.example/events/e/identity/maju.jpg",
+    },
   },
   OTHER: { family: "GENERIC" },
 };

@@ -22,6 +22,7 @@ import { resolveOpeningEnabled } from "@/lib/invitations/opening";
 import {
   EventNotFoundError,
   IdentityFamilyMismatchError,
+  IdentityPhotoNotOwnedError,
   SectionNotToggleableError,
   TemplateNotAvailableError,
 } from "@/lib/editor/errors";
@@ -29,7 +30,9 @@ import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
 import { GalleryStorageDeletionError } from "@/lib/storage/errors";
 import {
   buildCoverPhotoObjectPath,
+  buildIdentityPhotoObjectPath,
   buildGalleryObjectPath,
+  derivePathForEvent,
   derivePathFromPublicUrl,
 } from "@/lib/storage/paths";
 import { getStorageProvider } from "@/lib/storage/provider";
@@ -213,6 +216,75 @@ const NO_PROFILE_RECORDS = {
 } as const;
 
 /**
+ * Every photo URL in an identity profile must be one of THIS event's own
+ * uploaded files. The URL is rendered publicly, so accepting an arbitrary
+ * address would let a draft embed an external image (a tracking pixel, or
+ * content the product does not host), and accepting another event's file
+ * would let two events share — and one deletion remove — a photo.
+ */
+function assertPhotosBelongToEvent(eventId: string, data: object): void {
+  for (const [key, value] of Object.entries(data)) {
+    if (!/photourl$/i.test(key) || value === null) continue;
+    if (typeof value !== "string" || !derivePathForEvent(value, eventId)) {
+      throw new IdentityPhotoNotOwnedError();
+    }
+  }
+}
+
+/**
+ * Uploads one identity photo (bride, groom, celebrant, baby, host or
+ * organization logo) and returns its public URL. Like the cover photo, it
+ * does not write the profile itself: the form's autosave persists the URL
+ * through `updateIdentityProfile`, keeping one write path. `previousUrl`
+ * (the photo being replaced) is removed from storage afterwards, best
+ * effort, and only when it is this event's own file.
+ */
+export async function uploadIdentityPhoto(
+  eventId: string,
+  userId: string,
+  validated: ValidatedGalleryImage,
+  previousUrl: string | null,
+): Promise<{ publicUrl: string }> {
+  await requireEditorAccess(eventId, userId);
+
+  const path = buildIdentityPhotoObjectPath(eventId, validated.extension);
+  const { publicUrl } = await getStorageProvider().upload(
+    path,
+    validated.buffer,
+    validated.contentType,
+  );
+
+  const previousPath = previousUrl ? derivePathForEvent(previousUrl, eventId) : null;
+  if (previousPath) {
+    try {
+      await getStorageProvider().remove(previousPath);
+    } catch (error) {
+      console.error("[identity] Failed to remove previous photo object", error);
+    }
+  }
+
+  return { publicUrl };
+}
+
+/** Removes an identity photo's object from storage (best effort, own event's files only). The form still clears the URL through the normal autosave. */
+export async function removeIdentityPhoto(
+  eventId: string,
+  userId: string,
+  currentUrl: string,
+): Promise<void> {
+  await requireEditorAccess(eventId, userId);
+
+  const path = derivePathForEvent(currentUrl, eventId);
+  if (!path) return;
+
+  try {
+    await getStorageProvider().remove(path);
+  } catch (error) {
+    console.error("[identity] Failed to remove photo object", error);
+  }
+}
+
+/**
  * Upserts the identity profile for the event's own identity family and
  * returns the canonical identity data. The family is checked against the
  * STORED event type, never trusted from the client: a profile for the
@@ -228,6 +300,7 @@ export async function updateIdentityProfile(
   const event = await requireEditorAccess(eventId, userId);
   const { type } = event;
   if (input.family !== EVENT_TYPE_CONFIG[type].family) throw new IdentityFamilyMismatchError();
+  assertPhotosBelongToEvent(eventId, input.data);
 
   switch (input.family) {
     case "COUPLE": {
@@ -394,7 +467,7 @@ export async function uploadCoverPhoto(
     validated.contentType,
   );
 
-  const previousPath = previousUrl ? derivePathFromPublicUrl(previousUrl) : null;
+  const previousPath = previousUrl ? derivePathForEvent(previousUrl, eventId) : null;
   if (previousPath) {
     try {
       await getStorageProvider().remove(previousPath);
@@ -419,7 +492,7 @@ export async function removeCoverPhoto(
 ): Promise<void> {
   await requireEditorAccess(eventId, userId);
 
-  const path = derivePathFromPublicUrl(currentUrl);
+  const path = derivePathForEvent(currentUrl, eventId);
   if (!path) return;
 
   try {

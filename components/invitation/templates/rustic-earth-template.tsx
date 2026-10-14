@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Warm/organic "kraft paper" composition — large rounded dashed-border
@@ -147,6 +148,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
               key={`${index}-${member.name}`}
               className="flex size-36 flex-col items-center justify-center rounded-full border-2 border-dashed border-[color:var(--ii-secondary)] p-4 text-center"
             >
+              <MemberPhoto member={member} shape="arch" />
               <p
                 className="text-lg font-medium text-[color:var(--ii-primary)]"
                 style={{ fontFamily: "var(--ii-script-font)" }}

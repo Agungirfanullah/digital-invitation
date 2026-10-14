@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import { getClientEnv, getServerEnv } from "@/lib/env";
-import { buildGalleryObjectPath, derivePathFromPublicUrl } from "@/lib/storage/paths";
+import {
+  buildGalleryObjectPath,
+  buildIdentityPhotoObjectPath,
+  derivePathForEvent,
+  derivePathFromPublicUrl,
+} from "@/lib/storage/paths";
 
 describe("buildGalleryObjectPath", () => {
   it("embeds the eventId and extension in a predictable, event-scoped shape", () => {
@@ -68,5 +73,41 @@ describe("derivePathFromPublicUrl", () => {
   it("returns null for the prefix with nothing after it", () => {
     const url = `${supabaseUrl}/storage/v1/object/public/${bucket}/`;
     expect(derivePathFromPublicUrl(url)).toBeNull();
+  });
+});
+
+describe("buildIdentityPhotoObjectPath", () => {
+  it("is event-scoped under identity/ and never repeats", () => {
+    const first = buildIdentityPhotoObjectPath("event-abc123", "jpg");
+    expect(first).toMatch(/^events\/event-abc123\/identity\/[0-9a-f]{32}\.jpg$/);
+    expect(buildIdentityPhotoObjectPath("event-abc123", "jpg")).not.toBe(first);
+  });
+
+  it("rejects an unsafe eventId", () => {
+    expect(() => buildIdentityPhotoObjectPath("../x", "jpg")).toThrow();
+  });
+});
+
+describe("derivePathForEvent", () => {
+  const bucket = getServerEnv().SUPABASE_STORAGE_BUCKET;
+  const supabaseUrl = getClientEnv().NEXT_PUBLIC_SUPABASE_URL;
+  const urlFor = (path: string) => `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+
+  it("returns the path for the event's own file", () => {
+    const path = "events/event-aaa/identity/x.jpg";
+    expect(derivePathForEvent(urlFor(path), "event-aaa")).toBe(path);
+  });
+
+  it("refuses another event's file, so one event cannot point a delete at a neighbor's photo", () => {
+    expect(derivePathForEvent(urlFor("events/event-bbb/identity/x.jpg"), "event-aaa")).toBeNull();
+  });
+
+  it("does not mistake a longer event id for the same event (prefix attack)", () => {
+    expect(derivePathForEvent(urlFor("events/event-aaa2/identity/x.jpg"), "event-aaa")).toBeNull();
+  });
+
+  it("refuses an external URL and an unsafe event id", () => {
+    expect(derivePathForEvent("https://example.com/x.jpg", "event-aaa")).toBeNull();
+    expect(() => derivePathForEvent(urlFor("events/a/x.jpg"), "../a")).toThrow();
   });
 });

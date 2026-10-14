@@ -22,6 +22,10 @@ const fullNameField = nullableString(120, "Nama lengkap maksimal 120 karakter.")
 const nicknameField = nullableString(60, "Nama panggilan maksimal 60 karakter.");
 const instagramField = nullableString(60, "Instagram maksimal 60 karakter.");
 
+// Optional (absent = leave the stored photo alone), so a client that predates
+// photos cannot wipe one by omitting the field.
+const photoUrlField = nullableSafeHttpUrl(500, "URL foto tidak valid.").optional();
+
 const nullableInt = (min: number, max: number, message: string) =>
   z.number({ error: message }).int(message).min(min, message).max(max, message).nullable();
 
@@ -42,6 +46,8 @@ export const coupleIdentitySchema = z.object({
   groomFather: nullableString(120),
   groomMother: nullableString(120),
   groomInstagram: instagramField,
+  bridePhotoUrl: photoUrlField,
+  groomPhotoUrl: photoUrlField,
   yearsTogether: nullableInt(1, 100, "Jumlah tahun harus antara 1 dan 100."),
 });
 
@@ -52,6 +58,7 @@ export const personIdentitySchema = z.object({
   milestone: nullableString(120, "Keterangan maksimal 120 karakter."),
   hostedBy: nullableString(120, "Nama penyelenggara maksimal 120 karakter."),
   instagram: instagramField,
+  photoUrl: photoUrlField,
 });
 
 export const babyFamilyIdentitySchema = z.object({
@@ -69,18 +76,21 @@ export const babyFamilyIdentitySchema = z.object({
     )
     .nullable(),
   birthDetails: nullableString(200, "Keterangan maksimal 200 karakter."),
+  photoUrl: photoUrlField,
 });
 
 export const hostIdentitySchema = z.object({
   hostName: nullableString(120, "Nama tuan rumah maksimal 120 karakter."),
   occasionTheme: nullableString(120, "Tema maksimal 120 karakter."),
   contactInfo: nullableString(120, "Kontak maksimal 120 karakter."),
+  photoUrl: photoUrlField,
 });
 
 export const organizationIdentitySchema = z.object({
   organizationName: nullableString(150, "Nama organisasi maksimal 150 karakter."),
   contactPerson: nullableString(120, "Narahubung maksimal 120 karakter."),
   dressCode: nullableString(120, "Dress code maksimal 120 karakter."),
+  photoUrl: photoUrlField,
 });
 
 export const IDENTITY_SCHEMAS = {

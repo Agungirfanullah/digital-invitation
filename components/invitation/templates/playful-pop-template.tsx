@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Bright/playful composition — not wedding-specific like every other
@@ -149,6 +150,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
               key={`${index}-${member.name}`}
               className="rounded-3xl border-4 border-[color:var(--ii-secondary)] px-6 py-5"
             >
+              <MemberPhoto member={member} shape="rounded" />
               <p
                 className="text-2xl font-bold text-[color:var(--ii-primary)]"
                 style={{ fontFamily: "var(--ii-heading-font)" }}

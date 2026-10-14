@@ -68,6 +68,44 @@ describe("personIdentitySchema (Birthday)", () => {
   });
 });
 
+describe("identity photo URLs", () => {
+  const base = { fullName: "Citra", nickname: null, milestone: null, hostedBy: null, age: null };
+
+  it("accepts null and an https URL", () => {
+    for (const photoUrl of [null, "https://storage.example/events/e/identity/a.jpg"]) {
+      expect(
+        personIdentitySchema.safeParse({ ...base, instagram: null, photoUrl }).success,
+        String(photoUrl),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects a script or data URL, a malformed URL and an overlong one", () => {
+    for (const photoUrl of [
+      "javascript:alert(1)",
+      "data:image/png;base64,AAAA",
+      "not a url",
+      `https://example.com/${"a".repeat(500)}`,
+    ]) {
+      expect(
+        personIdentitySchema.safeParse({ ...base, instagram: null, photoUrl }).success,
+        photoUrl.slice(0, 30),
+      ).toBe(false);
+    }
+  });
+
+  it("applies to the bride's and groom's photos too", () => {
+    const couple = IDENTITY_BY_TYPE.WEDDING;
+    if (couple.family !== "COUPLE") throw new Error("fixture must be a couple");
+    for (const key of ["bridePhotoUrl", "groomPhotoUrl"]) {
+      expect(
+        coupleIdentitySchema.safeParse({ ...couple.data, [key]: "javascript:alert(1)" }).success,
+        key,
+      ).toBe(false);
+    }
+  });
+});
+
 describe("parseIdentityProfileInput", () => {
   it.each(Object.entries(IDENTITY_BY_TYPE).filter(([, identity]) => identity.family !== "GENERIC"))(
     "accepts a well-formed %s identity",

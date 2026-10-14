@@ -3048,3 +3048,48 @@ while an e2e test guards it.
 **Not done:** the photo backdrop on other sections (Greeting, Closing)
 as in wevitation — those are written separately inside each of the 16
 templates and need a per-template pass.
+
+---
+
+## D-091 — Identity Photos for Every Event Type; Uploads Are Scoped to Their Event
+
+**Status:** IMPLEMENTED — product-owner request
+
+**Context:** invitations showed names only. The owner asked for a photo of the
+bride and of the groom, and — for every other event type — of the person the
+event is about: the one celebrating a birthday, the baby at an aqiqah.
+
+**Decision:** one photo per person, stored on the identity profile that
+already holds that person's name (nullable columns, migration
+`20261014160000_add_identity_photos`): `WeddingProfile.bridePhotoUrl` and
+`groomPhotoUrl` (all three couple types), and `photoUrl` on `PersonProfile`
+(birthday), `BabyFamilyProfile` (aqiqah), `HostProfile` (gathering — the
+host) and `OrganizationProfile` (corporate — the logo). OTHER has no
+identity profile, so it has no photo. The editor's identity form is
+data-driven, so a new `photo` field kind (`identity-fields.ts`) adds the upload
+control to every type without a per-type form. `PublicIdentityMember.photoUrl`
+is built by `buildPublicIdentity()`, the one transformation shared by the
+public page and the editor preview. Each of the 16 templates frames the photo
+in its own shape through one component (`MemberPhoto`: round, arch, square,
+rounded), and the frame is absent when there is no photo, so existing
+invitations do not change.
+
+**Uploads are scoped to the event.** Photos go to `events/<eventId>/identity/`.
+The profile only accepts a photo URL that is one of that event's own uploaded
+files (`derivePathForEvent`); an external URL (a tracking pixel) or another
+event's file is refused. Replacing or removing a photo deletes its old file,
+also only when it belongs to the event. The photo field is optional in the
+schema, so a client that does not send it cannot wipe a stored photo.
+
+**Security fix found on the way:** the existing cover-photo upload and remove
+took a URL from the client and deleted that storage object without checking it
+belonged to the event, so an editor of one event who knew another event's
+photo URL (public once published) could delete it. Both now use the same
+event-scoped check; an integration test proves a neighbor's file survives.
+
+**Not done:** parents' names are still not shown publicly (a separate choice);
+the photo is not used in Hero or the link-preview image.
+
+**Consequences:** production needs `prisma migrate deploy` for the new columns
+before the identity form is used there. A photo is a public URL, like the
+gallery.

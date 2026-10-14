@@ -60,6 +60,8 @@ export function toIdentityProfileData(record: IdentityProfileRecords): IdentityP
           groomFather: p.groomFather,
           groomMother: p.groomMother,
           groomInstagram: p.groomInstagram,
+          bridePhotoUrl: p.bridePhotoUrl,
+          groomPhotoUrl: p.groomPhotoUrl,
           yearsTogether: p.yearsTogether,
         },
       };
@@ -76,6 +78,7 @@ export function toIdentityProfileData(record: IdentityProfileRecords): IdentityP
           milestone: p.milestone,
           hostedBy: p.hostedBy,
           instagram: p.instagram,
+          photoUrl: p.photoUrl,
         },
       };
     }
@@ -91,6 +94,7 @@ export function toIdentityProfileData(record: IdentityProfileRecords): IdentityP
           motherName: p.motherName,
           birthDate: toDateOnly(p.birthDate),
           birthDetails: p.birthDetails,
+          photoUrl: p.photoUrl,
         },
       };
     }
@@ -99,7 +103,12 @@ export function toIdentityProfileData(record: IdentityProfileRecords): IdentityP
       if (!p) return emptyIdentityFor(record.type);
       return {
         family,
-        data: { hostName: p.hostName, occasionTheme: p.occasionTheme, contactInfo: p.contactInfo },
+        data: {
+          hostName: p.hostName,
+          occasionTheme: p.occasionTheme,
+          contactInfo: p.contactInfo,
+          photoUrl: p.photoUrl,
+        },
       };
     }
     case "ORGANIZATION": {
@@ -111,6 +120,7 @@ export function toIdentityProfileData(record: IdentityProfileRecords): IdentityP
           organizationName: p.organizationName,
           contactPerson: p.contactPerson,
           dressCode: p.dressCode,
+          photoUrl: p.photoUrl,
         },
       };
     }

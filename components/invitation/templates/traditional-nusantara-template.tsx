@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Ceremonial, heritage-inspired composition — warm filled surfaces,
@@ -151,6 +152,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
         <div className="mx-auto mt-8 flex max-w-md flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-12">
           {identity.members.map((member, index) => (
             <div key={`${index}-${member.name}`}>
+              <MemberPhoto member={member} shape="arch" />
               {member.role && (
                 <p className="text-xs tracking-widest text-[color:var(--ii-accent)] uppercase">
                   {member.role}

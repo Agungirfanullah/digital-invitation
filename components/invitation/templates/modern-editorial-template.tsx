@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Editorial / fashion-magazine composition — asymmetric, rule-divided,
@@ -120,6 +121,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
         <div className="mt-8 grid gap-8 sm:grid-cols-2">
           {identity.members.map((member, index) => (
             <div key={`${index}-${member.name}`} className={index % 2 === 1 ? "sm:text-right" : ""}>
+              <MemberPhoto member={member} shape="square" />
               <p className="text-3xl font-medium text-[color:var(--ii-primary)]">{member.name}</p>
               {member.instagram && (
                 <a

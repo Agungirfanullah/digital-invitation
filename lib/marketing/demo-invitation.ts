@@ -52,6 +52,8 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
         groomFather: null,
         groomMother: null,
         groomInstagram: null,
+        bridePhotoUrl: null,
+        groomPhotoUrl: null,
         yearsTogether: null,
       },
     }),

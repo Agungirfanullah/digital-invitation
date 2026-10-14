@@ -9,7 +9,8 @@ import { EVENT_TYPE_CONFIG } from "@/lib/event-types/config";
  * of the type's family (lib/event-types/identity.ts). Client-safe.
  */
 
-export type IdentityFieldKind = "text" | "number" | "date";
+/** `photo` is an uploaded image (stored as its public URL), not typed text. */
+export type IdentityFieldKind = "text" | "number" | "date" | "photo";
 
 export interface IdentityFieldDef {
   key: string;
@@ -29,6 +30,7 @@ const REQUIRED_HINT = "Wajib diisi sebelum dipublikasikan.";
 
 function coupleMemberFields(prefix: "bride" | "groom"): IdentityFieldDef[] {
   return [
+    { key: `${prefix}PhotoUrl`, label: "Foto", kind: "photo" },
     { key: `${prefix}FullName`, label: "Nama lengkap", kind: "text", hint: REQUIRED_NAME_HINT },
     { key: `${prefix}Nickname`, label: "Nama panggilan", kind: "text" },
     { key: `${prefix}Father`, label: "Nama ayah", kind: "text" },
@@ -60,6 +62,7 @@ export function getIdentityFieldGroups(type: EventType): IdentityFieldGroup[] {
         {
           legend: null,
           fields: [
+            { key: "photoUrl", label: "Foto yang berulang tahun", kind: "photo" },
             { key: "fullName", label: "Nama lengkap", kind: "text", hint: REQUIRED_NAME_HINT },
             { key: "nickname", label: "Nama panggilan", kind: "text" },
             { key: "age", label: "Usia yang dirayakan", kind: "number" },
@@ -84,6 +87,7 @@ export function getIdentityFieldGroups(type: EventType): IdentityFieldGroup[] {
         {
           legend: "Buah Hati",
           fields: [
+            { key: "photoUrl", label: "Foto buah hati", kind: "photo" },
             { key: "babyFullName", label: "Nama lengkap", kind: "text", hint: REQUIRED_NAME_HINT },
             { key: "babyNickname", label: "Nama panggilan", kind: "text" },
             { key: "birthDate", label: "Tanggal lahir", kind: "date" },
@@ -113,6 +117,7 @@ export function getIdentityFieldGroups(type: EventType): IdentityFieldGroup[] {
         {
           legend: null,
           fields: [
+            { key: "photoUrl", label: "Foto tuan rumah (opsional)", kind: "photo" },
             {
               key: "hostName",
               label: "Nama tuan rumah / penyelenggara",
@@ -134,6 +139,7 @@ export function getIdentityFieldGroups(type: EventType): IdentityFieldGroup[] {
         {
           legend: null,
           fields: [
+            { key: "photoUrl", label: "Logo organisasi (opsional)", kind: "photo" },
             {
               key: "organizationName",
               label: "Nama organisasi / perusahaan",

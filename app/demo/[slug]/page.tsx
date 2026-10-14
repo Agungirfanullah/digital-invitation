@@ -89,7 +89,7 @@ export default async function DemoPage({ params }: DemoPageProps) {
   //   labeled as a demo. This never flips RSVP/Wishes into their
   //   submittable state, since those read the separate `rsvp`/`wishGuest`
   //   props (intentionally omitted below), not `invitation.guest`.
-  // - a cover photo + gallery so the demo can show the real photo-upload
+  // - sample member photos, a cover photo + gallery so the demo can show the real photo-upload
   //   features too, using the verified-to-show-a-person photo IDs above
   //   (demoPhotoIds()), matched to this template's own mood.
   const base = buildDemoInvitation(slug);
@@ -97,6 +97,14 @@ export default async function DemoPage({ params }: DemoPageProps) {
   const invitation = {
     ...base,
     guest: { displayName: "Tamu Undangan" },
+    // Sample portraits for the couple, so the demo shows member photos too.
+    identity: base.identity && {
+      ...base.identity,
+      members: base.identity.members.map((member, index) => ({
+        ...member,
+        photoUrl: demoPhotoUrl(photoIds[(index + 1) % photoIds.length], 400, 500),
+      })),
+    },
     theme: {
       ...base.theme,
       backgroundImageUrl: demoPhotoUrl(photoIds[0], 800, 1200),

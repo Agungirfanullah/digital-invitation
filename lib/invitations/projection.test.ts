@@ -53,6 +53,8 @@ const WEDDING_ROW = {
   groomFather: "Bapak Santoso",
   groomMother: "Ibu Santoso",
   groomInstagram: "budisantoso",
+  bridePhotoUrl: null,
+  groomPhotoUrl: null,
   yearsTogether: null,
 };
 
@@ -70,6 +72,7 @@ const PROFILE_ROWS: Record<EventType, Partial<PublicEventRecord>> = {
       milestone: null,
       hostedBy: null,
       instagram: null,
+      photoUrl: null,
     },
   },
   AQIQAH: {
@@ -81,6 +84,7 @@ const PROFILE_ROWS: Record<EventType, Partial<PublicEventRecord>> = {
       motherName: "Nadia",
       birthDate: new Date("2026-08-17T00:00:00Z"),
       birthDetails: null,
+      photoUrl: null,
     },
   },
   GATHERING: {
@@ -89,6 +93,7 @@ const PROFILE_ROWS: Record<EventType, Partial<PublicEventRecord>> = {
       hostName: "Keluarga Wiryo",
       occasionTheme: null,
       contactInfo: null,
+      photoUrl: null,
     },
   },
   CORPORATE: {
@@ -97,6 +102,7 @@ const PROFILE_ROWS: Record<EventType, Partial<PublicEventRecord>> = {
       organizationName: "PT Maju",
       contactPerson: null,
       dressCode: "Batik",
+      photoUrl: null,
     },
   },
   OTHER: {},
@@ -110,8 +116,18 @@ describe("toPublicInvitation — identity", () => {
       heading: "Mempelai",
       displayName: "Ayu & Budi",
       members: [
-        { role: "Mempelai Wanita", name: "Ayu Lestari", instagram: "ayulestari" },
-        { role: "Mempelai Pria", name: "Budi Santoso", instagram: "budisantoso" },
+        {
+          role: "Mempelai Wanita",
+          name: "Ayu Lestari",
+          instagram: "ayulestari",
+          photoUrl: null,
+        },
+        {
+          role: "Mempelai Pria",
+          name: "Budi Santoso",
+          instagram: "budisantoso",
+          photoUrl: null,
+        },
       ],
       pairMembers: true,
       details: [],

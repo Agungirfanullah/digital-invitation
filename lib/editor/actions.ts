@@ -21,6 +21,7 @@ import type { IdentityProfileData } from "@/lib/event-types/identity";
 import type { InvitationSectionKey, SectionOverrides } from "@/lib/event-types/sections";
 import { GALLERY_UPLOAD_RATE_LIMIT_MESSAGE, mapStorageErrorMessage } from "@/lib/storage/errors";
 import { validateGalleryImageUpload } from "@/lib/storage/validation";
+import type { ValidatedGalleryImage } from "@/lib/storage/validation";
 import type { ActionResult } from "@/lib/editor/types";
 
 /** Runs `fn` with the authenticated user's id, mapping thrown domain errors to a safe Indonesian message. Never lets a raw error escape to the client. */
@@ -99,6 +100,33 @@ export async function uploadCoverPhotoAction(
   eventId: string,
   formData: FormData,
 ): Promise<ActionResult<{ publicUrl: string }>> {
+  return uploadSingleImage(eventId, formData, editorService.uploadCoverPhoto);
+}
+
+/**
+ * Uploads one identity photo (bride, groom, celebrant, baby, host or
+ * organization logo). Same validation and rate limit as every other image
+ * upload; the client persists the returned URL through
+ * `saveIdentityProfileAction`'s autosave (D-091).
+ */
+export async function uploadIdentityPhotoAction(
+  eventId: string,
+  formData: FormData,
+): Promise<ActionResult<{ publicUrl: string }>> {
+  return uploadSingleImage(eventId, formData, editorService.uploadIdentityPhoto);
+}
+
+/** The shared shape of the single-image uploads: rate limit, one `file` field, real image validation, then the service call. */
+async function uploadSingleImage(
+  eventId: string,
+  formData: FormData,
+  upload: (
+    eventId: string,
+    userId: string,
+    validated: ValidatedGalleryImage,
+    previousUrl: string | null,
+  ) => Promise<{ publicUrl: string }>,
+): Promise<ActionResult<{ publicUrl: string }>> {
   const user = await requireAppUser();
 
   if (!(await checkGalleryUploadRateLimit(user.id))) {
@@ -118,7 +146,7 @@ export async function uploadCoverPhotoAction(
   const previousUrl =
     typeof previousUrlRaw === "string" && previousUrlRaw !== "" ? previousUrlRaw : null;
 
-  let validated;
+  let validated: ValidatedGalleryImage;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
     validated = validateGalleryImageUpload({
@@ -133,7 +161,7 @@ export async function uploadCoverPhotoAction(
   }
 
   try {
-    const data = await editorService.uploadCoverPhoto(eventId, user.id, validated, previousUrl);
+    const data = await upload(eventId, user.id, validated, previousUrl);
     return { ok: true, data };
   } catch (error) {
     return { ok: false, error: mapEditorErrorMessage(error) };
@@ -357,6 +385,17 @@ export async function deleteGalleryItemAction(
 ): Promise<ActionResult<null>> {
   return withEditorAuth(async (userId) => {
     await editorService.deleteGalleryItem(eventId, userId, itemId);
+    return null;
+  });
+}
+
+/** Removes an identity photo's file from storage. The client still clears the URL itself via `saveIdentityProfileAction`. */
+export async function removeIdentityPhotoAction(
+  eventId: string,
+  currentUrl: string,
+): Promise<ActionResult<null>> {
+  return withEditorAuth(async (userId) => {
+    await editorService.removeIdentityPhoto(eventId, userId, currentUrl);
     return null;
   });
 }

@@ -32,6 +32,7 @@ import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
+import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 
 /**
  * Green/outdoor-garden composition — an elongated palm-frond line motif
@@ -138,6 +139,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
         <div className="mx-auto mt-8 flex max-w-lg flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-14">
           {identity.members.map((member, index) => (
             <div key={`${index}-${member.name}`}>
+              <MemberPhoto member={member} shape="arch" />
               <p
                 className="text-2xl text-[color:var(--ii-primary)]"
                 style={{ fontFamily: "var(--ii-script-font)" }}

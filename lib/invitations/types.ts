@@ -95,6 +95,8 @@ export interface PublicIdentityMember {
   role: string | null;
   name: string;
   instagram: string | null;
+  /** Public URL of the person's photo (own storage), or null. */
+  photoUrl: string | null;
 }
 
 /**

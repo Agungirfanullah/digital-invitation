@@ -12,6 +12,7 @@ import {
   type IdentityFieldKind,
 } from "@/lib/event-types/identity-fields";
 import { useAutosave, type SaveStatus } from "@/components/editor/use-autosave";
+import { IdentityPhotoField } from "@/components/editor/sections/identity-photo-field";
 import { FormField } from "@/components/forms/form-field";
 
 /** An identity with a profile (every family except GENERIC). */
@@ -103,6 +104,10 @@ export function IdentityForm({ eventId, type, value, onSaved, onStatusChange }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, error]);
 
+  function setPhoto(key: string, url: string | null) {
+    setForm((prev) => ({ ...prev, data: { ...prev.data, [key]: url } }) as ProfileIdentity);
+  }
+
   function onFieldChange(def: IdentityFieldDef, raw: string) {
     setForm(
       (prev) =>
@@ -126,15 +131,31 @@ export function IdentityForm({ eventId, type, value, onSaved, onStatusChange }: 
         {groups.map((group, index) => (
           <fieldset key={group.legend ?? index} className="space-y-4">
             {group.legend && <legend className="text-sm font-medium">{group.legend}</legend>}
-            {group.fields.map((def) => (
-              <Field
-                key={def.key}
-                def={def}
-                value={readField(form, def.key)}
-                error={fieldErrors[def.key]?.[0]}
-                onChange={(raw) => onFieldChange(def, raw)}
-              />
-            ))}
+            {group.fields.map((def) =>
+              def.kind === "photo" ? (
+                <IdentityPhotoField
+                  key={def.key}
+                  eventId={eventId}
+                  label={def.label}
+                  name={def.key}
+                  value={
+                    typeof readField(form, def.key) === "string"
+                      ? String(readField(form, def.key))
+                      : null
+                  }
+                  onChange={(url) => setPhoto(def.key, url)}
+                  error={fieldErrors[def.key]?.[0]}
+                />
+              ) : (
+                <Field
+                  key={def.key}
+                  def={def}
+                  value={readField(form, def.key)}
+                  error={fieldErrors[def.key]?.[0]}
+                  onChange={(raw) => onFieldChange(def, raw)}
+                />
+              ),
+            )}
           </fieldset>
         ))}
       </div>

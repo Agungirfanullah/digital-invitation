@@ -16,6 +16,7 @@ import { prisma } from "@/lib/db/prisma";
 import {
   EventNotFoundError,
   IdentityFamilyMismatchError,
+  IdentityPhotoNotOwnedError,
   SectionNotToggleableError,
   TemplateNotAvailableError,
 } from "@/lib/editor/errors";
@@ -25,7 +26,7 @@ import {
   resolveSectionOrder,
   resolveSectionStates,
 } from "@/lib/event-types/sections";
-import { IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
+import { IDENTITY_BY_TYPE as FIXTURE_IDENTITY_BY_TYPE } from "@/components/invitation/templates/test-fixtures";
 import {
   addGalleryItem,
   addLoveStoryItem,
@@ -37,6 +38,8 @@ import {
   listTemplateOptions,
   moveGalleryItem,
   moveSectionOrder,
+  removeCoverPhoto,
+  removeIdentityPhoto,
   selectTemplate,
   updateGalleryItem,
   updateGalleryItemCaption,
@@ -46,7 +49,9 @@ import {
   updateIdentityProfile,
   updateSectionOverrides,
   updateTheme,
+  uploadCoverPhoto,
   uploadGalleryImage,
+  uploadIdentityPhoto,
 } from "@/lib/editor/service";
 import { getStorageProvider } from "@/lib/storage/provider";
 import { derivePathFromPublicUrl } from "@/lib/storage/paths";
@@ -175,6 +180,30 @@ describe("getEditorEvent (integration — live Supabase DEV database)", () => {
     );
   });
 });
+
+/**
+ * The shared fixtures carry placeholder photo URLs for the rendering tests.
+ * The service (rightly) accepts only an event's own uploaded files, so the
+ * persistence tests below use the same identities without photos; photos
+ * have their own tests further down.
+ */
+function withoutPhotos(identity: IdentityProfileData): IdentityProfileData {
+  if (identity.family === "GENERIC") return identity;
+  const data = Object.fromEntries(
+    Object.entries(identity.data).map(([key, value]) => [
+      key,
+      /photourl$/i.test(key) ? null : value,
+    ]),
+  );
+  return { family: identity.family, data } as IdentityProfileData;
+}
+
+const IDENTITY_BY_TYPE = Object.fromEntries(
+  Object.entries(FIXTURE_IDENTITY_BY_TYPE).map(([type, identity]) => [
+    type,
+    withoutPhotos(identity),
+  ]),
+) as Record<EventType, IdentityProfileData>;
 
 /** Narrows a fixture identity to the writable (non-GENERIC) input shape. */
 function asInput(identity: IdentityProfileData): IdentityProfileInput {
@@ -1171,5 +1200,210 @@ describe("gallery item deletion + storage cleanup (integration — real Supabase
 
     const path = derivePathFromPublicUrl(created.url)!;
     await getStorageProvider().remove(path); // real cleanup for this test's own upload
+  });
+});
+
+describe("identity photos (integration — real Supabase Storage)", () => {
+  async function objectExists(url: string): Promise<boolean> {
+    const response = await fetch(url, { method: "HEAD", cache: "no-store" });
+    return response.ok;
+  }
+
+  async function removeObject(url: string) {
+    const path = derivePathFromPublicUrl(url);
+    if (path) await getStorageProvider().remove(path);
+  }
+
+  function withPhoto(
+    identity: IdentityProfileInput,
+    photoUrl: string | null,
+  ): IdentityProfileInput {
+    return { ...identity, data: { ...identity.data, photoUrl } } as IdentityProfileInput;
+  }
+
+  it("uploads under the event's own identity/ prefix and stores it on the profile", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
+
+    const { publicUrl } = await uploadIdentityPhoto(event.id, owner.id, tinyPngUpload(), null);
+    try {
+      expect(derivePathFromPublicUrl(publicUrl)).toMatch(
+        new RegExp("^events/" + event.id + "/identity/[0-9a-f]{32}\\.png$"),
+      );
+
+      const saved = await updateIdentityProfile(
+        event.id,
+        owner.id,
+        withPhoto(asInput(IDENTITY_BY_TYPE.BIRTHDAY), publicUrl),
+      );
+      expect(saved.family === "PERSON" && saved.data.photoUrl).toBe(publicUrl);
+
+      const loaded = await getEditorEvent(event.id, owner.id);
+      expect(loaded.identity.family === "PERSON" && loaded.identity.data.photoUrl).toBe(publicUrl);
+    } finally {
+      await removeObject(publicUrl);
+    }
+  });
+
+  it("stores the bride's and groom's photos separately", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "WEDDING");
+    const bride = await uploadIdentityPhoto(event.id, owner.id, tinyPngUpload(), null);
+    const groom = await uploadIdentityPhoto(event.id, owner.id, tinyPngUpload(), null);
+    try {
+      await updateIdentityProfile(event.id, owner.id, {
+        ...WEDDING_INPUT,
+        data: {
+          ...WEDDING_INPUT.data,
+          bridePhotoUrl: bride.publicUrl,
+          groomPhotoUrl: groom.publicUrl,
+        },
+      } as IdentityProfileInput);
+
+      const row = await prisma.weddingProfile.findUniqueOrThrow({ where: { eventId: event.id } });
+      expect(row.bridePhotoUrl).toBe(bride.publicUrl);
+      expect(row.groomPhotoUrl).toBe(groom.publicUrl);
+      expect(row.bridePhotoUrl).not.toBe(row.groomPhotoUrl);
+    } finally {
+      await removeObject(bride.publicUrl);
+      await removeObject(groom.publicUrl);
+    }
+  });
+
+  it("rejects a photo URL that is not one of the event's uploads, and writes nothing", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
+
+    await expect(
+      updateIdentityProfile(
+        event.id,
+        owner.id,
+        withPhoto(asInput(IDENTITY_BY_TYPE.BIRTHDAY), "https://tracker.example.com/pixel.png"),
+      ),
+    ).rejects.toThrow(IdentityPhotoNotOwnedError);
+    expect(await prisma.personProfile.count({ where: { eventId: event.id } })).toBe(0);
+  });
+
+  it("rejects another event's uploaded file as a photo", async () => {
+    const owner = await createTestUser("owner");
+    const eventA = await createTestEvent(owner.id, "BIRTHDAY");
+    const eventB = await createTestEvent(owner.id, "BIRTHDAY");
+    const photoOfB = await uploadIdentityPhoto(eventB.id, owner.id, tinyPngUpload(), null);
+    try {
+      await expect(
+        updateIdentityProfile(
+          eventA.id,
+          owner.id,
+          withPhoto(asInput(IDENTITY_BY_TYPE.BIRTHDAY), photoOfB.publicUrl),
+        ),
+      ).rejects.toThrow(IdentityPhotoNotOwnedError);
+    } finally {
+      await removeObject(photoOfB.publicUrl);
+    }
+  });
+
+  it("leaves the stored photo alone when an update omits the field", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
+    const photo = await uploadIdentityPhoto(event.id, owner.id, tinyPngUpload(), null);
+    try {
+      const base = asInput(IDENTITY_BY_TYPE.BIRTHDAY);
+      await updateIdentityProfile(event.id, owner.id, withPhoto(base, photo.publicUrl));
+
+      // A client that predates photos sends the profile without the field.
+      const withoutField: Record<string, unknown> = { ...base.data, nickname: "Baru" };
+      delete withoutField.photoUrl;
+      await updateIdentityProfile(event.id, owner.id, {
+        family: "PERSON",
+        data: withoutField,
+      } as IdentityProfileInput);
+
+      const row = await prisma.personProfile.findUniqueOrThrow({ where: { eventId: event.id } });
+      expect(row.photoUrl).toBe(photo.publicUrl);
+      expect(row.nickname).toBe("Baru");
+    } finally {
+      await removeObject(photo.publicUrl);
+    }
+  });
+
+  it("replacing a photo removes the old file; removing one removes its file", async () => {
+    const owner = await createTestUser("owner");
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
+
+    const first = await uploadIdentityPhoto(event.id, owner.id, tinyPngUpload(), null);
+    const second = await uploadIdentityPhoto(event.id, owner.id, tinyPngUpload(), first.publicUrl);
+    try {
+      expect(await objectExists(first.publicUrl)).toBe(false);
+      expect(await objectExists(second.publicUrl)).toBe(true);
+
+      await removeIdentityPhoto(event.id, owner.id, second.publicUrl);
+      expect(await objectExists(second.publicUrl)).toBe(false);
+    } finally {
+      await removeObject(first.publicUrl);
+      await removeObject(second.publicUrl);
+    }
+  });
+
+  it("cannot delete another event's file through remove or replace (cross-event IDOR)", async () => {
+    const owner = await createTestUser("owner");
+    const attacker = await createTestUser("attacker");
+    const victimEvent = await createTestEvent(owner.id, "BIRTHDAY");
+    const attackerEvent = await createTestEvent(attacker.id, "BIRTHDAY");
+    const victimPhoto = await uploadIdentityPhoto(victimEvent.id, owner.id, tinyPngUpload(), null);
+    try {
+      await removeIdentityPhoto(attackerEvent.id, attacker.id, victimPhoto.publicUrl);
+      const replaced = await uploadIdentityPhoto(
+        attackerEvent.id,
+        attacker.id,
+        tinyPngUpload(),
+        victimPhoto.publicUrl,
+      );
+      await removeObject(replaced.publicUrl);
+
+      expect(await objectExists(victimPhoto.publicUrl)).toBe(true);
+    } finally {
+      await removeObject(victimPhoto.publicUrl);
+    }
+  });
+
+  it("the cover photo cannot delete another event's file either", async () => {
+    const owner = await createTestUser("owner");
+    const attacker = await createTestUser("attacker");
+    const victimEvent = await createTestEvent(owner.id);
+    const attackerEvent = await createTestEvent(attacker.id);
+    const victimCover = await uploadCoverPhoto(victimEvent.id, owner.id, tinyPngUpload(), null);
+    try {
+      await removeCoverPhoto(attackerEvent.id, attacker.id, victimCover.publicUrl);
+      const replaced = await uploadCoverPhoto(
+        attackerEvent.id,
+        attacker.id,
+        tinyPngUpload(),
+        victimCover.publicUrl,
+      );
+      await removeObject(replaced.publicUrl);
+
+      expect(await objectExists(victimCover.publicUrl)).toBe(true);
+    } finally {
+      await removeObject(victimCover.publicUrl);
+    }
+  });
+
+  it("a viewer and a stranger cannot upload or remove identity photos", async () => {
+    const owner = await createTestUser("owner");
+    const viewer = await createTestUser("viewer");
+    const stranger = await createTestUser("stranger");
+    const event = await createTestEvent(owner.id, "BIRTHDAY");
+    await prisma.eventMember.create({
+      data: { eventId: event.id, userId: viewer.id, role: EventMemberRole.VIEWER },
+    });
+
+    for (const user of [viewer, stranger]) {
+      await expect(uploadIdentityPhoto(event.id, user.id, tinyPngUpload(), null)).rejects.toThrow(
+        EventNotFoundError,
+      );
+      await expect(
+        removeIdentityPhoto(event.id, user.id, "https://x.example/a.png"),
+      ).rejects.toThrow(EventNotFoundError);
+    }
   });
 });

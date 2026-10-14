@@ -1343,3 +1343,18 @@ Written only through one atomic upsert in `lib/rate-limit/shared.ts`; expired
 rows are deleted opportunistically. Contains an IP address or an opaque user
 id inside `key`, for at most the window length plus one hour. RLS enabled with
 no policies and the Data API roles revoked (D-054).
+
+---
+
+## Identity photos (D-091)
+
+Nullable `TEXT` columns holding the public URL of an uploaded photo; only URLs
+of the event's own uploads (`events/<eventId>/identity/...`) are accepted.
+
+| Table                 | Column(s)                         |
+| --------------------- | --------------------------------- |
+| `WeddingProfile`      | `bridePhotoUrl`, `groomPhotoUrl`  |
+| `PersonProfile`       | `photoUrl`                        |
+| `BabyFamilyProfile`   | `photoUrl`                        |
+| `HostProfile`         | `photoUrl`                        |
+| `OrganizationProfile` | `photoUrl` (the logo)             |
