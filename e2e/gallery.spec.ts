@@ -196,6 +196,62 @@ test.describe("gallery", () => {
     await expect(page.getByText("Foto pertama")).toHaveCount(0);
   });
 
+  test("an owner can select several photos at once; they upload one by one in the chosen order, and a bad file is skipped without stopping the rest", async ({
+    page,
+  }) => {
+    const owner = await createAuthenticatedTestUser("multi");
+    const event = await createTestEvent(owner.userId, "DRAFT");
+    const png = Buffer.from(TINY_PNG_BASE64, "base64");
+
+    try {
+      await login(page, owner.email);
+      await openGallerySection(page, event.id);
+
+      await page.setInputFiles("#galleryFile", [
+        { name: "satu.png", mimeType: "image/png", buffer: png },
+        { name: "catatan.txt", mimeType: "text/plain", buffer: Buffer.from("bukan gambar") },
+        { name: "dua.png", mimeType: "image/png", buffer: png },
+        { name: "tiga.png", mimeType: "image/png", buffer: png },
+      ]);
+
+      // The unsupported file is flagged before anything is sent.
+      await expect(page.getByRole("button", { name: "Unggah 3 Foto" })).toBeVisible();
+      await expect(page.getByText(/Format tidak didukung/)).toBeVisible();
+
+      await page.getByRole("button", { name: "Unggah 3 Foto" }).click();
+      await expect(page.getByText("3 foto berhasil diunggah, 1 gagal.")).toBeVisible();
+
+      // Three real cards appeared (each has its own caption editor).
+      await expect(page.getByRole("button", { name: "Edit Keterangan" })).toHaveCount(3);
+      await expect(page.getByText("Belum ada foto atau video.")).toHaveCount(0);
+
+      // All three reached the database, in the order they were chosen.
+      const saved = await prisma.galleryItem.findMany({
+        where: { gallery: { eventId: event.id } },
+        orderBy: { sortOrder: "asc" },
+      });
+      expect(saved.map((item) => item.sortOrder)).toEqual([0, 1, 2]);
+      expect(saved.every((item) => item.type === "IMAGE")).toBe(true);
+
+      // And they are still there after a reload.
+      await page.reload();
+      await page.getByRole("button", { name: "Galeri" }).click();
+      await expect(page.getByRole("button", { name: "Edit Keterangan" })).toHaveCount(3);
+    } finally {
+      // Uploaded objects live in Storage, which deleting the event row does
+      // not touch; remove them so repeated runs don't pile up.
+      const items = await prisma.galleryItem.findMany({
+        where: { gallery: { eventId: event.id } },
+      });
+      const bucket = process.env.SUPABASE_STORAGE_BUCKET!;
+      const marker = `/storage/v1/object/public/${bucket}/`;
+      const paths = items
+        .map((item) => item.url.split(marker)[1])
+        .filter((path): path is string => Boolean(path));
+      if (paths.length) await admin.storage.from(bucket).remove(paths);
+    }
+  });
+
   test("existing video-by-URL functionality still works alongside real image upload", async ({
     page,
   }) => {

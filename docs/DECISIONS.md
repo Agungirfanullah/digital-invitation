@@ -2913,3 +2913,65 @@ time) and the Vitest/ESLint toolchains (`tinypool`, `braces`).
 Prisma ship compatible fixes; re-check it whenever dependencies change, and
 treat any new advisory against a runtime dependency (`next`, `react`,
 `@supabase/*`, `@prisma/client`) as urgent.
+
+---
+
+## D-087 — Gallery Accepts Several Photos per Selection
+
+**Status:** IMPLEMENTED — product-owner request
+
+**Context:** the gallery uploaded one photo per submit, which is tedious for a
+gallery of a dozen pictures.
+
+**Decision:** the file input accepts multiple files (up to 20 per selection)
+and `components/editor/sections/gallery-upload-form.tsx` sends them one at a
+time to the existing `uploadGalleryImageAction`. The server contract is
+unchanged (one file per request, its body limit sized for one photo), and
+sequential sending keeps the gallery order equal to the selection order,
+because each item's `sortOrder` is taken from the count when it is saved. Each
+file is pre-checked in the browser (`lib/editor/upload-queue.ts`) only to spare
+a round trip; the server validation stays the real gate. A photo the server
+rejects is marked "Gagal" and skipped; any other failure (rate limit, session)
+stops the batch and leaves the rest "Menunggu" so they can be retried. A
+caption applies only when one photo is chosen; with several, captions are
+edited per card afterwards. The upload rate limit rose from 20 to 60 per 10
+minutes per user so one full batch does not exhaust it.
+
+**Rejected:** one multipart request carrying all files (needs a larger body
+limit and all-or-nothing failure handling); parallel uploads (race on
+`sortOrder`, scrambled order); per-file caption inputs in the selection list
+(clutter, the Edit Keterangan flow already exists).
+
+**Consequences:** a batch of 20 is 20 sequential requests; closing the tab
+mid-batch leaves the already-uploaded photos in the gallery and drops the rest.
+
+---
+
+## D-088 — Theme Colors and Fonts Are Chosen From Lists, Not Typed
+
+**Status:** IMPLEMENTED — product-owner request
+
+**Context:** the editor's "Warna & Font" tab asked owners to type hex codes
+and CSS font stacks, which non-technical users cannot do.
+
+**Decision:** each color is picked from a named palette (18 swatches such as
+Emas, Marun, Hijau Sage) or, for any other color, the browser's own color
+picker; "Pakai bawaan tema" clears the override. Each font is chosen from a
+grouped list (Klasik, Modern, Tulisan tangan, Mesin ketik) with a live sample
+line. The stored values are unchanged — a hex string and a CSS font-family
+string, `null` meaning "follow the template" — so `themeSchema`, the database
+and the renderer are untouched. A font saved before this list existed stays
+selectable as "Font sebelumnya (kustom)". Choices live in
+`lib/invitations/theme-options.ts`; a test asserts every choice passes
+`themeSchema`.
+
+**Font list is system fonts only.** Invitations load no web fonts (CSP
+`font-src 'self'`), so named web fonts in the template defaults (Playfair
+Display, Cinzel, ...) currently render as their generic fallback. Offering
+them in the list would promise looks that do not appear. Self-hosting real
+fonts (e.g. `next/font`) would let both the templates and this list use them;
+that is a separate decision.
+
+**Consequences:** the list is smaller than "any font"; system fonts differ
+slightly between iOS, Android and desktop, though every stack ends in a
+generic family so the style stays the same.

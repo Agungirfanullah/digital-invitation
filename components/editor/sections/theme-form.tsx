@@ -13,7 +13,8 @@ import { GALLERY_UPLOAD_MAX_BYTES } from "@/lib/storage/limits";
 import { useAutosave, type SaveStatus } from "@/components/editor/use-autosave";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/forms/form-error";
-import { FormField } from "@/components/forms/form-field";
+import { ThemeColorField } from "@/components/editor/sections/theme-color-field";
+import { ThemeFontField } from "@/components/editor/sections/theme-font-field";
 
 const MAX_UPLOAD_MB = Math.round(GALLERY_UPLOAD_MAX_BYTES / (1024 * 1024));
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
@@ -85,8 +86,8 @@ export function ThemeForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, error]);
 
-  function setField(key: keyof EditorTheme, raw: string) {
-    setForm((prev) => ({ ...prev, [key]: raw.trim() === "" ? null : raw }));
+  function setField(key: keyof EditorTheme, raw: string | null) {
+    setForm((prev) => ({ ...prev, [key]: raw === null || raw.trim() === "" ? null : raw }));
   }
 
   return (
@@ -94,38 +95,36 @@ export function ThemeForm({
       <div>
         <h2 className="text-lg font-semibold tracking-tight">Warna &amp; Font</h2>
         <p className="text-muted-foreground text-sm">
-          Warna dan tipografi undangan. Kosongkan untuk memakai tampilan bawaan tema yang dipilih
-          (ditampilkan sebagai petunjuk di kolom).
+          Pilih warna dan huruf undangan. Biarkan di &quot;Bawaan tema&quot; untuk memakai tampilan
+          tema yang dipilih.
         </p>
       </div>
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-1 text-sm font-medium sm:col-span-2">Warna</legend>
         {COLOR_FIELDS.map(({ key, label }) => (
-          <FormField
+          <ThemeColorField
             key={key}
             label={label}
             name={key}
-            type="text"
-            placeholder={defaults[key] ?? ""}
-            value={form[key] ?? ""}
-            onChange={(e) => setField(key, e.target.value)}
+            value={form[key]}
+            defaultValue={defaults[key] ?? "#000000"}
+            onChange={(next) => setField(key, next)}
             error={fieldErrors[key]?.[0]}
           />
         ))}
       </fieldset>
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
-        <legend className="mb-1 text-sm font-medium sm:col-span-2">Tipografi</legend>
+        <legend className="mb-1 text-sm font-medium sm:col-span-2">Huruf</legend>
         {FONT_FIELDS.map(({ key, label }) => (
-          <FormField
+          <ThemeFontField
             key={key}
             label={label}
             name={key}
-            type="text"
-            placeholder={defaults[key] ?? ""}
-            value={form[key] ?? ""}
-            onChange={(e) => setField(key, e.target.value)}
+            value={form[key]}
+            defaultValue={defaults[key] ?? "inherit"}
+            onChange={(next) => setField(key, next)}
             error={fieldErrors[key]?.[0]}
           />
         ))}

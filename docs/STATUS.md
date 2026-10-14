@@ -76,6 +76,10 @@ digital-gift display) do not become MVP-defining by that fact.
   onboarding (D-085).
 - Next.js upgraded 16.3.5 to 16.3.8 to close critical advisories, two of
   which touched the OG-image feature (D-086).
+- Gallery upload takes up to 20 photos per selection, sent one at a time with
+  per-photo status (D-087); upload rate limit 60 per 10 minutes.
+- "Warna & Font" uses named color swatches and a font list instead of typed
+  hex codes and font stacks (D-088).
 - Sign-up now reports an already-registered email (D-084); the Supabase
   Auth Site URL and Redirect URLs of the production project were set to the
   deployed origin, which fixed confirmation and reset links that landed on
@@ -3625,10 +3629,10 @@ DEV-database outage found during that run.
 TypeScript:            PASS
 Lint:                  PASS
 Build:                 PASS (next build, Turbopack)
-Unit/integration:      PASS (Vitest — 97 files, 1683 tests; the integration
+Unit/integration:      PASS (Vitest — 102 files, 1727 tests; the integration
                        files run against the live Supabase DEV database and
                        clean up every row/object they create)
-E2E:                   PASS (Playwright — 110 tests against a production
+E2E:                   PASS (Playwright — 112 tests against a production
                        build served on port 3100 with E2E_TEST_MODE=true;
                        includes the dashboard shell spec). One earlier
                        full run had a single onboarding test fail under
