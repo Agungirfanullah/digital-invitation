@@ -113,4 +113,37 @@ describe("CountdownSection (D-068)", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/pukul 11:00\./)).not.toBeInTheDocument();
   });
+
+  const ALL_ON = {
+    hero: true,
+    identity: true,
+    countdown: true,
+    schedule: true,
+    story: true,
+    gallery: true,
+    rsvp: true,
+    gift: true,
+    wishes: true,
+  };
+
+  it("sits on the cover photo, with darker discs, when the event has one", () => {
+    const base = buildFullyPopulatedInvitation({ sections: ALL_ON });
+    const invitation = {
+      ...base,
+      theme: { ...base.theme, backgroundImageUrl: "https://example.com/cover.jpg" },
+    };
+    const { container } = render(<CountdownSection invitation={invitation} />);
+
+    expect(container.querySelector("[style*='cover.jpg']")).toBeInTheDocument();
+    expect(container.querySelector("[class*='bg-black']")).toBeInTheDocument();
+  });
+
+  it("has no photo layer and uses the theme color for the discs without a cover photo", () => {
+    const base = buildFullyPopulatedInvitation({ sections: ALL_ON });
+    const invitation = { ...base, theme: { ...base.theme, backgroundImageUrl: null } };
+    const { container } = render(<CountdownSection invitation={invitation} />);
+
+    expect(container.querySelector("[style*='background-image']")).not.toBeInTheDocument();
+    expect(container.querySelector("[class*='bg-black']")).not.toBeInTheDocument();
+  });
 });

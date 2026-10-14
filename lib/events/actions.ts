@@ -42,7 +42,7 @@ export async function createEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
-  if (!checkEventMutationRateLimit(user.id)) {
+  if (!(await checkEventMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 
@@ -73,7 +73,7 @@ export async function updateEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
-  if (!checkEventMutationRateLimit(user.id)) {
+  if (!(await checkEventMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 
@@ -104,7 +104,7 @@ export async function publishEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
-  if (!checkEventMutationRateLimit(user.id)) {
+  if (!(await checkEventMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 
@@ -127,7 +127,7 @@ export async function unpublishEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
-  if (!checkEventMutationRateLimit(user.id)) {
+  if (!(await checkEventMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 
@@ -150,7 +150,7 @@ export async function deleteEventAction(
 ): Promise<EventFormState> {
   const user = await requireAppUser();
 
-  if (!checkEventMutationRateLimit(user.id)) {
+  if (!(await checkEventMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 

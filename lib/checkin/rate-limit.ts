@@ -1,6 +1,6 @@
 import "server-only";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * Check-in is an authenticated, event-scoped mutation (not a public
@@ -15,5 +15,5 @@ import { consumeRateLimit } from "@/lib/rate-limit";
 const CHECKIN_LIMIT = { limit: 300, windowMs: 10 * 60 * 1000 };
 
 export async function checkCheckInRateLimit(userId: string): Promise<boolean> {
-  return consumeRateLimit(`checkin:submit:${userId}`, CHECKIN_LIMIT).allowed;
+  return (await consumeSharedRateLimit(`checkin:submit:${userId}`, CHECKIN_LIMIT)).allowed;
 }

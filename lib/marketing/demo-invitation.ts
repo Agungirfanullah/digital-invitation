@@ -20,6 +20,14 @@ import type { PublicInvitation } from "@/lib/invitations/types";
  * that renders correctly with no guest token, which is what this preview
  * relies on instead.
  */
+const DEMO_DAYS_AHEAD = 75;
+
+/** A demo date always in the future, so the sample countdown never shows zeros. */
+function demoEventDate(now: Date = new Date()): string {
+  const date = new Date(now.getTime() + DEMO_DAYS_AHEAD * 24 * 60 * 60 * 1000);
+  return date.toISOString().slice(0, 10);
+}
+
 export function buildDemoInvitation(templateKey: string = "minimal-elegant"): PublicInvitation {
   const type = "WEDDING" as const;
 
@@ -47,7 +55,9 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
         yearsTogether: null,
       },
     }),
-    sections: resolveEnabledSections(type, null),
+    // Countdown defaults to off for real events (D-068); the demo turns it on
+    // so the sample shows the section.
+    sections: { ...resolveEnabledSections(type, null), countdown: true },
     sectionOrder: resolveSectionOrder(null),
     // Irrelevant here — the Homepage always renders this through
     // `InvitationRenderer`'s `bypassOpening={true}`, which skips reading
@@ -58,7 +68,7 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
         id: "demo-schedule",
         title: "Akad & Resepsi",
         description: null,
-        date: "2026-12-12",
+        date: demoEventDate(),
         startTime: "08:00",
         endTime: "12:00",
         venue: {

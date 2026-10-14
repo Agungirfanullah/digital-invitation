@@ -43,7 +43,7 @@ export async function createGiftMethodAction(
 ): Promise<GiftMethodFormState> {
   const user = await requireAppUser();
 
-  if (!checkGiftMutationRateLimit(user.id)) {
+  if (!(await checkGiftMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 
@@ -74,7 +74,7 @@ export async function updateGiftMethodAction(
 ): Promise<GiftMethodFormState> {
   const user = await requireAppUser();
 
-  if (!checkGiftMutationRateLimit(user.id)) {
+  if (!(await checkGiftMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 
@@ -107,7 +107,7 @@ export async function deleteGiftMethodAction(
 ): Promise<GiftMethodFormState> {
   const user = await requireAppUser();
 
-  if (!checkGiftMutationRateLimit(user.id)) {
+  if (!(await checkGiftMutationRateLimit(user.id))) {
     return { error: RATE_LIMIT_MESSAGE };
   }
 

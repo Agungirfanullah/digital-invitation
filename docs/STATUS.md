@@ -80,6 +80,10 @@ digital-gift display) do not become MVP-defining by that fact.
   per-photo status (D-087); upload rate limit 60 per 10 minutes.
 - "Warna & Font" uses named color swatches and a font list instead of typed
   hex codes and font stacks (D-088).
+- Shared, database-backed rate limiter; structured server-error logging;
+  `GET /api/health` with a daily keep-alive call (D-089).
+- Countdown as discs, on the cover photo when there is one; the invitation
+  column clips horizontal overflow (D-090).
 - Sign-up now reports an already-registered email (D-084); the Supabase
   Auth Site URL and Redirect URLs of the production project were set to the
   deployed origin, which fixed confirmation and reset links that landed on
@@ -98,15 +102,17 @@ digital-gift display) do not become MVP-defining by that fact.
    checkout, no plan enforcement and no payment provider (Roadmap Phase 18
    not started). Needs a product decision: hide paid plans until billing
    exists, or build Phase 18.
-2. **Rate limiting is in-memory per process** (`lib/rate-limit/index.ts`).
-   On Vercel it is not shared across serverless instances, so it is a weak
-   control; per-IP keys also trust the first `x-forwarded-for` value. Needs
-   a shared store before real traffic. This also weakens the only brake on
-   the account-enumeration exposure accepted in D-084.
+2. ~~Rate limiting is in-memory per process~~ — now database-backed and
+   shared across instances (D-089). Production must run
+   `prisma migrate deploy` for `RateLimitBucket`; until then the limiter
+   logs and falls back to memory. Per-IP keys still use the first
+   `x-forwarded-for` value (right behind Vercel's edge).
 3. ~~No OG image on public invitations~~ — done (D-083). Remaining work:
    confirm `NEXT_PUBLIC_APP_URL` is the production origin in Vercel (it
    builds the absolute image URLs), and spot-check a real WhatsApp share.
-4. **No error monitoring or audit logging** (`AuditLog` unused).
+4. **Error monitoring is log-only; no audit logging** (`AuditLog` unused).
+   Server errors are written as structured lines to Vercel Logs (D-089);
+   no alerting or third-party tracker yet.
 5. **Supabase's built-in SMTP is heavily rate limited** (a few emails per
    hour per project): sign-up fails with "Terlalu banyak permintaan email"
    once exhausted. Production needs custom SMTP before many sign-ups.
@@ -3629,10 +3635,10 @@ DEV-database outage found during that run.
 TypeScript:            PASS
 Lint:                  PASS
 Build:                 PASS (next build, Turbopack)
-Unit/integration:      PASS (Vitest — 102 files, 1727 tests; the integration
+Unit/integration:      PASS (Vitest — 105 files, 1743 tests; the integration
                        files run against the live Supabase DEV database and
                        clean up every row/object they create)
-E2E:                   PASS (Playwright — 112 tests against a production
+E2E:                   PASS (Playwright — 116 tests against a production
                        build served on port 3100 with E2E_TEST_MODE=true;
                        includes the dashboard shell spec). One earlier
                        full run had a single onboarding test fail under

@@ -788,6 +788,9 @@ Rate-limit:
 
 Use an abstraction so the implementation can later move to Redis or another service.
 
+Implemented (D-089): `lib/rate-limit/shared.ts`, counters in the
+`RateLimitBucket` table, shared across serverless instances.
+
 ---
 
 # 29. Caching

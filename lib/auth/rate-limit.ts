@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 const AUTH_RATE_LIMITS = {
   register: { limit: 5, windowMs: 10 * 60 * 1000 },
@@ -65,5 +65,6 @@ async function getRequestIp(): Promise<string> {
 /** Returns false when the caller has exceeded the allowed attempts for this action. */
 export async function checkAuthRateLimit(action: AuthRateLimitAction): Promise<boolean> {
   const ip = await getRequestIp();
-  return consumeRateLimit(`auth:${action}:${ip}`, resolveAuthRateLimit(action)).allowed;
+  return (await consumeSharedRateLimit(`auth:${action}:${ip}`, resolveAuthRateLimit(action)))
+    .allowed;
 }

@@ -779,3 +779,11 @@ model OrganizationProfile {
 
   event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
+
+// Fixed-window counters behind the shared rate limiter (lib/rate-limit/shared.ts,
+// D-089). One row per limiter key; expired rows are swept opportunistically.
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime @db.Timestamptz(3)
+}

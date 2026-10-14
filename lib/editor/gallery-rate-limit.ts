@@ -1,6 +1,6 @@
 import "server-only";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * Gallery upload is an authenticated mutation (unlike RSVP/wish
@@ -15,5 +15,5 @@ import { consumeRateLimit } from "@/lib/rate-limit";
 export const GALLERY_UPLOAD_LIMIT = { limit: 60, windowMs: 10 * 60 * 1000 };
 
 export async function checkGalleryUploadRateLimit(userId: string): Promise<boolean> {
-  return consumeRateLimit(`gallery:upload:${userId}`, GALLERY_UPLOAD_LIMIT).allowed;
+  return (await consumeSharedRateLimit(`gallery:upload:${userId}`, GALLERY_UPLOAD_LIMIT)).allowed;
 }

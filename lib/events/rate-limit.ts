@@ -1,6 +1,6 @@
 import "server-only";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * D-077 (Phase 20 Batch 1). One shared bucket per user across all five
@@ -22,6 +22,7 @@ const EVENT_MUTATION_RATE_LIMIT = { limit: 30, windowMs: 10 * 60 * 1000 };
  * rate-limit.ts` precedent uses only because no user identity exists yet
  * at that point).
  */
-export function checkEventMutationRateLimit(userId: string): boolean {
-  return consumeRateLimit(`event-mutation:${userId}`, EVENT_MUTATION_RATE_LIMIT).allowed;
+export async function checkEventMutationRateLimit(userId: string): Promise<boolean> {
+  return (await consumeSharedRateLimit(`event-mutation:${userId}`, EVENT_MUTATION_RATE_LIMIT))
+    .allowed;
 }

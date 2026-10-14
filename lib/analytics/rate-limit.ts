@@ -1,5 +1,5 @@
 import "server-only";
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * Keyed by the first-party analytics session id, not IP. Unlike
@@ -16,6 +16,6 @@ import { consumeRateLimit } from "@/lib/rate-limit";
  */
 const TRACK_VIEW_LIMIT = { limit: 20, windowMs: 5 * 60 * 1000 };
 
-export function checkAnalyticsTrackingRateLimit(sessionId: string): boolean {
-  return consumeRateLimit(`analytics:view:${sessionId}`, TRACK_VIEW_LIMIT).allowed;
+export async function checkAnalyticsTrackingRateLimit(sessionId: string): Promise<boolean> {
+  return (await consumeSharedRateLimit(`analytics:view:${sessionId}`, TRACK_VIEW_LIMIT)).allowed;
 }

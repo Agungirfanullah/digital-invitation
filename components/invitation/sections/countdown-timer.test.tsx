@@ -32,7 +32,7 @@ describe("CountdownTimer (D-068 — timer behavior)", () => {
     const { container } = render(<CountdownTimer schedule={buildSchedule()} />);
     expect(container.textContent).toContain("1");
     // 4 unit boxes: days, hours, minutes, seconds.
-    expect(container.querySelectorAll("p.text-2xl")).toHaveLength(4);
+    expect(container.querySelectorAll("[data-testid='countdown-value']")).toHaveLength(4);
   });
 
   it("ticks down once per second", () => {
@@ -54,7 +54,7 @@ describe("CountdownTimer (D-068 — timer behavior)", () => {
     const { container } = render(
       <CountdownTimer schedule={buildSchedule({ date: "2020-01-01", startTime: "00:00" })} />,
     );
-    const zeros = container.querySelectorAll("p.text-2xl");
+    const zeros = container.querySelectorAll("[data-testid='countdown-value']");
     for (const el of zeros) {
       expect(el.textContent).toBe("0");
     }
@@ -62,7 +62,7 @@ describe("CountdownTimer (D-068 — timer behavior)", () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
-    for (const el of container.querySelectorAll("p.text-2xl")) {
+    for (const el of container.querySelectorAll("[data-testid='countdown-value']")) {
       expect(el.textContent).toBe("0");
       expect(Number(el.textContent)).toBeGreaterThanOrEqual(0);
     }

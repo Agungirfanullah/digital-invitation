@@ -73,7 +73,7 @@ async function recordInvitationView(input: {
   const parsed = trackInvitationViewSchema.safeParse(input);
   if (!parsed.success) return;
 
-  if (!checkAnalyticsTrackingRateLimit(parsed.data.sessionId)) return;
+  if (!(await checkAnalyticsTrackingRateLimit(parsed.data.sessionId))) return;
 
   const recent = await prisma.invitationView.findFirst({
     where: {

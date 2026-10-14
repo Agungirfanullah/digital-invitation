@@ -37,7 +37,14 @@ const UNITS: { key: keyof CountdownRemaining; label: string }[] = [
  * helpful (D-068 doesn't mandate a specific accessibility strategy; this
  * is the smallest choice consistent with not spamming assistive tech).
  */
-export function CountdownTimer({ schedule }: { schedule: PublicSchedule }) {
+export function CountdownTimer({
+  schedule,
+  onPhoto = false,
+}: {
+  schedule: PublicSchedule;
+  /** True when the section sits on the cover photo: darker discs, so the numbers stay legible on any photo. */
+  onPhoto?: boolean;
+}) {
   const target = useMemo(() => resolveCountdownTargetDate(schedule), [schedule]);
   const [remaining, setRemaining] = useState<CountdownRemaining | null>(null);
 
@@ -51,18 +58,21 @@ export function CountdownTimer({ schedule }: { schedule: PublicSchedule }) {
   if (!remaining) return null;
 
   return (
-    <div className="mx-auto grid max-w-sm grid-cols-4 gap-3" aria-hidden="true">
+    <div className="mx-auto grid max-w-xs grid-cols-4 gap-3" aria-hidden="true">
       {UNITS.map(({ key, label }) => (
-        <div
-          key={key}
-          className="rounded-lg border border-[color:var(--ii-secondary)] px-2 py-3 text-center"
-        >
-          <p className="text-2xl font-semibold text-[color:var(--ii-primary)] tabular-nums">
-            {remaining[key]}
-          </p>
-          <p className="mt-1 text-[10px] tracking-wide text-[color:var(--ii-text)] uppercase opacity-70">
-            {label}
-          </p>
+        <div key={key} className="text-center">
+          <div
+            className={`mx-auto flex aspect-square w-full max-w-16 items-center justify-center rounded-full shadow-sm ${
+              onPhoto
+                ? "bg-black/55 text-white backdrop-blur-sm"
+                : "bg-[color:var(--ii-primary)] text-[color:var(--primary-foreground)]"
+            }`}
+          >
+            <span data-testid="countdown-value" className="text-xl font-semibold tabular-nums">
+              {remaining[key]}
+            </span>
+          </div>
+          <p className="mt-2 text-xs text-[color:var(--ii-text)] opacity-80">{label}</p>
         </div>
       ))}
     </div>

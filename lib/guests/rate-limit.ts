@@ -1,6 +1,6 @@
 import "server-only";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * Token regeneration is an authenticated (EDITOR/OWNER) mutation, so
@@ -20,5 +20,6 @@ const REGENERATE_LIMIT = { limit: 10, windowMs: 10 * 60 * 1000 };
  * multi-instance/serverless concurrency.
  */
 export async function checkGuestInvitationRateLimit(userId: string): Promise<boolean> {
-  return consumeRateLimit(`guest-invitation:regenerate:${userId}`, REGENERATE_LIMIT).allowed;
+  return (await consumeSharedRateLimit(`guest-invitation:regenerate:${userId}`, REGENERATE_LIMIT))
+    .allowed;
 }

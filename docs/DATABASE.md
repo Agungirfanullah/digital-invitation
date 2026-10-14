@@ -1326,3 +1326,20 @@ GENERIC       Other                              (none — PRD §13.7)
   (PRD §13.5/§13.6 "event title/purpose") — no separate column.
 
 Existing `WeddingProfile` rows were not migrated or modified.
+
+---
+
+## RateLimitBucket (D-089)
+
+Fixed-window counters for the shared rate limiter. One row per limiter key.
+
+| Column    | Type          | Notes                                         |
+| --------- | ------------- | --------------------------------------------- |
+| `key`     | text, PK      | e.g. `rsvp:submit:<ip>`, `gallery:upload:<id>` |
+| `count`   | integer       | requests in the current window                |
+| `resetAt` | timestamptz   | end of the current window (database clock)    |
+
+Written only through one atomic upsert in `lib/rate-limit/shared.ts`; expired
+rows are deleted opportunistically. Contains an IP address or an opaque user
+id inside `key`, for at most the window length plus one hour. RLS enabled with
+no policies and the Data API roles revoked (D-054).

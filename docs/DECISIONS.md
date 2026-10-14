@@ -2975,3 +2975,76 @@ that is a separate decision.
 **Consequences:** the list is smaller than "any font"; system fonts differ
 slightly between iOS, Android and desktop, though every stack ends in a
 generic family so the style stays the same.
+
+---
+
+## D-089 — Shared Rate Limiter, Error Logging and a Health Check
+
+**Status:** IMPLEMENTED
+
+**Context:** every limiter lived in one process's memory. On Vercel each
+serverless instance has its own counters, so an attacker spread across
+instances was barely limited — including the only brake on the account
+enumeration accepted in D-084 and on RSVP/wish spam. Production errors were
+visible only to the visitor who hit them, and a paused free-tier Supabase
+project took the whole site down without any signal.
+
+**Decision:**
+1. *Shared limiter.* `lib/rate-limit/shared.ts` keeps counters in a
+   `RateLimitBucket` table (migration `20261014140000_add_rate_limit_bucket`,
+   RLS on and Data API roles revoked like every table, D-054). One atomic
+   `INSERT … ON CONFLICT DO UPDATE` per check, using the database clock, so
+   simultaneous requests cannot over-count and instances agree on windows.
+   All nine limiters call it. The database was chosen over Redis because the
+   project already runs on it and a new service would be one more thing to
+   operate; the price is one small query per limited request. Expired rows
+   are deleted opportunistically (about one call in 50).
+2. *Where it is not used.* `NODE_ENV=test` and `E2E_TEST_MODE=true` (the same
+   fail-closed switch as the login-limit override) keep the in-memory store,
+   so test runs leave no counters in a shared database. If the database is
+   unreachable the request falls back to the in-memory limiter and a log line
+   is written — a limiter outage must not lock everyone out.
+3. *Error logging.* `instrumentation.ts` implements `onRequestError` and
+   writes one structured JSON line per server error (`lib/monitoring/
+   error-log.ts`): name, truncated message, digest, method, path **without
+   its query string** (the `?to=` guest token), route and a short stack. No
+   headers, cookies or bodies. It lands in Vercel Logs; no vendor is added.
+4. *Health check.* `GET /api/health` runs `SELECT 1` with a 5 s timeout and
+   answers `{status:"ok"}` or 503 `{status:"degraded"}`, never cached and
+   revealing nothing else. `vercel.json` calls it once a day, which also is
+   database activity for a free-tier project.
+
+**Not done:** a third-party error tracker (Sentry and similar) — it needs an
+account and a DSN and adds a dependency; the log line is the hook to add it
+later. The daily call does not make the free tier safe: it is a workaround for
+a policy Supabase can change, and the free tier has no reliable backups. The
+Pro plan is what removes auto-pause. Per-IP keys use the first
+`x-forwarded-for` value, which is correct behind Vercel's edge (it sets the
+header) but must be revisited if the app is served behind another proxy.
+
+**Consequences:** each limited request now costs a database round trip
+(rate-limited surfaces are low-volume writes). Production must apply the new
+migration (`prisma migrate deploy`) before this code runs, otherwise the
+limiter logs and falls back to memory.
+
+---
+
+## D-090 — Countdown as Discs on the Cover Photo; Invitation Column Clips Overflow
+
+**Status:** IMPLEMENTED — product-owner request
+
+**Decision:** Countdown stays one shared section for all 16 templates
+(D-068's contract is untouched). Its four units are now round discs with the
+label below, the disc colored from the theme's primary color. When the event
+has a cover photo the section sits on it with the same dark scrim and light
+text as Hero, and the discs turn dark translucent so the numbers read on any
+photo. The sample demo turns Countdown on, with a date 75 days ahead so it
+never shows zeros. The invitation column also gets `overflow-x: clip`, so a
+decorative element that pokes past the column cannot give the page a
+horizontal scrollbar; the sideways scroll an owner reported could not be
+reproduced on any template at 390–1919 px, and this closes that class of bug
+while an e2e test guards it.
+
+**Not done:** the photo backdrop on other sections (Greeting, Closing)
+as in wevitation — those are written separately inside each of the 16
+templates and need a per-template pass.

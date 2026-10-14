@@ -62,7 +62,11 @@ export function InvitationRenderer({
   return (
     <>
       <DesktopCoverPanel invitation={invitation} />
-      <div className="lg:ml-auto lg:w-[var(--invite-column)]">
+      {/* `overflow-x-clip` (not `hidden`: no scroll container, nothing breaks)
+          keeps a decorative element that pokes past the column — an ornament
+          or an unusually long word — from giving the page a horizontal
+          scrollbar. */}
+      <div className="overflow-x-clip lg:ml-auto lg:w-[var(--invite-column)]">
         <OpeningGate invitation={invitation}>{content}</OpeningGate>
       </div>
     </>

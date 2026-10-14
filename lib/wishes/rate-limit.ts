@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * `docs/PRD.md` §23 explicitly requires rate limiting/spam protection on
@@ -28,5 +28,5 @@ async function getRequestIp(): Promise<string> {
  */
 export async function checkWishRateLimit(): Promise<boolean> {
   const ip = await getRequestIp();
-  return consumeRateLimit(`wish:submit:${ip}`, WISH_SUBMIT_LIMIT).allowed;
+  return (await consumeSharedRateLimit(`wish:submit:${ip}`, WISH_SUBMIT_LIMIT)).allowed;
 }

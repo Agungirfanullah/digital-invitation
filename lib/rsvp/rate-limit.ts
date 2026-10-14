@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 
-import { consumeRateLimit } from "@/lib/rate-limit";
+import { consumeSharedRateLimit } from "@/lib/rate-limit/shared";
 
 /**
  * `docs/ARCHITECTURE.md` §28 explicitly lists RSVP as a rate-limited
@@ -31,5 +31,5 @@ async function getRequestIp(): Promise<string> {
  */
 export async function checkRsvpRateLimit(): Promise<boolean> {
   const ip = await getRequestIp();
-  return consumeRateLimit(`rsvp:submit:${ip}`, RSVP_SUBMIT_LIMIT).allowed;
+  return (await consumeSharedRateLimit(`rsvp:submit:${ip}`, RSVP_SUBMIT_LIMIT)).allowed;
 }
