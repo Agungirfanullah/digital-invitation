@@ -79,19 +79,23 @@ export function EventMenuGrid({ eventId }: { eventId: string }) {
   ];
 
   return (
-    <ul className="grid grid-cols-3 gap-2.5">
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {items.map((item) => (
         <li key={item.href}>
           <Link
             href={item.href}
-            className={`focus-visible:ring-ring text-primary-foreground flex h-full min-h-24 flex-col items-center justify-center gap-2 rounded-xl p-2 text-center text-xs font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+            className={`group focus-visible:ring-ring flex h-full min-h-24 flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center text-xs font-semibold transition-all duration-200 outline-none hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 ${
               item.primary
-                ? "bg-foreground hover:bg-foreground/90"
-                : "bg-primary hover:bg-primary/90"
+                ? "bg-gradient-to-br from-primary via-primary/95 to-primary/85 text-primary-foreground shadow-md glow-primary hover:opacity-95"
+                : "border border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary shadow-xs"
             }`}
           >
-            <span className="size-8">{item.icon}</span>
-            {item.label}
+            <span className={`size-7 transition-transform duration-200 group-hover:scale-110 ${
+              item.primary ? "text-primary-foreground" : "text-primary"
+            }`}>
+              {item.icon}
+            </span>
+            <span className="leading-tight">{item.label}</span>
           </Link>
         </li>
       ))}

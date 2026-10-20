@@ -18,36 +18,55 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const user = await requireAppUser();
 
   return (
-    <div className="flex flex-1 flex-col lg:flex-row">
-      <aside className="bg-foreground text-background flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 lg:sticky lg:top-0 lg:h-screen lg:w-60 lg:flex-col lg:items-stretch lg:gap-y-6 lg:px-4 lg:py-6">
+    <div className="flex min-h-screen flex-1 flex-col bg-background/50 lg:flex-row">
+      <aside className="bg-foreground text-background flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 border-b border-border/20 lg:border-b-0 lg:border-r lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:flex-col lg:items-stretch lg:gap-y-6 lg:p-6 shadow-md">
         <Link
           href="/dashboard"
-          className="focus-visible:ring-ring order-1 rounded-md text-lg font-semibold tracking-tight outline-none focus-visible:ring-2"
+          className="focus-visible:ring-ring order-1 flex items-center gap-2.5 rounded-lg text-lg font-bold tracking-tight text-background outline-none focus-visible:ring-2"
         >
-          Digital Invitation
+          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="size-4"
+              aria-hidden="true"
+            >
+              <path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z" />
+            </svg>
+          </span>
+          <span>
+            Digital<span className="text-primary font-normal">Invitation</span>
+          </span>
         </Link>
 
         <div className="order-3 w-full lg:order-2">
           <DashboardNav />
         </div>
 
-        <div className="order-2 ml-auto flex items-center gap-3 lg:order-3 lg:mt-auto lg:ml-0 lg:w-full lg:min-w-0 lg:flex-col lg:items-stretch">
+        <div className="order-2 ml-auto flex items-center gap-3 rounded-xl border border-background/15 bg-background/5 p-3 lg:order-3 lg:mt-auto lg:ml-0 lg:w-full lg:min-w-0 lg:flex-col lg:items-stretch lg:gap-3.5">
           <div className="flex min-w-0 items-center gap-3">
-            <span
-              aria-hidden="true"
-              className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
-            >
-              {initialsOf(user.name)}
-            </span>
+            <div className="relative shrink-0">
+              <span
+                aria-hidden="true"
+                className="bg-primary text-primary-foreground flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold shadow-xs"
+              >
+                {initialsOf(user.name)}
+              </span>
+              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-foreground" />
+            </div>
             <div className="hidden min-w-0 lg:block">
-              <p className="truncate text-sm font-medium">{user.name}</p>
+              <p className="truncate text-sm font-semibold text-background">{user.name}</p>
               <p className="text-background/60 truncate text-xs">{user.email}</p>
             </div>
           </div>
-          <form action={signOutAction}>
+          <form action={signOutAction} className="w-full">
             <button
               type="submit"
-              className="border-background/30 text-background hover:bg-background/10 focus-visible:ring-ring h-8 w-full rounded-md border px-3 text-xs font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2"
+              className="border-background/25 text-background/80 hover:text-background hover:bg-background/15 focus-visible:ring-ring h-8 w-full rounded-lg border px-3 text-xs font-semibold whitespace-nowrap transition-all outline-none focus-visible:ring-2"
             >
               Keluar
             </button>
@@ -55,7 +74,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </div>
       </aside>
 
-      <main className="flex-1 px-4 py-8 sm:px-6">{children}</main>
+      <main className="flex-1 px-4 py-8 sm:px-8 lg:py-10">{children}</main>
     </div>
   );
 }

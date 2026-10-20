@@ -152,9 +152,9 @@ export function FloatingSectionNav({ invitation }: { invitation: PublicInvitatio
   return (
     <nav
       aria-label="Navigasi cepat undangan"
-      className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 lg:left-[calc(100%-var(--invite-column)/2)]"
+      className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:left-[calc(100%-var(--invite-column)/2)]"
     >
-      <ul className="flex items-center gap-1 rounded-full border border-[color:var(--ii-secondary)] bg-[color:var(--ii-background)]/95 p-1.5 shadow-lg backdrop-blur">
+      <ul className="flex items-center gap-1.5 rounded-full border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-background)]/85 p-2 shadow-2xl backdrop-blur-md ring-1 ring-black/5 transition-transform">
         {items.map((item) => (
           <li key={item.key}>
             <button
@@ -162,7 +162,7 @@ export function FloatingSectionNav({ invitation }: { invitation: PublicInvitatio
               onClick={() => scrollToHeading(item.headingId)}
               aria-label={item.label}
               title={item.label}
-              className="flex size-10 items-center justify-center rounded-full text-[color:var(--ii-primary)] transition-colors hover:bg-[color:var(--ii-secondary)]/60"
+              className="flex size-10 items-center justify-center rounded-full text-[color:var(--ii-primary)] transition-all duration-200 hover:scale-110 hover:bg-[color:var(--ii-secondary)]/70 active:scale-95"
             >
               <item.icon className="size-5" />
             </button>

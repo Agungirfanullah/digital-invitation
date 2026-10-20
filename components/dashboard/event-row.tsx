@@ -11,16 +11,16 @@ export function EventRow({
   event: { id: string; title: string; slug: string; type: EventType; status: EventStatus };
 }) {
   return (
-    <li className="bg-card flex items-center gap-4 rounded-xl border p-4 shadow-sm">
+    <li className="group bg-card flex items-center gap-4 rounded-2xl border border-border/70 p-4.5 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/40">
       <div
         aria-hidden="true"
-        className="bg-secondary text-primary flex size-12 shrink-0 items-center justify-center rounded-lg"
+        className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-xl shadow-xs transition-transform duration-200 group-hover:scale-105"
       >
         <svg
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          strokeWidth={1.5}
+          strokeWidth={1.75}
           strokeLinecap="round"
           strokeLinejoin="round"
           className="size-6"
@@ -31,24 +31,24 @@ export function EventRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-semibold">{event.title}</h3>
-        <p className="text-muted-foreground text-xs">{EVENT_TYPE_LABELS[event.type]}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h3 className="truncate font-bold text-foreground text-sm sm:text-base">{event.title}</h3>
+        <p className="text-muted-foreground text-xs mt-0.5">{EVENT_TYPE_LABELS[event.type]}</p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <EventStatusBadge status={event.status} />
           {event.status === "PUBLISHED" && (
             <Link
               href={`/invite/${event.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary text-xs font-medium underline-offset-4 hover:underline"
+              className="text-primary text-xs font-semibold inline-flex items-center gap-1 underline-offset-4 hover:underline"
             >
-              Lihat Web
+              Lihat Web ↗
             </Link>
           )}
         </div>
       </div>
 
-      <Button asChild size="sm">
+      <Button asChild size="sm" className="font-semibold shadow-xs">
         <Link href={`/dashboard/events/${event.id}`}>Kelola</Link>
       </Button>
     </li>

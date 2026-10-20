@@ -97,39 +97,96 @@ export function OpeningGate({
         aria-modal="true"
         aria-labelledby={headingId}
         aria-hidden={revealed}
-        className={`fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 bg-[color:var(--ii-background)] px-6 text-center transition-opacity duration-500 motion-reduce:transition-none motion-reduce:duration-0 lg:left-auto lg:w-[var(--invite-column)] ${
+        className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[color:var(--ii-background)] p-6 text-center transition-opacity duration-500 motion-reduce:transition-none motion-reduce:duration-0 lg:left-auto lg:w-[var(--invite-column)] ${
           revealed ? "pointer-events-none opacity-0" : "opacity-100"
         }`}
       >
-        <p className="text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
-          {EVENT_TYPE_LABELS[invitation.type]}
-        </p>
+        {/* Luxury Envelope Card Container */}
+        <div className="relative flex w-full max-w-sm flex-col items-center justify-center rounded-3xl border border-[color:var(--ii-accent)]/40 bg-[color:var(--ii-background)] p-8 shadow-2xl ring-1 ring-[color:var(--ii-accent)]/20">
+          {/* Subtle corner flourish decorative SVG */}
+          <svg
+            viewBox="0 0 40 40"
+            className="absolute top-3 left-3 size-6 text-[color:var(--ii-accent)] opacity-60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M4 28V4h24" />
+            <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+          </svg>
+          <svg
+            viewBox="0 0 40 40"
+            className="absolute top-3 right-3 size-6 -scale-x-100 text-[color:var(--ii-accent)] opacity-60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M4 28V4h24" />
+            <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+          </svg>
+          <svg
+            viewBox="0 0 40 40"
+            className="absolute bottom-3 left-3 size-6 -scale-y-100 text-[color:var(--ii-accent)] opacity-60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M4 28V4h24" />
+            <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+          </svg>
+          <svg
+            viewBox="0 0 40 40"
+            className="absolute bottom-3 right-3 size-6 -scale-100 text-[color:var(--ii-accent)] opacity-60"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            aria-hidden="true"
+          >
+            <path d="M4 28V4h24" />
+            <circle cx="8" cy="8" r="1.5" fill="currentColor" />
+          </svg>
 
-        <h1
-          id={headingId}
-          className="text-3xl font-semibold text-balance text-[color:var(--ii-primary)]"
-          style={{ fontFamily: "var(--ii-heading-font)" }}
-        >
-          {heading}
-        </h1>
-
-        {scheduleDate && (
-          <p className="text-sm text-[color:var(--ii-text)]">
-            {formatIndonesianDate(scheduleDate)}
+          {/* Event type badge */}
+          <p className="text-xs font-semibold tracking-[0.35em] text-[color:var(--ii-accent)] uppercase">
+            {EVENT_TYPE_LABELS[invitation.type]}
           </p>
-        )}
 
-        {guestName && (
-          <p className="text-sm text-[color:var(--ii-text)]">
-            <span>Dear</span>
-            <br />
-            <span>{guestName}</span>
-          </p>
-        )}
+          <h1
+            id={headingId}
+            className="mt-4 text-3xl sm:text-4xl font-bold text-balance text-[color:var(--ii-primary)] tracking-tight leading-snug"
+            style={{ fontFamily: "var(--ii-heading-font)" }}
+          >
+            {heading}
+          </h1>
 
-        <Button type="button" onClick={handleReveal} ref={ctaRef} className="mt-4">
-          Buka Undangan
-        </Button>
+          {scheduleDate && (
+            <p className="mt-3 text-sm font-medium text-[color:var(--ii-text)] opacity-90 tracking-wide">
+              {formatIndonesianDate(scheduleDate)}
+            </p>
+          )}
+
+          {guestName && (
+            <div className="my-5 w-full rounded-2xl border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-secondary)]/30 px-5 py-3 shadow-xs">
+              <p className="text-sm text-[color:var(--ii-text)]">
+                <span className="text-xs uppercase tracking-widest text-[color:var(--ii-accent)] font-semibold">Dear</span>
+                <br />
+                <span className="font-bold text-base text-[color:var(--ii-primary)]">{guestName}</span>
+              </p>
+            </div>
+          )}
+
+          <Button
+            type="button"
+            onClick={handleReveal}
+            ref={ctaRef}
+            className="mt-5 h-11 px-7 font-semibold shadow-md transition-transform hover:scale-105 active:scale-95"
+          >
+            Buka Undangan
+          </Button>
+        </div>
       </div>
     </div>
   );

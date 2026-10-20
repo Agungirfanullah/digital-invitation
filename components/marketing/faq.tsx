@@ -26,30 +26,39 @@ const FAQ_ITEMS = [
 
 export function Faq() {
   return (
-    <section aria-labelledby="faq-heading" className="bg-muted/30 px-6 py-16">
-      <div className="mx-auto max-w-2xl">
-        <h2
-          id="faq-heading"
-          className="text-center text-2xl font-semibold tracking-tight sm:text-3xl"
-        >
-          Pertanyaan yang Sering Diajukan
-        </h2>
-        <div className="mt-10 space-y-3">
+    <section id="faq-heading" aria-labelledby="faq-heading-title" className="bg-muted/30 px-6 py-20 sm:py-28 relative overflow-hidden">
+      <div className="mx-auto max-w-3xl">
+        <div className="text-center">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
+            Pertanyaan Umum
+          </div>
+          <h2
+            id="faq-heading-title"
+            className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl text-balance"
+          >
+            Pertanyaan yang Sering Diajukan
+          </h2>
+          <p className="text-muted-foreground mt-3 text-base max-w-xl mx-auto">
+            Temukan jawaban cepat atas pertanyaan seputar fitur, paket langganan, dan penggunaan undangan digital.
+          </p>
+        </div>
+
+        <div className="mt-14 space-y-4">
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.question}
-              className="group bg-background rounded-xl border p-5 open:pb-5"
+              className="group bg-card rounded-2xl border border-border/70 p-6 shadow-xs transition-all duration-200 open:border-primary/40 open:shadow-md"
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-medium marker:content-none">
-                {item.question}
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-foreground text-base marker:content-none select-none">
+                <span>{item.question}</span>
                 <span
                   aria-hidden
-                  className="text-muted-foreground shrink-0 text-lg transition-transform group-open:rotate-45"
+                  className="flex size-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground shrink-0 text-sm font-bold transition-transform duration-200 group-open:rotate-45 group-open:bg-primary/10 group-open:text-primary"
                 >
                   +
                 </span>
               </summary>
-              <p className="text-muted-foreground mt-3 text-sm">{item.answer}</p>
+              <p className="text-muted-foreground mt-3.5 text-sm leading-relaxed border-t border-border/40 pt-3">{item.answer}</p>
             </details>
           ))}
         </div>

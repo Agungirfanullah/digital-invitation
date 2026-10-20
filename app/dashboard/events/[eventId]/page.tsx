@@ -44,20 +44,20 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const isPublished = event.status === "PUBLISHED";
 
   return (
-    <div className="mx-auto max-w-md space-y-4">
+    <div className="mx-auto max-w-2xl space-y-5">
       <Link
         href="/dashboard/events"
-        className="text-primary inline-flex items-center gap-1 text-sm font-medium underline-offset-4 hover:underline"
+        className="text-primary inline-flex items-center gap-1.5 text-sm font-semibold underline-offset-4 hover:underline"
       >
-        <span aria-hidden="true">←</span> Kembali
+        <span aria-hidden="true">←</span> Kembali ke Undangan
       </Link>
 
-      <div className="bg-card overflow-hidden rounded-xl border shadow-sm">
-        <div className="bg-primary text-primary-foreground space-y-3 p-4">
-          <div className="flex items-start justify-between gap-3">
+      <div className="bg-card overflow-hidden rounded-2xl border border-border/70 shadow-sm">
+        <div className="bg-gradient-to-br from-primary via-primary/95 to-primary/85 text-primary-foreground space-y-4 p-5 sm:p-6 shadow-xs">
+          <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-semibold">{event.title}</h1>
-              <p className="text-xs opacity-80">{EVENT_TYPE_LABELS[event.type]}</p>
+              <h1 className="truncate text-xl font-bold tracking-tight">{event.title}</h1>
+              <p className="text-xs opacity-85 mt-0.5 font-medium">{EVENT_TYPE_LABELS[event.type]}</p>
             </div>
             <PublishSwitch eventId={event.id} isPublished={isPublished} />
           </div>
@@ -67,20 +67,23 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               href={`/invite/${event.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block truncate text-xs underline underline-offset-4"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-black/25 transition-colors underline-offset-4"
             >
-              Lihat undangan: /invite/{event.slug}
+              <span>🌐</span>
+              <span className="truncate">Lihat undangan: /invite/{event.slug}</span>
             </Link>
           ) : (
-            <p className="text-xs opacity-80">
-              Belum dipublikasikan — hanya kamu yang bisa melihat.
+            <p className="text-xs opacity-85 bg-black/15 px-3 py-1.5 rounded-lg w-fit">
+              🔒 Belum dipublikasikan — hanya kamu yang bisa melihat.
             </p>
           )}
 
-          <EventStatsRow stats={stats} variant="onBand" />
+          <div className="border-t border-white/15 pt-3">
+            <EventStatsRow stats={stats} variant="onBand" />
+          </div>
         </div>
 
-        <div className="p-4">
+        <div className="p-5 sm:p-6">
           <EventMenuGrid eventId={event.id} />
         </div>
       </div>

@@ -15,16 +15,18 @@ export function EventStatsRow({
   variant?: "light" | "onBand";
 }) {
   return (
-    <dl className="grid grid-cols-3 gap-2">
+    <dl className="grid grid-cols-3 gap-2.5">
       {TILES.map((tile) => (
         <div
           key={tile.key}
-          className={`rounded-lg px-3 py-2 text-center ${
-            variant === "onBand" ? "bg-card text-foreground" : "bg-secondary/60"
+          className={`rounded-xl px-3 py-2.5 text-center transition-all ${
+            variant === "onBand"
+              ? "bg-card/95 text-foreground shadow-xs ring-1 ring-black/5"
+              : "bg-secondary/70 border border-border/50"
           }`}
         >
-          <dd className="text-lg font-semibold tabular-nums">{stats[tile.key]}</dd>
-          <dt className="text-muted-foreground text-xs">{tile.label}</dt>
+          <dd className="text-xl font-bold tracking-tight tabular-nums text-foreground">{stats[tile.key]}</dd>
+          <dt className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider mt-0.5">{tile.label}</dt>
         </div>
       ))}
     </dl>

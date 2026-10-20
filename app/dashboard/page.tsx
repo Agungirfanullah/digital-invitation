@@ -39,76 +39,104 @@ export default async function DashboardPage() {
   const latest = events[0];
 
   const tiles = [
-    { label: "Undangan", value: events.length },
-    { label: "Total Tamu", value: totalGuests },
-    { label: "Akan Hadir", value: totalAttending },
+    { label: "Undangan", value: events.length, icon: "💌" },
+    { label: "Total Tamu", value: totalGuests, icon: "👥" },
+    { label: "Akan Hadir", value: totalAttending, icon: "✨" },
   ];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">Beranda</h1>
+    <div className="mx-auto max-w-4xl space-y-8">
+      {/* Header with Greeting */}
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Beranda</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Selamat datang kembali, <span className="font-semibold text-foreground">{user.name}</span>! Kelola undangan dan pantau tamu acaramu.
+          </p>
+        </div>
+        <div className="mt-2 sm:mt-0 text-xs font-medium text-muted-foreground bg-muted/60 px-3 py-1.5 rounded-full border border-border/50 w-fit">
+          📅 {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        </div>
+      </div>
 
-      <section aria-label="Ringkasan" className="bg-card space-y-4 rounded-xl border p-4 shadow-sm">
-        <dl className="grid grid-cols-3 gap-3">
+      <section aria-label="Ringkasan" className="space-y-4">
+        {/* Metric tiles */}
+        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {tiles.map((tile) => (
-            <div key={tile.label} className="bg-secondary/60 rounded-lg px-4 py-3">
-              <dt className="text-muted-foreground text-xs">{tile.label}</dt>
-              <dd className="text-primary mt-0.5 text-2xl font-semibold tabular-nums">
+            <div
+              key={tile.label}
+              className="bg-card rounded-2xl border border-border/70 p-5 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/30"
+            >
+              <div className="flex items-center justify-between">
+                <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {tile.label}
+                </dt>
+                <span className="text-lg">{tile.icon}</span>
+              </div>
+              <dd className="text-primary mt-3 text-3xl font-extrabold tabular-nums tracking-tight">
                 {tile.value}
               </dd>
             </div>
           ))}
         </dl>
 
-        <Link
-          href="/dashboard/events/new"
-          className="from-primary to-primary/80 text-primary-foreground focus-visible:ring-ring flex items-center gap-4 rounded-xl bg-gradient-to-r px-5 py-4 transition-opacity outline-none hover:opacity-95 focus-visible:ring-2 focus-visible:ring-offset-2"
-        >
-          <ActionIcon>
-            <rect x="3.5" y="7" width="17" height="12.5" rx="2" />
-            <path d="m4 9 8 5.5L20 9M12 3.5v3M9.5 5h5" />
-          </ActionIcon>
-          <span>
-            <span className="block text-lg font-semibold">Buat Undangan Baru</span>
-            <span className="block text-sm opacity-90">
-              Buat undangan untuk pernikahan atau acaramu.
-            </span>
-          </span>
-        </Link>
-
-        {latest && (
+        {/* Quick action banners */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
-            href={`/dashboard/events/${latest.id}/check-in`}
-            className="bg-foreground text-background focus-visible:ring-ring flex items-center gap-4 rounded-xl px-5 py-4 transition-opacity outline-none hover:opacity-95 focus-visible:ring-2 focus-visible:ring-offset-2"
+            href="/dashboard/events/new"
+            className="from-primary via-primary/95 to-primary/85 text-primary-foreground focus-visible:ring-ring flex items-center gap-4 rounded-2xl bg-gradient-to-r p-5 shadow-md transition-all duration-200 outline-none hover:shadow-lg hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-offset-2"
           >
-            <ActionIcon>
-              <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
-              <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
-              <rect x="3.5" y="13.5" width="7" height="7" rx="1" />
-              <path d="M14.5 14.5h3v3h-3zM19.5 14.5h1v1h-1zM14.5 19.5h1v1h-1zM19.5 19.5h1v1h-1z" />
-            </ActionIcon>
-            <span className="min-w-0">
-              <span className="block text-lg font-semibold">Check-in Tamu</span>
-              <span className="block truncate text-sm opacity-80">
-                Scan QR tamu saat hari-H · {latest.title}
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-primary-foreground">
+              <ActionIcon>
+                <rect x="3.5" y="7" width="17" height="12.5" rx="2" />
+                <path d="m4 9 8 5.5L20 9M12 3.5v3M9.5 5h5" />
+              </ActionIcon>
+            </div>
+            <div>
+              <span className="block text-base font-bold tracking-tight">Buat Undangan Baru</span>
+              <span className="block text-xs opacity-90 mt-0.5">
+                Buat undangan pernikahan atau acaramu dalam hitungan menit.
               </span>
-            </span>
+            </div>
           </Link>
-        )}
+
+          {latest && (
+            <Link
+              href={`/dashboard/events/${latest.id}/check-in`}
+              className="bg-foreground text-background focus-visible:ring-ring flex items-center gap-4 rounded-2xl p-5 shadow-md transition-all duration-200 outline-none hover:shadow-lg hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-offset-2"
+            >
+              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-background">
+                <ActionIcon>
+                  <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
+                  <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
+                  <rect x="3.5" y="13.5" width="7" height="7" rx="1" />
+                  <path d="M14.5 14.5h3v3h-3zM19.5 14.5h1v1h-1zM14.5 19.5h1v1h-1zM19.5 19.5h1v1h-1z" />
+                </ActionIcon>
+              </div>
+              <div className="min-w-0">
+                <span className="block text-base font-bold tracking-tight">Check-in Tamu</span>
+                <span className="block truncate text-xs opacity-80 mt-0.5">
+                  Scan QR tamu saat hari-H · {latest.title}
+                </span>
+              </div>
+            </Link>
+          )}
+        </div>
       </section>
 
-      <section aria-labelledby="my-invitations-heading">
-        <div className="flex items-end justify-between gap-4">
+      {/* Recent invitations section */}
+      <section aria-labelledby="my-invitations-heading" className="space-y-4">
+        <div className="flex items-end justify-between gap-4 border-b border-border/50 pb-3">
           <div>
-            <h2 id="my-invitations-heading" className="text-lg font-semibold tracking-tight">
+            <h2 id="my-invitations-heading" className="text-lg font-bold tracking-tight text-foreground">
               Undangan milikmu
             </h2>
-            <p className="text-muted-foreground text-sm">Undangan yang pernah kamu buat.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">Undangan yang pernah kamu buat.</p>
           </div>
           {events.length > 0 && (
             <Link
               href="/dashboard/events"
-              className="text-primary shrink-0 text-sm font-medium underline-offset-4 hover:underline"
+              className="text-primary shrink-0 text-xs sm:text-sm font-semibold underline-offset-4 hover:underline"
             >
               Selengkapnya »
             </Link>
@@ -116,12 +144,15 @@ export default async function DashboardPage() {
         </div>
 
         {events.length === 0 ? (
-          <div className="mt-4 rounded-lg border border-dashed p-8 text-center">
-            <p className="font-medium">Belum ada acara.</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Mulai dengan membuat acara pertamamu.
+          <div className="mt-4 rounded-2xl border-2 border-dashed border-border/70 p-10 text-center bg-card/40">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+              💌
+            </div>
+            <p className="font-semibold text-foreground">Belum ada acara.</p>
+            <p className="text-muted-foreground mt-1 text-sm max-w-sm mx-auto">
+              Mulai dengan membuat acara pertamamu dan bagikan ke orang terdekat.
             </p>
-            <Button asChild className="mt-4">
+            <Button asChild className="mt-5 font-semibold shadow-xs">
               <Link href="/dashboard/events/new">Buat Acara</Link>
             </Button>
           </div>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { PublicPlan } from "@/lib/plans/service";
 import { Button } from "@/components/ui/button";
 import { CheckCircleIcon } from "@/components/marketing/icons";
+import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 
 /** The plan visually highlighted as the suggested default — an editorial choice, not a claim about sales/popularity data we don't have. */
 const RECOMMENDED_PLAN_SLUG = "premium";
@@ -45,65 +46,116 @@ function formatRupiah(price: number): string {
 
 export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: string }) {
   return (
-    <section aria-labelledby="pricing-heading" className="bg-muted/30 px-6 py-16">
-      <div className="mx-auto max-w-4xl text-center">
-        <h2 id="pricing-heading" className="text-2xl font-semibold tracking-tight sm:text-3xl">
-          Harga yang Jelas, Tanpa Kejutan
-        </h2>
-        <p className="text-muted-foreground mt-2">
-          Mulai gratis, upgrade kapan pun kamu butuh lebih.
-        </p>
-      </div>
+    <section aria-labelledby="pricing-heading" className="relative bg-muted/30 px-6 py-24 sm:py-32 overflow-hidden">
+      {/* Decorative background */}
+      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 -z-10 w-[800px] h-[400px] rounded-full bg-primary/5 blur-[120px]" aria-hidden="true" />
 
-      <ul className="mx-auto mt-10 grid max-w-4xl grid-cols-1 gap-6 sm:grid-cols-3">
-        {plans.map((plan) => {
+      <ScrollReveal className="mx-auto max-w-5xl text-center">
+        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-xs font-semibold text-primary backdrop-blur-sm">
+          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+            <line x1="7" y1="7" x2="7.01" y2="7" />
+          </svg>
+          Pilihan Paket Fleksibel
+        </div>
+        <h2 id="pricing-heading" className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-[2.75rem] text-balance">
+          Harga yang Jelas,{" "}
+          <span className="bg-gradient-to-r from-primary to-emerald-600 text-gradient">Tanpa Kejutan</span>
+        </h2>
+        <p className="text-muted-foreground mt-4 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
+          Mulai gratis sekarang juga, upgrade kapan pun kamu membutuhkan fitur lebih lengkap dan tanpa batasan.
+        </p>
+      </ScrollReveal>
+
+      <ul className="mx-auto mt-16 grid max-w-5xl grid-cols-1 items-stretch gap-6 sm:grid-cols-3">
+        {plans.map((plan, i) => {
           const isRecommended = plan.slug === RECOMMENDED_PLAN_SLUG;
           return (
-            <li
-              key={plan.slug}
-              className={`bg-background relative flex flex-col rounded-xl border p-6 ${
-                isRecommended ? "border-primary ring-primary/20 ring-2" : ""
-              }`}
-            >
-              {isRecommended && (
-                <span className="bg-primary text-primary-foreground absolute -top-3 left-1/2 -translate-x-1/2 rounded-full px-3 py-1 text-xs font-medium">
-                  Direkomendasikan
-                </span>
-              )}
-              <p className="font-medium">{plan.name}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight">
-                {formatRupiah(plan.price)}
-                {plan.price > 0 && (
-                  <span className="text-muted-foreground text-sm font-normal">/bulan</span>
+            <ScrollReveal key={plan.slug} delay={i * 150} direction="up">
+              <li
+                className={`bg-card relative flex flex-col rounded-2xl border p-8 transition-all duration-300 hover:shadow-xl ${
+                  isRecommended
+                    ? "border-primary ring-2 ring-primary/20 shadow-xl lg:-translate-y-3 glow-primary z-10"
+                    : "border-border/50 shadow-xs hover:border-primary/30 hover:-translate-y-1"
+                }`}
+              >
+                {isRecommended && (
+                  <span className="bg-gradient-to-r from-primary to-emerald-600 text-primary-foreground absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-xs font-bold tracking-wide shadow-md flex items-center gap-1.5">
+                    <span>★</span> Paling Populer
+                  </span>
                 )}
-              </p>
-              <ul className="text-muted-foreground mt-4 space-y-2 text-sm">
-                {plan.maxEvents !== null && (
-                  <li className="flex items-start gap-2">
-                    <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
-                    Hingga {plan.maxEvents} acara
-                  </li>
-                )}
-                {plan.maxGuests !== null && (
-                  <li className="flex items-start gap-2">
-                    <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
-                    Hingga {plan.maxGuests} tamu
-                  </li>
-                )}
-                {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
-                  <li key={feature} className="flex items-start gap-2">
-                    <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Button asChild className="mt-6" variant={isRecommended ? "default" : "outline"}>
-                <Link href={ctaHref}>Buat Undangan</Link>
-              </Button>
-            </li>
+
+                <div>
+                  <p className="text-lg font-bold text-foreground">{plan.name}</p>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-extrabold tracking-tight text-foreground">
+                      {formatRupiah(plan.price)}
+                    </span>
+                    {plan.price > 0 && (
+                      <span className="text-muted-foreground text-sm font-medium">/bulan</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    {plan.price === 0 ? "Cocok untuk mencoba fitur dasar" : "Akses fitur penuh tanpa batas"}
+                  </p>
+                </div>
+
+                <div className="my-6 h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
+
+                <ul className="text-muted-foreground space-y-3 text-sm flex-1">
+                  {plan.maxEvents !== null && (
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
+                      <span className="text-foreground/90 font-medium">Hingga {plan.maxEvents} acara</span>
+                    </li>
+                  )}
+                  {plan.maxGuests !== null && (
+                    <li className="flex items-start gap-2.5">
+                      <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
+                      <span className="text-foreground/90 font-medium">Hingga {plan.maxGuests} tamu</span>
+                    </li>
+                  )}
+                  {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
+                    <li key={feature} className="flex items-start gap-2.5">
+                      <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <Button
+                  asChild
+                  className={`mt-8 w-full font-semibold transition-all ${
+                    isRecommended
+                      ? "h-12 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 bg-gradient-to-r from-primary to-emerald-600 hover:opacity-95"
+                      : "h-11 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                  }`}
+                  variant={isRecommended ? "default" : "outline"}
+                >
+                  <Link href={ctaHref}>
+                    {isRecommended ? "Mulai Sekarang" : "Buat Undangan"}
+                    {isRecommended && (
+                      <svg className="ml-2 size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    )}
+                  </Link>
+                </Button>
+              </li>
+            </ScrollReveal>
           );
         })}
       </ul>
+
+      <ScrollReveal className="mt-12 text-center" delay={450}>
+        <div className="text-xs text-muted-foreground flex items-center justify-center gap-2.5">
+          <svg className="size-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>Tanpa biaya tersembunyi · Transparan & bisa upgrade kapan saja</span>
+        </div>
+      </ScrollReveal>
     </section>
   );
 }
