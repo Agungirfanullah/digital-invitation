@@ -3648,13 +3648,21 @@ See "Remaining Manual Configuration" under Phase 1 above.
 
 ## Latest Verification
 
+**2026-10-27, CI green again on `f1d16ff`:** both GitHub Actions jobs,
+Validate (Prisma, typecheck, lint, Vitest, `next build`) and E2E
+(Playwright, 119 tests against a production build), concluded `success`
+(run 40475750424, checked via the GitHub Actions API). First green run on
+`main` since at least 2026-10-13. Three test-only commits got there:
+`eb70439`, `41aa486` and `f1d16ff`, described below. No application code
+changed.
+
 **2026-10-27, on `e63ea4a` (D-092 fixes):** TypeScript PASS, ESLint PASS,
 Prettier PASS except `docs/email-templates/*.html` (pre-existing, left as
 is), Vitest PASS locally (109 files / 1924 tests, live DEV database), `next
 build` PASS. Titles, OpenGraph and JSON-LD checked in `next dev` HTML.
 Playwright not re-run.
 
-**CI had been red on `main` since at least 2026-10-13** (every run from
+**CI was red on `main` from at least 2026-10-13 until `f1d16ff`** (every run from
 `022c00d` to `e63ea4a`). On `e63ea4a` the only failure was
 `lib/rate-limit/shared.integration.test.ts` → "starts a new window once the
 old one has ended": its 300 ms window, measured on the database clock, was
