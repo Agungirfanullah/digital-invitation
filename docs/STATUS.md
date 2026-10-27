@@ -3667,6 +3667,11 @@ They are the slowest tests in that group (4.4 s and 3.9 s locally, ~15
 sequential round trips each). The test step takes ~16 min in CI against ~3
 min locally, so they cross 30 s there. The global timeout is now 60 s
 (D-093). Runs before `565f666` were not inspected (GitHub API quota).
+On `41aa486` Validate passed and E2E failed one test,
+`e2e/gallery.spec.ts`'s multi-photo upload: its 15 s wait ran out while the
+third of three sequential Storage uploads was still going. That assertion
+now waits 60 s (D-093). The full E2E suite passes locally in CI mode
+(`CI=true`, production build): 119/119.
 
 Last full green run: 2026-10-13, on `be8b908` plus the link-preview image
 work (D-083). See the note after the block for the

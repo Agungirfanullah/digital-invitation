@@ -219,7 +219,12 @@ test.describe("gallery", () => {
       await expect(page.getByText(/Format tidak didukung/)).toBeVisible();
 
       await page.getByRole("button", { name: "Unggah 3 Foto" }).click();
-      await expect(page.getByText("3 foto berhasil diunggah, 1 gagal.")).toBeVisible();
+      // This waits for three real Storage uploads made one after another, not
+      // one: from CI each takes several seconds, so the 15s expect default
+      // ran out with the third still in flight (D-093).
+      await expect(page.getByText("3 foto berhasil diunggah, 1 gagal.")).toBeVisible({
+        timeout: 60_000,
+      });
 
       // Three real cards appeared (each has its own caption editor).
       await expect(page.getByRole("button", { name: "Edit Keterangan" })).toHaveCount(3);

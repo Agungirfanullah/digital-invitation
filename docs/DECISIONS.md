@@ -3244,3 +3244,16 @@ hung test still fails, only later.
 these tests. Both would treat the cause rather than the symptom. If the
 suite keeps growing toward the timeout, that is the next step, not another
 raise.
+
+**Update 2026-10-27 — E2E:** with Validate green, the E2E job ran for the
+first time since `4f8c39f` and failed one test on all three attempts:
+`e2e/gallery.spec.ts` → "an owner can select several photos at once…". The
+CI Playwright report showed two of its three uploads done and the third
+still "Mengunggah..." when the 15 s `expect` default ran out. The uploads go
+one after another to real Supabase Storage, so that one assertion waits for
+three round trips, not one. It now has its own 60 s timeout. The global
+`expect` timeout stays at 15 s, so other assertions don't wait longer. This
+is a per-assertion timeout, not the per-test override D-060 removed; the
+global test timeout (90 s) still bounds it. The rest of the suite (119
+tests) passes locally against a production build (`CI=true`).
+
