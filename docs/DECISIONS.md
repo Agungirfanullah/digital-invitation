@@ -3214,7 +3214,10 @@ the brand.
   `prettier --check`; they predate `565f666`, are pasted into the Supabase
   dashboard, and were left alone. CI runs no format check.
 
-Still open: `max-image-preview` on invitations (5); "No. 1 di Indonesia" and
+**Update 2026-10-27 — item 5 resolved by D-094** (invitations are no longer
+indexed at all).
+
+Still open: "No. 1 di Indonesia" and
 the "upgrade kapan saja" pricing copy (6); the root meta `description`
 (inherited by pages without their own, e.g. `/login`) still says "khitanan"
 and "paling lengkap di Indonesia".
@@ -3256,4 +3259,36 @@ three round trips, not one. It now has its own 60 s timeout. The global
 is a per-assertion timeout, not the per-test override D-060 removed; the
 global test timeout (90 s) still bounds it. The rest of the suite (119
 tests) passes locally against a production build (`CI=true`).
+
+## D-094 — Customer Invitations Stay Out of Search Engines, Even When Published
+
+**Decision (product owner, 2026-10-27):** a published invitation is not
+indexed by search engines. Drafts and missing slugs were already
+`noindex`; published ones had no `robots` of their own, so they inherited
+the root layout's `index, follow` and, since `565f666` (D-092 item 5),
+`max-image-preview: large`.
+
+**Why:** an invitation holds the customer's photos, full names, date and
+venue. It reaches guests as a shared link (WhatsApp), not through search,
+and a customer would not expect their photos in Google Images because they
+pressed Publish. Of the options offered (keep it, index without large
+images, or no indexing), the product owner chose no indexing.
+
+**How:**
+
+- `app/invite/[slug]/page.tsx` sets `robots: { index: false, follow: false }`
+  for a published invitation too. A page's `robots` replaces the layout's
+  whole, so the layout's `googlebot` rule no longer reaches invitations.
+- `next.config.ts` sends `X-Robots-Tag: noindex, nofollow, noimageindex` for
+  `/invite/:path*`. The header also covers `/invite/<slug>/opengraph-image`,
+  which a meta tag cannot.
+- Link previews are unaffected: WhatsApp and similar scrapers ignore robots
+  rules, and the OpenGraph tags and image are unchanged. The canonical URL
+  stays, so `?to=` links still point at one address.
+- `e2e/invitation.spec.ts` checks the header on the page and on the image,
+  the `noindex, nofollow` meta tag, and that no `googlebot` meta tag reaches
+  the page.
+
+Marketing pages (homepage, `/demo/*`) keep the layout's `index, follow` and
+`max-image-preview: large`.
 

@@ -45,6 +45,11 @@ export async function generateMetadata({
       },
       twitter: { card: "summary_large_image", title, description },
       alternates: { canonical: `/invite/${invitation.slug}` },
+      // An invitation carries the customer's photos, names and venue, and
+      // travels as a shared link, so it stays out of search engines even
+      // once published (D-094). next.config.ts sends the same rule as an
+      // X-Robots-Tag header, which also covers the preview image.
+      robots: { index: false, follow: false },
     };
   } catch {
     return {

@@ -150,6 +150,26 @@ test.describe("public invitation", () => {
     await expect(page.getByText("Foreign Guest")).toHaveCount(0);
   });
 
+  test("a published invitation and its preview image stay out of search engines (D-094)", async ({
+    page,
+    request,
+  }) => {
+    const pagePath = `/invite/${fixtures.publishedEvent.slug}`;
+    const response = await page.goto(pagePath);
+    expect(response?.headers()["x-robots-tag"]).toBe("noindex, nofollow, noimageindex");
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute(
+      "content",
+      "noindex, nofollow",
+    );
+    // The root layout's googlebot rule (index, max-image-preview: large) is
+    // for the marketing pages; it must not reach a customer's invitation.
+    await expect(page.locator('meta[name="googlebot"]')).toHaveCount(0);
+
+    const image = await request.get(`${pagePath}/opengraph-image`);
+    expect(image.ok()).toBe(true);
+    expect(image.headers()["x-robots-tag"]).toBe("noindex, nofollow, noimageindex");
+  });
+
   test("shows not-found for an unpublished (draft) event", async ({ page }) => {
     await page.goto(`/invite/${fixtures.draftEvent.slug}`);
     await expect(page.getByRole("heading", { name: "Undangan tidak ditemukan" })).toBeVisible();

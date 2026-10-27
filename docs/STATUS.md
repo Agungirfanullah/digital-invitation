@@ -151,8 +151,11 @@ digital-gift display) do not become MVP-defining by that fact.
    - ~~homepage OpenGraph title inherited by every page~~ — fixed
      2026-10-27: each page previews with its own title;
    - ~~23 files fail `prettier --check`~~ — formatted 2026-10-27;
+   - ~~`max-image-preview: large` reaches customer invitations~~ —
+     resolved 2026-10-27 by D-094: published invitations are `noindex`,
+     page and preview image;
    - still open: root meta description says "khitanan" / "paling lengkap di
-     Indonesia"; `max-image-preview: large` reaches customer invitations.
+     Indonesia".
 
 **Status (Phase 0.9):**
 

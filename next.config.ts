@@ -12,6 +12,18 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "6mb",
     },
   },
+  // Customer invitations are reached by a shared link, never by search
+  // (D-094). A header, unlike the page's robots meta tag, also reaches the
+  // invitation's opengraph-image, so its photos stay out of image search.
+  // Link previews (WhatsApp etc.) ignore it.
+  async headers() {
+    return [
+      {
+        source: "/invite/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noimageindex" }],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
