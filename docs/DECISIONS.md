@@ -3218,3 +3218,29 @@ Still open: `max-image-preview` on invitations (5); "No. 1 di Indonesia" and
 the "upgrade kapan saja" pricing copy (6); the root meta `description`
 (inherited by pages without their own, e.g. `/login`) still says "khitanan"
 and "paling lengkap di Indonesia".
+
+## D-093 — Global Test Timeout Raised Again (30000 → 60000ms)
+
+**Context:** after the rate-limit test fix (`eb70439`), CI's "Unit and
+integration tests" step still failed, with two tests in
+`lib/events/service.integration.test.ts` → "publish readiness": "requires
+the celebrant, a date, and a venue for a Birthday" and "a schedule with a
+venue satisfies the venue requirement for Gathering and Corporate". Both
+reported `Test timed out in 30000ms`. The same two had failed on `565f666`,
+so it is not a one-off.
+
+**Cause:** latency, not logic. They pass locally in 4.4 s and 3.9 s, the
+slowest of the group, because each makes about 15 sequential database round
+trips (create event, profile, schedule, venue, readiness checks, publish).
+The whole test step takes about 16 min in CI against about 3 min locally, so
+these two cross 30 s there. This is the same CI-to-Supabase latency recorded
+in D-056 and D-057.
+
+**Decision:** raise `testTimeout`/`hookTimeout` to 60000 ms, globally, for
+the reasons D-056 and D-057 gave against per-test overrides. A genuinely
+hung test still fails, only later.
+
+**Not done:** moving CI closer to the database or cutting round trips in
+these tests. Both would treat the cause rather than the symptom. If the
+suite keeps growing toward the timeout, that is the next step, not another
+raise.

@@ -29,8 +29,13 @@ export default defineConfig({
     // Storage upload tests (two sequential real uploads per test), which are
     // more network-latency-sensitive than a plain Postgres query. Raised
     // further to 30000 — see docs/DECISIONS.md D-057.
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    //
+    // 30000 then failed the same two publish-readiness tests in
+    // lib/events/service.integration.test.ts on two runs in a row (~15
+    // sequential round trips each; ~4s locally). Raised to 60000 — see
+    // docs/DECISIONS.md D-093.
+    testTimeout: 60000,
+    hookTimeout: 60000,
   },
   resolve: {
     alias: {

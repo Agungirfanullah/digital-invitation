@@ -3659,11 +3659,14 @@ Playwright not re-run.
 `lib/rate-limit/shared.integration.test.ts` → "starts a new window once the
 old one has ended": its 300 ms window, measured on the database clock, was
 shorter than one CI-to-Supabase round trip, so the second call landed in a
-fresh window. The limiter is correct; the test now uses a 3 s window. The
-`565f666` run also failed two publish-readiness tests in
-`lib/events/service.integration.test.ts` that passed on `e63ea4a` and
-locally — watch for them as a latency flake. Runs before `565f666` were not
-inspected (GitHub API quota).
+fresh window. The limiter is correct; the test now uses a 3 s window
+(`eb70439`, which then passed in CI). The `565f666` and `eb70439` runs both
+failed the same two publish-readiness tests in
+`lib/events/service.integration.test.ts` with "Test timed out in 30000ms".
+They are the slowest tests in that group (4.4 s and 3.9 s locally, ~15
+sequential round trips each). The test step takes ~16 min in CI against ~3
+min locally, so they cross 30 s there. The global timeout is now 60 s
+(D-093). Runs before `565f666` were not inspected (GitHub API quota).
 
 Last full green run: 2026-10-13, on `be8b908` plus the link-preview image
 work (D-083). See the note after the block for the
