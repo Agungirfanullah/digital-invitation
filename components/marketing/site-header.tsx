@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
  */
 export function SiteHeader({ ctaHref }: { ctaHref: string }) {
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between border-b border-border/40 glass-panel px-6 py-3.5 transition-all">
+    <header className="border-border/40 glass-panel sticky top-0 z-50 flex items-center justify-between border-b px-6 py-3.5 transition-all">
       <div className="flex items-center gap-8">
         <Link
           href="/"
-          className="group flex items-center gap-2.5 font-semibold tracking-tight text-foreground"
+          className="group text-foreground flex items-center gap-2.5 font-semibold tracking-tight"
         >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-transform group-hover:scale-105">
+          <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg shadow-sm transition-transform group-hover:scale-105">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -34,34 +34,37 @@ export function SiteHeader({ ctaHref }: { ctaHref: string }) {
           </span>
         </Link>
 
-        <nav aria-label="Navigasi bagian" className="hidden items-center gap-6 text-sm font-medium md:flex">
+        <nav
+          aria-label="Navigasi bagian"
+          className="hidden items-center gap-6 text-sm font-medium md:flex"
+        >
           <a
             href="#template-showcase"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             Template
           </a>
           <a
             href="#benefits-heading"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             Keunggulan
           </a>
           <a
             href="#how-it-works-heading"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             Cara Kerja
           </a>
           <a
             href="#pricing-heading"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             Harga
           </a>
           <a
             href="#faq-heading"
-            className="text-muted-foreground transition-colors hover:text-foreground"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             FAQ
           </a>
@@ -75,7 +78,7 @@ export function SiteHeader({ ctaHref }: { ctaHref: string }) {
         >
           Masuk
         </Link>
-        <Button asChild size="sm" className="shadow-sm hover:shadow-md transition-shadow">
+        <Button asChild size="sm" className="shadow-sm transition-shadow hover:shadow-md">
           <Link href={ctaHref}>Buat Undangan</Link>
         </Button>
       </nav>

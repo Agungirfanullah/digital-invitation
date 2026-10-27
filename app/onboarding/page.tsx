@@ -7,7 +7,7 @@ import { listEventsForUser } from "@/lib/events/service";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 
 export const metadata: Metadata = {
-  title: "Buat Undangan Pertamamu — Digital Invitation",
+  title: "Buat Undangan Pertamamu",
 };
 
 /**

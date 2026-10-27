@@ -7,7 +7,7 @@ import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { CsvImportWizard } from "@/components/guests/csv-import-wizard";
 
 export const metadata: Metadata = {
-  title: "Impor Tamu — Digital Invitation",
+  title: "Impor Tamu",
 };
 
 interface ImportGuestsPageProps {

@@ -43,20 +43,15 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  // No title/description here: a page without its own `openGraph` would
+  // inherit them, so /login or a 404 would preview as the homepage. The
+  // homepage sets its own (app/page.tsx); other pages fall back to <title>.
   openGraph: {
     siteName: "Digital Invitation",
     locale: "id_ID",
     type: "website",
-    title: "Digital Invitation — Undangan Digital Cantik, Elegan & Modern",
-    description:
-      "Buat undangan digital impianmu dalam hitungan menit. Desain mewah, responsif, dan mudah dibagikan via WhatsApp.",
   },
-  twitter: {
-    card: "summary_large_image",
-    title: "Digital Invitation — Undangan Digital Cantik & Elegan",
-    description:
-      "Buat undangan digital impianmu dalam hitungan menit. Desain mewah, responsif, dan mudah dibagikan via WhatsApp.",
-  },
+  twitter: { card: "summary_large_image" },
   robots: {
     index: true,
     follow: true,
@@ -70,42 +65,11 @@ export const metadata: Metadata = {
   },
 };
 
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "SoftwareApplication",
-      name: "Digital Invitation",
-      applicationCategory: "DesignApplication",
-      operatingSystem: "Web",
-      offers: {
-        "@type": "AggregateOffer",
-        priceCurrency: "IDR",
-        lowPrice: "0",
-        highPrice: "99000",
-      },
-      description:
-        "Platform SaaS pembuatan undangan digital premium untuk pernikahan, aqiqah, ulang tahun, dan berbagai acara spesial di Indonesia.",
-    },
-    {
-      "@type": "Organization",
-      name: "Digital Invitation",
-      url: process.env.NEXT_PUBLIC_APP_URL ?? "https://digital-invitation.com",
-      logo: `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/favicon.ico`,
-      sameAs: [],
-    },
-  ],
-};
-
+// The site's JSON-LD lives on the homepage (app/page.tsx), not here: a root
+// layout would put it on every route, customers' invitations included (D-092).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="id" className={`h-full antialiased ${plusJakartaSans.variable}`}>
-      <head>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-      </head>
       <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );

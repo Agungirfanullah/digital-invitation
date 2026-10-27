@@ -5,7 +5,7 @@ import { getSupabaseUser } from "@/lib/auth/session";
 import { ResetPasswordForm } from "@/components/auth/reset-password-form";
 
 export const metadata: Metadata = {
-  title: "Atur Ulang Kata Sandi — Digital Invitation",
+  title: "Atur Ulang Kata Sandi",
 };
 
 export default async function ResetPasswordPage() {

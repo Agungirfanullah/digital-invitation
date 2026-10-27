@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 
 export const metadata: Metadata = {
-  title: "RSVP — Digital Invitation",
+  title: "RSVP",
 };
 
 interface RsvpPageProps {

@@ -3093,3 +3093,128 @@ the photo is not used in Hero or the link-preview image.
 **Consequences:** production needs `prisma migrate deploy` for the new columns
 before the identity form is used there. A photo is a public URL, like the
 gallery.
+
+---
+
+## D-092 — Presentation Refresh: Homepage, Dashboard, Opening Card, Site-Wide SEO Metadata
+
+**Status:** IMPLEMENTED (`565f666`, 2026-10-20) — product-owner change;
+recorded afterwards (2026-10-27). Open follow-ups listed below.
+
+**What changed:**
+
+- **Homepage** (`components/marketing/*`): new visual treatment (gradient
+  backdrops, floating badges around the hero preview, step/benefit cards)
+  and a client-side `ScrollReveal`/`StaggerChildren`
+  (`components/marketing/scroll-reveal.tsx`, `IntersectionObserver`, no new
+  dependency). Animation classes live in `app/globals.css`; a
+  `prefers-reduced-motion` block makes revealed content visible with no
+  transition. Pricing still reads the `Plan` table.
+- **Dashboard** (`app/dashboard/*`, `components/dashboard/*`): restyled
+  sidebar, Beranda greeting with today's date and metric tiles, Undangan list
+  and event hub. Same queries and server actions as D-081.
+- **Opening gate** (`components/invitation/opening-gate.tsx`): the content now
+  sits in a bordered card with four corner ornaments and a framed guest
+  greeting. D-069's contract (structural gate, fade only, reduced-motion,
+  ephemeral state, preview bypass) is unchanged.
+- **Floating section nav:** spacing, blur and hover scale only.
+- **Root metadata** (`app/layout.tsx`): `title` became
+  `{ default, template: "%s | Digital Invitation" }`; added keywords,
+  authors/creator/publisher, `formatDetection`, a site-wide OpenGraph/Twitter
+  title and description, and explicit `robots` (`index, follow`, plus
+  `googleBot` with `max-image-preview: large`).
+- **JSON-LD:** an inline `<script type="application/ld+json">` in the root
+  layout's `<head>` with a `SoftwareApplication` (with an `AggregateOffer`,
+  IDR, `lowPrice` 0 / `highPrice` 99000) and an `Organization`. A data block
+  is not executed, so the nonce CSP (D-053) does not block it.
+
+**Impact found on review (verified 2026-10-27 against `next dev` HTML):**
+
+1. **Double brand in page titles.** `title.template` applies to every child
+   segment (Next docs, `generate-metadata.md` → `template`), and nearly every
+   page already ends its title in "— Digital Invitation". Result: "Masuk —
+   Digital Invitation | Digital Invitation", "Demo Template Minimal Elegant —
+   Digital Invitation | Digital Invitation". The homepage is unaffected (same
+   segment as the layout). Public invitations become "Undangan <judul> |
+   Digital Invitation". About 25 pages carry the old suffix.
+2. **JSON-LD is on every route**, because it lives in the root layout:
+   customers' public invitations (`/invite/[slug]`), demos, auth, onboarding,
+   dashboard and the 404s all describe themselves as the product's
+   `SoftwareApplication`. A guest's wedding invitation should not carry the
+   SaaS product's structured data.
+3. **`highPrice` is hardcoded and wrong.** The seed's highest plan is Business
+   at 299000 (`prisma/seed.ts`), and DATABASE §25 / D-073 forbid hardcoded
+   prices. The description also names "khitanan", which is not one of the
+   eight event types.
+4. **Root OpenGraph title leaks to pages without their own.** Metadata merges
+   shallowly, so `/login` and the invitation 404 show the homepage's
+   OpenGraph title. Pages that set `openGraph` (invite, demo) override it
+   completely.
+5. **Explicit `index, follow` + `max-image-preview: large` reach published
+   customer invitations** (they set no `robots` of their own). Indexing them
+   was already the default; the large image preview of couple photos in
+   search results is new.
+6. **Fabricated social proof on the homepage** (`components/marketing/hero.tsx`):
+   "★★★★★ 4.9/5 Rating" and "Platform Undangan Digital Modern No. 1 di
+   Indonesia". No rating source exists; this breaks CLAUDE.md §1.4 and
+   D-073's "no fabricated social proof". The pricing copy "upgrade kapan
+   saja" / "Akses fitur penuh tanpa batas" also promises a purchase flow that
+   does not exist (STATUS open item 1).
+7. **Formatting:** the 23 changed `.ts/.tsx/.css` files fail `prettier --check`.
+
+**Not decided here:** the fixes. Items 1–4 and 7 are engineering corrections;
+items 5 and 6 need the product owner (whether invitations should be
+indexable at all, and what the hero may claim).
+
+**Update 2026-10-27 — items 2, 3 and the rating in 6 fixed (product-owner
+request):**
+
+- The JSON-LD moved from the root layout to the homepage (`app/page.tsx`),
+  built by `buildHomepageJsonLd()` (`lib/marketing/structured-data.ts`) from
+  the same `getActivePlans()` result the Pricing section uses: `lowPrice` /
+  `highPrice` are the cheapest and dearest active plan, `offerCount` their
+  number. No active plans, or plans in mixed currencies, means no `offers`.
+  Keeping it in the layout and querying `Plan` there was rejected: every
+  route, invitations and dashboard included, would pay a database query for
+  markup only the homepage needs.
+- The Organization `url`/`logo` come from `NEXT_PUBLIC_APP_URL`'s origin;
+  without a valid value they are left out instead of falling back to the
+  invented `digital-invitation.com`. The "khitanan" wording was dropped
+  from the JSON-LD description (the root `description` meta still has it).
+- Output goes through `serializeJsonLd()`, which escapes `<` as the Next.js
+  JSON-LD guide recommends, so a plan value can never close the `<script>`.
+- The hero's "★★★★★ 4.9/5 Rating" was removed; the remaining "Siap Pakai" and
+  "Tanpa Coding" items moved down one breakpoint so the strip is not empty on
+  phones.
+
+**Update 2026-10-27 — item 1 fixed (product owner chose to keep the
+template):** the brand now comes only from the root layout's
+`title.template`. The 23 static page titles dropped their own
+"— Digital Invitation" suffix, so `/login` is "Masuk | Digital Invitation".
+`/demo/[slug]` uses `Demo Template <name>` for `<title>` and keeps
+"Demo Template <name> — Digital Invitation" for its OpenGraph/Twitter title,
+because social previews get no template. The homepage keeps its full title
+(the template does not apply to the layout's own segment). Public
+invitations read "Undangan <judul> | Digital Invitation" in the tab and in
+search results. New pages should set a bare title and let the template add
+the brand.
+
+**Update 2026-10-27 — items 4 and 7 fixed:**
+
+- The root layout's `openGraph`/`twitter` no longer carry a title or
+  description, only `siteName`/`locale`/`type` and the card type. The homepage
+  sets its own OpenGraph/Twitter title and description, equal to its `<title>`
+  and meta description. It repeats `siteName`/`locale`/`type` because its
+  objects replace the layout's whole. Every other page now gets an `og:title`
+  equal to its own `<title>`; Next fills it in when `openGraph` has no title.
+  Verified: `/login` previews as "Masuk | Digital Invitation" and a missing
+  invitation as "Undangan Tidak Ditemukan | Digital Invitation".
+- The 23 files from `565f666` were run through Prettier (whitespace and
+  Tailwind class order only). `docs/email-templates/*.html` still fail
+  `prettier --check`; they predate `565f666`, are pasted into the Supabase
+  dashboard, and were left alone. CI runs no format check.
+
+Still open: `max-image-preview` on invitations (5); "No. 1 di Indonesia" and
+the "upgrade kapan saja" pricing copy (6); the root meta `description`
+(inherited by pages without their own, e.g. `/login`) still says "khitanan"
+and "paling lengkap di Indonesia".

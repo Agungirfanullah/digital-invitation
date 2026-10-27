@@ -46,24 +46,45 @@ function formatRupiah(price: number): string {
 
 export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: string }) {
   return (
-    <section aria-labelledby="pricing-heading" className="relative bg-muted/30 px-6 py-24 sm:py-32 overflow-hidden">
+    <section
+      aria-labelledby="pricing-heading"
+      className="bg-muted/30 relative overflow-hidden px-6 py-24 sm:py-32"
+    >
       {/* Decorative background */}
-      <div className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 -z-10 w-[800px] h-[400px] rounded-full bg-primary/5 blur-[120px]" aria-hidden="true" />
+      <div
+        className="bg-primary/5 pointer-events-none absolute top-0 left-1/2 -z-10 h-[400px] w-[800px] -translate-x-1/2 rounded-full blur-[120px]"
+        aria-hidden="true"
+      />
 
       <ScrollReveal className="mx-auto max-w-5xl text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-xs font-semibold text-primary backdrop-blur-sm">
-          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <div className="border-primary/20 bg-primary/5 text-primary inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold backdrop-blur-sm">
+          <svg
+            className="size-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
             <line x1="7" y1="7" x2="7.01" y2="7" />
           </svg>
           Pilihan Paket Fleksibel
         </div>
-        <h2 id="pricing-heading" className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-[2.75rem] text-balance">
+        <h2
+          id="pricing-heading"
+          className="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-[2.75rem]"
+        >
           Harga yang Jelas,{" "}
-          <span className="bg-gradient-to-r from-primary to-emerald-600 text-gradient">Tanpa Kejutan</span>
+          <span className="from-primary text-gradient bg-gradient-to-r to-emerald-600">
+            Tanpa Kejutan
+          </span>
         </h2>
-        <p className="text-muted-foreground mt-4 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          Mulai gratis sekarang juga, upgrade kapan pun kamu membutuhkan fitur lebih lengkap dan tanpa batasan.
+        <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
+          Mulai gratis sekarang juga, upgrade kapan pun kamu membutuhkan fitur lebih lengkap dan
+          tanpa batasan.
         </p>
       </ScrollReveal>
 
@@ -75,44 +96,50 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
               <li
                 className={`bg-card relative flex flex-col rounded-2xl border p-8 transition-all duration-300 hover:shadow-xl ${
                   isRecommended
-                    ? "border-primary ring-2 ring-primary/20 shadow-xl lg:-translate-y-3 glow-primary z-10"
-                    : "border-border/50 shadow-xs hover:border-primary/30 hover:-translate-y-1"
+                    ? "border-primary ring-primary/20 glow-primary z-10 shadow-xl ring-2 lg:-translate-y-3"
+                    : "border-border/50 hover:border-primary/30 shadow-xs hover:-translate-y-1"
                 }`}
               >
                 {isRecommended && (
-                  <span className="bg-gradient-to-r from-primary to-emerald-600 text-primary-foreground absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-xs font-bold tracking-wide shadow-md flex items-center gap-1.5">
+                  <span className="from-primary text-primary-foreground absolute -top-3.5 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-gradient-to-r to-emerald-600 px-4 py-1 text-xs font-bold tracking-wide shadow-md">
                     <span>★</span> Paling Populer
                   </span>
                 )}
 
                 <div>
-                  <p className="text-lg font-bold text-foreground">{plan.name}</p>
+                  <p className="text-foreground text-lg font-bold">{plan.name}</p>
                   <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-4xl font-extrabold tracking-tight text-foreground">
+                    <span className="text-foreground text-4xl font-extrabold tracking-tight">
                       {formatRupiah(plan.price)}
                     </span>
                     {plan.price > 0 && (
                       <span className="text-muted-foreground text-sm font-medium">/bulan</span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1.5">
-                    {plan.price === 0 ? "Cocok untuk mencoba fitur dasar" : "Akses fitur penuh tanpa batas"}
+                  <p className="text-muted-foreground mt-1.5 text-xs">
+                    {plan.price === 0
+                      ? "Cocok untuk mencoba fitur dasar"
+                      : "Akses fitur penuh tanpa batas"}
                   </p>
                 </div>
 
-                <div className="my-6 h-px w-full bg-gradient-to-r from-transparent via-border/60 to-transparent" />
+                <div className="via-border/60 my-6 h-px w-full bg-gradient-to-r from-transparent to-transparent" />
 
-                <ul className="text-muted-foreground space-y-3 text-sm flex-1">
+                <ul className="text-muted-foreground flex-1 space-y-3 text-sm">
                   {plan.maxEvents !== null && (
                     <li className="flex items-start gap-2.5">
                       <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
-                      <span className="text-foreground/90 font-medium">Hingga {plan.maxEvents} acara</span>
+                      <span className="text-foreground/90 font-medium">
+                        Hingga {plan.maxEvents} acara
+                      </span>
                     </li>
                   )}
                   {plan.maxGuests !== null && (
                     <li className="flex items-start gap-2.5">
                       <CheckCircleIcon className="text-primary mt-0.5 size-4 shrink-0" />
-                      <span className="text-foreground/90 font-medium">Hingga {plan.maxGuests} tamu</span>
+                      <span className="text-foreground/90 font-medium">
+                        Hingga {plan.maxGuests} tamu
+                      </span>
                     </li>
                   )}
                   {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
@@ -127,15 +154,24 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
                   asChild
                   className={`mt-8 w-full font-semibold transition-all ${
                     isRecommended
-                      ? "h-12 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 bg-gradient-to-r from-primary to-emerald-600 hover:opacity-95"
-                      : "h-11 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                      ? "from-primary h-12 bg-gradient-to-r to-emerald-600 shadow-lg hover:-translate-y-0.5 hover:opacity-95 hover:shadow-xl active:translate-y-0"
+                      : "h-11 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
                   }`}
                   variant={isRecommended ? "default" : "outline"}
                 >
                   <Link href={ctaHref}>
                     {isRecommended ? "Mulai Sekarang" : "Buat Undangan"}
                     {isRecommended && (
-                      <svg className="ml-2 size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <svg
+                        className="ml-2 size-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     )}
@@ -148,10 +184,19 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
       </ul>
 
       <ScrollReveal className="mt-12 text-center" delay={450}>
-        <div className="text-xs text-muted-foreground flex items-center justify-center gap-2.5">
-          <svg className="size-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        <div className="text-muted-foreground flex items-center justify-center gap-2.5 text-xs">
+          <svg
+            className="text-primary size-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
           </svg>
           <span>Tanpa biaya tersembunyi · Transparan & bisa upgrade kapan saja</span>
         </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { EventRow } from "@/components/dashboard/event-row";
 
 export const metadata: Metadata = {
-  title: "Dashboard — Digital Invitation",
+  title: "Dashboard",
 };
 
 const RECENT_LIMIT = 3;
@@ -49,13 +49,21 @@ export default async function DashboardPage() {
       {/* Header with Greeting */}
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Beranda</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Selamat datang kembali, <span className="font-semibold text-foreground">{user.name}</span>! Kelola undangan dan pantau tamu acaramu.
+          <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">Beranda</h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Selamat datang kembali,{" "}
+            <span className="text-foreground font-semibold">{user.name}</span>! Kelola undangan dan
+            pantau tamu acaramu.
           </p>
         </div>
-        <div className="mt-2 sm:mt-0 text-xs font-medium text-muted-foreground bg-muted/60 px-3 py-1.5 rounded-full border border-border/50 w-fit">
-          📅 {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+        <div className="text-muted-foreground bg-muted/60 border-border/50 mt-2 w-fit rounded-full border px-3 py-1.5 text-xs font-medium sm:mt-0">
+          📅{" "}
+          {new Date().toLocaleDateString("id-ID", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
         </div>
       </div>
 
@@ -65,15 +73,15 @@ export default async function DashboardPage() {
           {tiles.map((tile) => (
             <div
               key={tile.label}
-              className="bg-card rounded-2xl border border-border/70 p-5 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/30"
+              className="bg-card border-border/70 hover:border-primary/30 rounded-2xl border p-5 shadow-xs transition-all duration-200 hover:shadow-md"
             >
               <div className="flex items-center justify-between">
-                <dt className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <dt className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                   {tile.label}
                 </dt>
                 <span className="text-lg">{tile.icon}</span>
               </div>
-              <dd className="text-primary mt-3 text-3xl font-extrabold tabular-nums tracking-tight">
+              <dd className="text-primary mt-3 text-3xl font-extrabold tracking-tight tabular-nums">
                 {tile.value}
               </dd>
             </div>
@@ -84,9 +92,9 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/dashboard/events/new"
-            className="from-primary via-primary/95 to-primary/85 text-primary-foreground focus-visible:ring-ring flex items-center gap-4 rounded-2xl bg-gradient-to-r p-5 shadow-md transition-all duration-200 outline-none hover:shadow-lg hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="from-primary via-primary/95 to-primary/85 text-primary-foreground focus-visible:ring-ring flex items-center gap-4 rounded-2xl bg-gradient-to-r p-5 shadow-md transition-all duration-200 outline-none hover:scale-[1.01] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2"
           >
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/15 text-primary-foreground">
+            <div className="text-primary-foreground flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
               <ActionIcon>
                 <rect x="3.5" y="7" width="17" height="12.5" rx="2" />
                 <path d="m4 9 8 5.5L20 9M12 3.5v3M9.5 5h5" />
@@ -94,7 +102,7 @@ export default async function DashboardPage() {
             </div>
             <div>
               <span className="block text-base font-bold tracking-tight">Buat Undangan Baru</span>
-              <span className="block text-xs opacity-90 mt-0.5">
+              <span className="mt-0.5 block text-xs opacity-90">
                 Buat undangan pernikahan atau acaramu dalam hitungan menit.
               </span>
             </div>
@@ -103,9 +111,9 @@ export default async function DashboardPage() {
           {latest && (
             <Link
               href={`/dashboard/events/${latest.id}/check-in`}
-              className="bg-foreground text-background focus-visible:ring-ring flex items-center gap-4 rounded-2xl p-5 shadow-md transition-all duration-200 outline-none hover:shadow-lg hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-offset-2"
+              className="bg-foreground text-background focus-visible:ring-ring flex items-center gap-4 rounded-2xl p-5 shadow-md transition-all duration-200 outline-none hover:scale-[1.01] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2"
             >
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-background">
+              <div className="text-background flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/10">
                 <ActionIcon>
                   <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
                   <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
@@ -115,7 +123,7 @@ export default async function DashboardPage() {
               </div>
               <div className="min-w-0">
                 <span className="block text-base font-bold tracking-tight">Check-in Tamu</span>
-                <span className="block truncate text-xs opacity-80 mt-0.5">
+                <span className="mt-0.5 block truncate text-xs opacity-80">
                   Scan QR tamu saat hari-H · {latest.title}
                 </span>
               </div>
@@ -126,17 +134,22 @@ export default async function DashboardPage() {
 
       {/* Recent invitations section */}
       <section aria-labelledby="my-invitations-heading" className="space-y-4">
-        <div className="flex items-end justify-between gap-4 border-b border-border/50 pb-3">
+        <div className="border-border/50 flex items-end justify-between gap-4 border-b pb-3">
           <div>
-            <h2 id="my-invitations-heading" className="text-lg font-bold tracking-tight text-foreground">
+            <h2
+              id="my-invitations-heading"
+              className="text-foreground text-lg font-bold tracking-tight"
+            >
               Undangan milikmu
             </h2>
-            <p className="text-muted-foreground text-xs sm:text-sm">Undangan yang pernah kamu buat.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm">
+              Undangan yang pernah kamu buat.
+            </p>
           </div>
           {events.length > 0 && (
             <Link
               href="/dashboard/events"
-              className="text-primary shrink-0 text-xs sm:text-sm font-semibold underline-offset-4 hover:underline"
+              className="text-primary shrink-0 text-xs font-semibold underline-offset-4 hover:underline sm:text-sm"
             >
               Selengkapnya »
             </Link>
@@ -144,12 +157,12 @@ export default async function DashboardPage() {
         </div>
 
         {events.length === 0 ? (
-          <div className="mt-4 rounded-2xl border-2 border-dashed border-border/70 p-10 text-center bg-card/40">
-            <div className="mx-auto flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+          <div className="border-border/70 bg-card/40 mt-4 rounded-2xl border-2 border-dashed p-10 text-center">
+            <div className="bg-primary/10 text-primary mx-auto mb-3 flex size-12 items-center justify-center rounded-full">
               💌
             </div>
-            <p className="font-semibold text-foreground">Belum ada acara.</p>
-            <p className="text-muted-foreground mt-1 text-sm max-w-sm mx-auto">
+            <p className="text-foreground font-semibold">Belum ada acara.</p>
+            <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
               Mulai dengan membuat acara pertamamu dan bagikan ke orang terdekat.
             </p>
             <Button asChild className="mt-5 font-semibold shadow-xs">

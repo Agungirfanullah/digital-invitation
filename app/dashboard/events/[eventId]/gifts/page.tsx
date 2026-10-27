@@ -11,7 +11,7 @@ import { GiftMethodTypeBadge } from "@/components/gifts/gift-method-type-badge";
 import { DeleteGiftMethodButton } from "@/components/gifts/delete-gift-method-button";
 
 export const metadata: Metadata = {
-  title: "Hadiah — Digital Invitation",
+  title: "Hadiah",
 };
 
 interface GiftsPageProps {

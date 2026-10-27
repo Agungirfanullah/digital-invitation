@@ -7,7 +7,7 @@ import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { GiftMethodForm } from "@/components/gifts/gift-method-form";
 
 export const metadata: Metadata = {
-  title: "Tambah Metode Hadiah — Digital Invitation",
+  title: "Tambah Metode Hadiah",
 };
 
 interface NewGiftMethodPageProps {

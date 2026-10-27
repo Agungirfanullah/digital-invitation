@@ -11,7 +11,7 @@
 
 function MockupCard({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-card/90 mx-auto w-full max-w-sm rounded-2xl border border-border/70 p-6 shadow-md backdrop-blur-xs transition-shadow hover:shadow-lg">
+    <div className="bg-card/90 border-border/70 mx-auto w-full max-w-sm rounded-2xl border p-6 shadow-md backdrop-blur-xs transition-shadow hover:shadow-lg">
       {children}
     </div>
   );
@@ -23,8 +23,17 @@ function SkeletonBar({ className = "" }: { className?: string }) {
 
 export function GuestListMockup() {
   const rows = [
-    { initial: "D", status: "Hadir", statusClass: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" },
-    { initial: "R", status: "Belum Pasti", statusClass: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20" },
+    {
+      initial: "D",
+      status: "Hadir",
+      statusClass:
+        "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20",
+    },
+    {
+      initial: "R",
+      status: "Belum Pasti",
+      statusClass: "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20",
+    },
     {
       initial: "K",
       status: "Belum Mengisi RSVP",
@@ -34,16 +43,16 @@ export function GuestListMockup() {
 
   return (
     <MockupCard>
-      <div className="mb-5 flex items-center justify-between border-b border-border/40 pb-3">
-        <p className="text-sm font-semibold tracking-tight text-foreground">Daftar Tamu Undangan</p>
-        <span className="text-primary bg-primary/10 border border-primary/20 rounded-full px-2.5 py-1 text-xs font-semibold">
+      <div className="border-border/40 mb-5 flex items-center justify-between border-b pb-3">
+        <p className="text-foreground text-sm font-semibold tracking-tight">Daftar Tamu Undangan</p>
+        <span className="text-primary bg-primary/10 border-primary/20 rounded-full border px-2.5 py-1 text-xs font-semibold">
           Impor CSV
         </span>
       </div>
       <ul className="space-y-3.5">
         {rows.map((row) => (
           <li key={row.initial} className="flex items-center gap-3">
-            <span className="bg-primary/10 text-primary border border-primary/20 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-bold">
+            <span className="bg-primary/10 text-primary border-primary/20 flex size-8 shrink-0 items-center justify-center rounded-full border text-xs font-bold">
               {row.initial}
             </span>
             <SkeletonBar className="h-2.5 flex-1" />
@@ -68,13 +77,17 @@ export function RsvpMockup() {
 
   return (
     <MockupCard>
-      <p className="text-sm font-semibold tracking-tight text-foreground">Apakah kamu bisa hadir?</p>
+      <p className="text-foreground text-sm font-semibold tracking-tight">
+        Apakah kamu bisa hadir?
+      </p>
       <ul className="mt-4 space-y-2.5">
         {options.map((option) => (
           <li
             key={option.label}
             className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm transition-colors ${
-              option.selected ? "border-primary bg-primary/10 font-medium text-foreground" : "border-border/60 hover:bg-muted/40"
+              option.selected
+                ? "border-primary bg-primary/10 text-foreground font-medium"
+                : "border-border/60 hover:bg-muted/40"
             }`}
           >
             <span
@@ -89,7 +102,7 @@ export function RsvpMockup() {
           </li>
         ))}
       </ul>
-      <span className="bg-primary text-primary-foreground mt-5 block rounded-xl py-2.5 text-center text-sm font-semibold shadow-xs hover:opacity-95 cursor-default">
+      <span className="bg-primary text-primary-foreground mt-5 block cursor-default rounded-xl py-2.5 text-center text-sm font-semibold shadow-xs hover:opacity-95">
         Kirim RSVP
       </span>
     </MockupCard>
@@ -99,23 +112,28 @@ export function RsvpMockup() {
 export function GiftMockup() {
   return (
     <MockupCard>
-      <p className="text-sm font-semibold tracking-tight text-foreground">Hadiah Digital & Amplop</p>
+      <p className="text-foreground text-sm font-semibold tracking-tight">
+        Hadiah Digital & Amplop
+      </p>
       <ul className="mt-4 space-y-3">
-        <li className="flex items-center justify-between rounded-xl border border-border/70 bg-background/50 px-3.5 py-3">
+        <li className="border-border/70 bg-background/50 flex items-center justify-between rounded-xl border px-3.5 py-3">
           <div>
-            <p className="text-xs font-semibold text-foreground">Transfer Bank BCA</p>
+            <p className="text-foreground text-xs font-semibold">Transfer Bank BCA</p>
             <p className="text-muted-foreground mt-0.5 font-mono text-xs">•••• •••• 1234</p>
           </div>
-          <span className="text-primary bg-primary/10 border border-primary/20 rounded-md px-2.5 py-1 text-xs font-semibold cursor-default">
+          <span className="text-primary bg-primary/10 border-primary/20 cursor-default rounded-md border px-2.5 py-1 text-xs font-semibold">
             Salin
           </span>
         </li>
-        <li className="flex items-center justify-between rounded-xl border border-border/70 bg-background/50 px-3.5 py-3">
+        <li className="border-border/70 bg-background/50 flex items-center justify-between rounded-xl border px-3.5 py-3">
           <div>
-            <p className="text-xs font-semibold text-foreground">QRIS / Pembayaran QR</p>
+            <p className="text-foreground text-xs font-semibold">QRIS / Pembayaran QR</p>
             <p className="text-muted-foreground mt-0.5 text-xs">Scan via mobile banking</p>
           </div>
-          <span className="bg-muted border border-border/50 size-9 rounded-md flex items-center justify-center text-muted-foreground text-[10px]" aria-hidden>
+          <span
+            className="bg-muted border-border/50 text-muted-foreground flex size-9 items-center justify-center rounded-md border text-[10px]"
+            aria-hidden
+          >
             QR
           </span>
         </li>
@@ -131,12 +149,12 @@ export function AnalyticsMockup() {
   return (
     <MockupCard>
       <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold tracking-tight text-foreground">Analitik Undangan</p>
-        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+        <p className="text-foreground text-sm font-semibold tracking-tight">Analitik Undangan</p>
+        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600">
           Real-time
         </span>
       </div>
-      <div className="mt-5 flex h-24 items-end gap-2 border-b border-border/40 pb-2" aria-hidden>
+      <div className="border-border/40 mt-5 flex h-24 items-end gap-2 border-b pb-2" aria-hidden>
         {bars.map((height, index) => (
           <span
             key={index}

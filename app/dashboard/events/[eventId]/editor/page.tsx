@@ -9,7 +9,7 @@ import { InvitationRenderer } from "@/components/invitation/invitation-renderer"
 import { EditorShell } from "@/components/editor/editor-shell";
 
 export const metadata: Metadata = {
-  title: "Editor Undangan — Digital Invitation",
+  title: "Editor Undangan",
 };
 
 interface EditorPageProps {

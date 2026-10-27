@@ -6,7 +6,7 @@ import { isSafeRedirectPath } from "@/lib/auth/urls";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
-  title: "Masuk — Digital Invitation",
+  title: "Masuk",
 };
 
 interface LoginPageProps {

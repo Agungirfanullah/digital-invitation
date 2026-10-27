@@ -49,20 +49,23 @@ export async function generateMetadata({ params }: DemoPageProps): Promise<Metad
   }
 
   const name = templateDisplayName(slug);
-  const title = `Demo Template ${name} — Digital Invitation`;
+  // The root layout's title template appends the brand to the page title;
+  // social previews get no template, so they carry it themselves.
+  const title = `Demo Template ${name}`;
+  const shareTitle = `${title} — Digital Invitation`;
   const description = `Lihat tampilan asli template undangan digital ${name} — bukan tangkapan layar, ini pengalaman yang sama persis yang akan dilihat tamumu.`;
 
   return {
     title,
     description,
     openGraph: {
-      title,
+      title: shareTitle,
       description,
       type: "website",
       siteName: "Digital Invitation",
       locale: "id_ID",
     },
-    twitter: { card: "summary_large_image", title, description },
+    twitter: { card: "summary_large_image", title: shareTitle, description },
     alternates: { canonical: `/demo/${slug}` },
   };
 }

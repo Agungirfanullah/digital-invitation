@@ -154,7 +154,7 @@ export function FloatingSectionNav({ invitation }: { invitation: PublicInvitatio
       aria-label="Navigasi cepat undangan"
       className="fixed bottom-5 left-1/2 z-40 -translate-x-1/2 lg:left-[calc(100%-var(--invite-column)/2)]"
     >
-      <ul className="flex items-center gap-1.5 rounded-full border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-background)]/85 p-2 shadow-2xl backdrop-blur-md ring-1 ring-black/5 transition-transform">
+      <ul className="flex items-center gap-1.5 rounded-full border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-background)]/85 p-2 shadow-2xl ring-1 ring-black/5 backdrop-blur-md transition-transform">
         {items.map((item) => (
           <li key={item.key}>
             <button

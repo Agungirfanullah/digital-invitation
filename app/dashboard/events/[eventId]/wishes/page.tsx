@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
 export const metadata: Metadata = {
-  title: "Ucapan — Digital Invitation",
+  title: "Ucapan",
 };
 
 interface WishesPageProps {

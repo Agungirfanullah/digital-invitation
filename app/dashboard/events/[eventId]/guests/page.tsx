@@ -18,7 +18,7 @@ import { RsvpStatusBadge } from "@/components/rsvp/rsvp-status-badge";
 import { CheckInStatusBadge } from "@/components/checkin/checkin-status-badge";
 
 export const metadata: Metadata = {
-  title: "Tamu — Digital Invitation",
+  title: "Tamu",
 };
 
 interface GuestsPageProps {

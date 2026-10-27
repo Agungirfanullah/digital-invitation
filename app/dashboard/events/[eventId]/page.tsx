@@ -16,7 +16,7 @@ import { PublishSwitch } from "@/components/dashboard/publish-switch";
 import { DeleteEventButton } from "@/components/events/delete-event-button";
 
 export const metadata: Metadata = {
-  title: "Detail Acara — Digital Invitation",
+  title: "Detail Acara",
 };
 
 interface EventDetailPageProps {
@@ -52,12 +52,14 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
         <span aria-hidden="true">←</span> Kembali ke Undangan
       </Link>
 
-      <div className="bg-card overflow-hidden rounded-2xl border border-border/70 shadow-sm">
-        <div className="bg-gradient-to-br from-primary via-primary/95 to-primary/85 text-primary-foreground space-y-4 p-5 sm:p-6 shadow-xs">
+      <div className="bg-card border-border/70 overflow-hidden rounded-2xl border shadow-sm">
+        <div className="from-primary via-primary/95 to-primary/85 text-primary-foreground space-y-4 bg-gradient-to-br p-5 shadow-xs sm:p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="truncate text-xl font-bold tracking-tight">{event.title}</h1>
-              <p className="text-xs opacity-85 mt-0.5 font-medium">{EVENT_TYPE_LABELS[event.type]}</p>
+              <p className="mt-0.5 text-xs font-medium opacity-85">
+                {EVENT_TYPE_LABELS[event.type]}
+              </p>
             </div>
             <PublishSwitch eventId={event.id} isPublished={isPublished} />
           </div>
@@ -67,13 +69,13 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               href={`/invite/${event.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-black/25 transition-colors underline-offset-4"
+              className="text-primary-foreground inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-3 py-1.5 text-xs font-semibold underline-offset-4 transition-colors hover:bg-black/25"
             >
               <span>🌐</span>
               <span className="truncate">Lihat undangan: /invite/{event.slug}</span>
             </Link>
           ) : (
-            <p className="text-xs opacity-85 bg-black/15 px-3 py-1.5 rounded-lg w-fit">
+            <p className="w-fit rounded-lg bg-black/15 px-3 py-1.5 text-xs opacity-85">
               🔒 Belum dipublikasikan — hanya kamu yang bisa melihat.
             </p>
           )}

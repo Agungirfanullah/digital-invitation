@@ -8,7 +8,7 @@ import { EventNotFoundError } from "@/lib/checkin/errors";
 import { CheckInShell } from "@/components/checkin/checkin-shell";
 
 export const metadata: Metadata = {
-  title: "Check-in — Digital Invitation",
+  title: "Check-in",
 };
 
 interface CheckInPageProps {

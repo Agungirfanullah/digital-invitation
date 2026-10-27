@@ -18,13 +18,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const user = await requireAppUser();
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-background/50 lg:flex-row">
-      <aside className="bg-foreground text-background flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 border-b border-border/20 lg:border-b-0 lg:border-r lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:flex-col lg:items-stretch lg:gap-y-6 lg:p-6 shadow-md">
+    <div className="bg-background/50 flex min-h-screen flex-1 flex-col lg:flex-row">
+      <aside className="bg-foreground text-background border-border/20 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b px-5 py-4 shadow-md lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:flex-col lg:items-stretch lg:gap-y-6 lg:border-r lg:border-b-0 lg:p-6">
         <Link
           href="/dashboard"
-          className="focus-visible:ring-ring order-1 flex items-center gap-2.5 rounded-lg text-lg font-bold tracking-tight text-background outline-none focus-visible:ring-2"
+          className="focus-visible:ring-ring text-background order-1 flex items-center gap-2.5 rounded-lg text-lg font-bold tracking-tight outline-none focus-visible:ring-2"
         >
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xs">
+          <span className="bg-primary text-primary-foreground flex size-7 items-center justify-center rounded-lg shadow-xs">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -47,7 +47,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <DashboardNav />
         </div>
 
-        <div className="order-2 ml-auto flex items-center gap-3 rounded-xl border border-background/15 bg-background/5 p-3 lg:order-3 lg:mt-auto lg:ml-0 lg:w-full lg:min-w-0 lg:flex-col lg:items-stretch lg:gap-3.5">
+        <div className="border-background/15 bg-background/5 order-2 ml-auto flex items-center gap-3 rounded-xl border p-3 lg:order-3 lg:mt-auto lg:ml-0 lg:w-full lg:min-w-0 lg:flex-col lg:items-stretch lg:gap-3.5">
           <div className="flex min-w-0 items-center gap-3">
             <div className="relative shrink-0">
               <span
@@ -56,10 +56,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               >
                 {initialsOf(user.name)}
               </span>
-              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-foreground" />
+              <span className="ring-foreground absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full bg-emerald-500 ring-2" />
             </div>
             <div className="hidden min-w-0 lg:block">
-              <p className="truncate text-sm font-semibold text-background">{user.name}</p>
+              <p className="text-background truncate text-sm font-semibold">{user.name}</p>
               <p className="text-background/60 truncate text-xs">{user.email}</p>
             </div>
           </div>

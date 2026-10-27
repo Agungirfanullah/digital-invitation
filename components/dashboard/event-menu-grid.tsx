@@ -86,13 +86,15 @@ export function EventMenuGrid({ eventId }: { eventId: string }) {
             href={item.href}
             className={`group focus-visible:ring-ring flex h-full min-h-24 flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center text-xs font-semibold transition-all duration-200 outline-none hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 ${
               item.primary
-                ? "bg-gradient-to-br from-primary via-primary/95 to-primary/85 text-primary-foreground shadow-md glow-primary hover:opacity-95"
-                : "border border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary shadow-xs"
+                ? "from-primary via-primary/95 to-primary/85 text-primary-foreground glow-primary bg-gradient-to-br shadow-md hover:opacity-95"
+                : "border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary border shadow-xs"
             }`}
           >
-            <span className={`size-7 transition-transform duration-200 group-hover:scale-110 ${
-              item.primary ? "text-primary-foreground" : "text-primary"
-            }`}>
+            <span
+              className={`size-7 transition-transform duration-200 group-hover:scale-110 ${
+                item.primary ? "text-primary-foreground" : "text-primary"
+              }`}
+            >
               {item.icon}
             </span>
             <span className="leading-tight">{item.label}</span>

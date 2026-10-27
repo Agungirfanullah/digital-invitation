@@ -22,11 +22,15 @@ export function EventStatsRow({
           className={`rounded-xl px-3 py-2.5 text-center transition-all ${
             variant === "onBand"
               ? "bg-card/95 text-foreground shadow-xs ring-1 ring-black/5"
-              : "bg-secondary/70 border border-border/50"
+              : "bg-secondary/70 border-border/50 border"
           }`}
         >
-          <dd className="text-xl font-bold tracking-tight tabular-nums text-foreground">{stats[tile.key]}</dd>
-          <dt className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider mt-0.5">{tile.label}</dt>
+          <dd className="text-foreground text-xl font-bold tracking-tight tabular-nums">
+            {stats[tile.key]}
+          </dd>
+          <dt className="text-muted-foreground mt-0.5 text-[11px] font-medium tracking-wider uppercase">
+            {tile.label}
+          </dt>
         </div>
       ))}
     </dl>

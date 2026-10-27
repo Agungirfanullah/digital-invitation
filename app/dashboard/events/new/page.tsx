@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { CreateEventForm } from "@/components/events/create-event-form";
 
 export const metadata: Metadata = {
-  title: "Buat Acara — Digital Invitation",
+  title: "Buat Acara",
 };
 
 export default function NewEventPage() {

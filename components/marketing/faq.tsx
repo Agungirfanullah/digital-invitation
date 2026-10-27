@@ -26,20 +26,25 @@ const FAQ_ITEMS = [
 
 export function Faq() {
   return (
-    <section id="faq-heading" aria-labelledby="faq-heading-title" className="bg-muted/30 px-6 py-20 sm:py-28 relative overflow-hidden">
+    <section
+      id="faq-heading"
+      aria-labelledby="faq-heading-title"
+      className="bg-muted/30 relative overflow-hidden px-6 py-20 sm:py-28"
+    >
       <div className="mx-auto max-w-3xl">
         <div className="text-center">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-semibold text-primary">
+          <div className="border-primary/20 bg-primary/5 text-primary inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold">
             Pertanyaan Umum
           </div>
           <h2
             id="faq-heading-title"
-            className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl text-balance"
+            className="mt-3 text-3xl font-bold tracking-tight text-balance sm:text-4xl"
           >
             Pertanyaan yang Sering Diajukan
           </h2>
-          <p className="text-muted-foreground mt-3 text-base max-w-xl mx-auto">
-            Temukan jawaban cepat atas pertanyaan seputar fitur, paket langganan, dan penggunaan undangan digital.
+          <p className="text-muted-foreground mx-auto mt-3 max-w-xl text-base">
+            Temukan jawaban cepat atas pertanyaan seputar fitur, paket langganan, dan penggunaan
+            undangan digital.
           </p>
         </div>
 
@@ -47,18 +52,20 @@ export function Faq() {
           {FAQ_ITEMS.map((item) => (
             <details
               key={item.question}
-              className="group bg-card rounded-2xl border border-border/70 p-6 shadow-xs transition-all duration-200 open:border-primary/40 open:shadow-md"
+              className="group bg-card border-border/70 open:border-primary/40 rounded-2xl border p-6 shadow-xs transition-all duration-200 open:shadow-md"
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-semibold text-foreground text-base marker:content-none select-none">
+              <summary className="text-foreground flex cursor-pointer list-none items-center justify-between gap-4 text-base font-semibold select-none marker:content-none">
                 <span>{item.question}</span>
                 <span
                   aria-hidden
-                  className="flex size-7 items-center justify-center rounded-full bg-muted/60 text-muted-foreground shrink-0 text-sm font-bold transition-transform duration-200 group-open:rotate-45 group-open:bg-primary/10 group-open:text-primary"
+                  className="bg-muted/60 text-muted-foreground group-open:bg-primary/10 group-open:text-primary flex size-7 shrink-0 items-center justify-center rounded-full text-sm font-bold transition-transform duration-200 group-open:rotate-45"
                 >
                   +
                 </span>
               </summary>
-              <p className="text-muted-foreground mt-3.5 text-sm leading-relaxed border-t border-border/40 pt-3">{item.answer}</p>
+              <p className="text-muted-foreground border-border/40 mt-3.5 border-t pt-3 text-sm leading-relaxed">
+                {item.answer}
+              </p>
             </details>
           ))}
         </div>

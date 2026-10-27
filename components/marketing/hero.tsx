@@ -34,11 +34,11 @@ export function Hero({ ctaHref }: { ctaHref: string }) {
 
       {/* Decorative floating orbs */}
       <div
-        className="pointer-events-none absolute top-20 left-[15%] -z-10 size-72 rounded-full bg-primary/8 blur-[100px] animate-float-gentle"
+        className="bg-primary/8 animate-float-gentle pointer-events-none absolute top-20 left-[15%] -z-10 size-72 rounded-full blur-[100px]"
         aria-hidden="true"
       />
       <div
-        className="pointer-events-none absolute bottom-10 right-[10%] -z-10 size-96 rounded-full bg-accent/10 blur-[120px] animate-float-delayed"
+        className="bg-accent/10 animate-float-delayed pointer-events-none absolute right-[10%] bottom-10 -z-10 size-96 rounded-full blur-[120px]"
         aria-hidden="true"
       />
 
@@ -55,29 +55,53 @@ export function Hero({ ctaHref }: { ctaHref: string }) {
       <div className="mx-auto grid max-w-6xl items-center gap-16 lg:grid-cols-12 lg:gap-12">
         <div className="text-center lg:col-span-7 lg:text-left">
           {/* Announcement Pill */}
-          <div className="animate-fade-in-up inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2 text-xs font-semibold text-primary shadow-xs backdrop-blur-sm">
-            <span className="flex size-2 rounded-full bg-primary animate-pulse" />
+          <div className="animate-fade-in-up border-primary/20 bg-primary/5 text-primary inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold shadow-xs backdrop-blur-sm">
+            <span className="bg-primary flex size-2 animate-pulse rounded-full" />
             Platform Undangan Digital Modern No. 1 di Indonesia
           </div>
 
-          <h1 className="animate-fade-in-up mt-6 text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1] text-balance" style={{ animationDelay: "100ms" }}>
+          <h1
+            className="animate-fade-in-up mt-6 text-4xl font-extrabold tracking-tight text-balance sm:text-5xl lg:text-[3.5rem] lg:leading-[1.1]"
+            style={{ animationDelay: "100ms" }}
+          >
             Undangan Digital yang{" "}
-            <span className="bg-gradient-to-r from-primary via-primary/80 to-emerald-600 text-gradient">
+            <span className="from-primary via-primary/80 text-gradient bg-gradient-to-r to-emerald-600">
               Cantik
             </span>
             , Personal, dan Berkesan.
           </h1>
 
-          <p className="animate-fade-in-up text-muted-foreground mt-6 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto lg:mx-0" style={{ animationDelay: "200ms" }}>
-            Wujudkan momen istimewa tanpa repot cetak kertas. Pilih 16+ desain eksklusif, kelola daftar tamu, sebar personal lewat WhatsApp, dan pantau konfirmasi kehadiran secara instan.
+          <p
+            className="animate-fade-in-up text-muted-foreground mx-auto mt-6 max-w-2xl text-base leading-relaxed sm:text-lg lg:mx-0"
+            style={{ animationDelay: "200ms" }}
+          >
+            Wujudkan momen istimewa tanpa repot cetak kertas. Pilih 16+ desain eksklusif, kelola
+            daftar tamu, sebar personal lewat WhatsApp, dan pantau konfirmasi kehadiran secara
+            instan.
           </p>
 
           {/* Quick value props checklist */}
-          <ul className="animate-fade-in-up mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs sm:text-sm font-medium text-foreground/80 lg:justify-start" style={{ animationDelay: "300ms" }}>
-            {["16+ Template Eksklusif", "Personalisasi Nama Tamu", "RSVP & QR Check-in Real-time"].map((item) => (
+          <ul
+            className="animate-fade-in-up text-foreground/80 mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 text-xs font-medium sm:text-sm lg:justify-start"
+            style={{ animationDelay: "300ms" }}
+          >
+            {[
+              "16+ Template Eksklusif",
+              "Personalisasi Nama Tamu",
+              "RSVP & QR Check-in Real-time",
+            ].map((item) => (
               <li key={item} className="flex items-center gap-2">
-                <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <svg className="size-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <span className="bg-primary/10 text-primary flex size-5 items-center justify-center rounded-full">
+                  <svg
+                    className="size-3"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
                 </span>
@@ -86,93 +110,121 @@ export function Hero({ ctaHref }: { ctaHref: string }) {
             ))}
           </ul>
 
-          <div className="animate-fade-in-up mt-9 flex flex-wrap items-center justify-center gap-4 lg:justify-start" style={{ animationDelay: "400ms" }}>
-            <Button asChild size="lg" className="h-12 px-8 font-semibold shadow-lg glow-primary hover:opacity-95 transition-all hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0">
+          <div
+            className="animate-fade-in-up mt-9 flex flex-wrap items-center justify-center gap-4 lg:justify-start"
+            style={{ animationDelay: "400ms" }}
+          >
+            <Button
+              asChild
+              size="lg"
+              className="glow-primary h-12 px-8 font-semibold shadow-lg transition-all hover:-translate-y-0.5 hover:opacity-95 hover:shadow-xl active:translate-y-0"
+            >
               <Link href={ctaHref}>
                 Buat Undangan
-                <svg className="ml-2 size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg
+                  className="ml-2 size-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="h-12 px-6 font-medium border-border/80 hover:bg-accent/60 transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-sm">
+            <Button
+              asChild
+              size="lg"
+              variant="outline"
+              className="border-border/80 hover:bg-accent/60 h-12 px-6 font-medium backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
+            >
               <a href="#template-showcase">Lihat Template</a>
             </Button>
           </div>
 
-          {/* Social proof strip */}
-          <div className="animate-fade-in-up mt-11 flex items-center justify-center gap-8 border-t border-border/40 pt-7 lg:justify-start" style={{ animationDelay: "500ms" }}>
-            <div className="flex items-center gap-2.5">
-              <div className="flex text-amber-500 text-sm tracking-widest font-bold">★★★★★</div>
-              <div>
-                <span className="text-sm font-bold text-foreground">4.9/5</span>
-                <span className="text-xs text-muted-foreground ml-1">Rating</span>
-              </div>
+          {/* Product facts strip. No rating or customer-count claim: there is
+              no real source for one yet (CLAUDE.md §1.4, D-073, D-092). */}
+          <div
+            className="animate-fade-in-up border-border/40 mt-11 flex items-center justify-center gap-8 border-t pt-7 lg:justify-start"
+            style={{ animationDelay: "500ms" }}
+          >
+            <div className="flex items-center gap-2">
+              <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/10 text-[10px] font-bold text-emerald-600">
+                ✓
+              </span>
+              <span className="text-muted-foreground text-xs">
+                <span className="text-foreground font-bold">100%</span> Siap Pakai
+              </span>
             </div>
-            <div className="hidden sm:block h-8 w-px bg-border/60" />
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 text-[10px] font-bold">✓</span>
-              <span className="text-xs text-muted-foreground"><span className="font-bold text-foreground">100%</span> Siap Pakai</span>
-            </div>
-            <div className="hidden md:block h-8 w-px bg-border/60" />
-            <div className="hidden md:flex items-center gap-2">
-              <span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-primary text-[10px] font-bold">⚡</span>
-              <span className="text-xs text-muted-foreground"><span className="font-bold text-foreground">Tanpa</span> Coding</span>
+            <div className="bg-border/60 hidden h-8 w-px sm:block" />
+            <div className="hidden items-center gap-2 sm:flex">
+              <span className="bg-primary/10 text-primary flex size-5 items-center justify-center rounded-full text-[10px] font-bold">
+                ⚡
+              </span>
+              <span className="text-muted-foreground text-xs">
+                <span className="text-foreground font-bold">Tanpa</span> Coding
+              </span>
             </div>
           </div>
         </div>
 
         {/* Hero Visual Mockup */}
-        <div className="relative mx-auto w-full max-w-[300px] lg:col-span-5 lg:max-w-[340px] animate-scale-in" style={{ animationDelay: "300ms" }}>
+        <div
+          className="animate-scale-in relative mx-auto w-full max-w-[300px] lg:col-span-5 lg:max-w-[340px]"
+          style={{ animationDelay: "300ms" }}
+        >
           {/* Multi-layer radiant backdrop */}
           <div
-            className="absolute -inset-8 -z-10 rounded-full bg-gradient-to-tr from-primary/25 via-accent/15 to-primary/10 blur-3xl opacity-80 animate-float-gentle"
+            className="from-primary/25 via-accent/15 to-primary/10 animate-float-gentle absolute -inset-8 -z-10 rounded-full bg-gradient-to-tr opacity-80 blur-3xl"
             aria-hidden="true"
           />
           <div
-            className="absolute -inset-4 -z-10 rounded-full bg-gradient-to-bl from-emerald-500/10 via-transparent to-primary/10 blur-2xl opacity-60"
+            className="to-primary/10 absolute -inset-4 -z-10 rounded-full bg-gradient-to-bl from-emerald-500/10 via-transparent opacity-60 blur-2xl"
             aria-hidden="true"
           />
 
           {/* Floating badge 1: Top Right — RSVP notification */}
           <div
-            className="animate-float absolute -top-3 -right-10 z-20 hidden sm:flex items-center gap-2.5 rounded-2xl border border-border/40 bg-card/95 px-4 py-2.5 shadow-xl backdrop-blur-lg"
+            className="animate-float border-border/40 bg-card/95 absolute -top-3 -right-10 z-20 hidden items-center gap-2.5 rounded-2xl border px-4 py-2.5 shadow-xl backdrop-blur-lg sm:flex"
             aria-hidden="true"
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-600 text-xs font-bold shadow-inner">
+            <span className="flex size-8 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-600 shadow-inner">
               ✓
             </span>
             <div className="text-left text-xs">
-              <p className="font-bold text-foreground">RSVP Hadir</p>
-              <p className="text-[10px] text-muted-foreground">Sarah +1 Tamu</p>
+              <p className="text-foreground font-bold">RSVP Hadir</p>
+              <p className="text-muted-foreground text-[10px]">Sarah +1 Tamu</p>
             </div>
           </div>
 
           {/* Floating badge 2: Bottom Left — Templates count */}
           <div
-            className="animate-float-delayed absolute -bottom-4 -left-10 z-20 hidden sm:flex items-center gap-2.5 rounded-2xl border border-border/40 bg-card/95 px-4 py-2.5 shadow-xl backdrop-blur-lg"
+            className="animate-float-delayed border-border/40 bg-card/95 absolute -bottom-4 -left-10 z-20 hidden items-center gap-2.5 rounded-2xl border px-4 py-2.5 shadow-xl backdrop-blur-lg sm:flex"
             aria-hidden="true"
           >
-            <span className="flex size-8 items-center justify-center rounded-full bg-primary/15 text-primary text-xs font-bold shadow-inner">
+            <span className="bg-primary/15 text-primary flex size-8 items-center justify-center rounded-full text-xs font-bold shadow-inner">
               ★
             </span>
             <div className="text-left text-xs">
-              <p className="font-bold text-foreground">16+ Template Mewah</p>
-              <p className="text-[10px] text-muted-foreground">Desain responsif mobile</p>
+              <p className="text-foreground font-bold">16+ Template Mewah</p>
+              <p className="text-muted-foreground text-[10px]">Desain responsif mobile</p>
             </div>
           </div>
 
           {/* Floating badge 3: Mid Right — Live indicator */}
           <div
-            className="absolute top-1/2 -right-14 z-20 hidden lg:flex items-center gap-2 rounded-xl border border-border/40 bg-card/95 px-3 py-2 shadow-lg backdrop-blur-lg"
+            className="border-border/40 bg-card/95 absolute top-1/2 -right-14 z-20 hidden items-center gap-2 rounded-xl border px-3 py-2 shadow-lg backdrop-blur-lg lg:flex"
             style={{ animation: "float 5s ease-in-out 1s infinite" }}
             aria-hidden="true"
           >
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[10px] font-semibold text-foreground">Live Preview</span>
+            <span className="size-2 animate-pulse rounded-full bg-emerald-500" />
+            <span className="text-foreground text-[10px] font-semibold">Live Preview</span>
           </div>
 
-          <div className="rounded-[3rem] p-1.5 ring-1 ring-border/40 shadow-2xl bg-gradient-to-b from-card/80 to-card/40 backdrop-blur-xs">
+          <div className="ring-border/40 from-card/80 to-card/40 rounded-[3rem] bg-gradient-to-b p-1.5 shadow-2xl ring-1 backdrop-blur-xs">
             <PhoneFrame heightClassName="h-[560px]">
               <InvitationRenderer
                 invitation={buildDemoInvitation("modern-editorial")}

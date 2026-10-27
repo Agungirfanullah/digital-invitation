@@ -29,11 +29,26 @@ import { Testimonials } from "@/components/marketing/testimonials";
 import { TemplateShowcase } from "@/components/marketing/template-showcase";
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
 import { buildDemoInvitation } from "@/lib/marketing/demo-invitation";
+import { buildHomepageJsonLd, serializeJsonLd } from "@/lib/marketing/structured-data";
 
+const HOME_TITLE = "Digital Invitation — Undangan Digital yang Cantik, Personal, dan Berkesan";
+const HOME_DESCRIPTION =
+  "Buat undangan digital dalam hitungan menit. Pilih desain, kelola tamu, bagikan lewat WhatsApp, dan pantau RSVP dari satu tempat.";
+
+// `openGraph`/`twitter` replace the root layout's objects whole (metadata
+// merges shallowly), so the layout's siteName/locale/type are repeated here.
 export const metadata: Metadata = {
-  title: "Digital Invitation — Undangan Digital yang Cantik, Personal, dan Berkesan",
-  description:
-    "Buat undangan digital dalam hitungan menit. Pilih desain, kelola tamu, bagikan lewat WhatsApp, dan pantau RSVP dari satu tempat.",
+  title: HOME_TITLE,
+  description: HOME_DESCRIPTION,
+  openGraph: {
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    siteName: "Digital Invitation",
+    locale: "id_ID",
+    type: "website",
+    url: "/",
+  },
+  twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION },
 };
 
 // Every other route already reads cookies/headers/searchParams somewhere in
@@ -69,8 +84,15 @@ export default async function Home() {
     ]),
   );
 
+  const jsonLd = buildHomepageJsonLd(plans, process.env.NEXT_PUBLIC_APP_URL);
+
   return (
     <div className="flex flex-1 flex-col">
+      {/* A data block, not executed, so the nonce CSP (D-053) does not apply. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(jsonLd) }}
+      />
       <SiteHeader ctaHref={ctaHref} />
 
       <main className="flex-1">

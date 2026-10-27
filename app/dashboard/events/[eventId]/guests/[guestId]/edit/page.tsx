@@ -7,7 +7,7 @@ import { EventNotFoundError, GuestNotFoundError } from "@/lib/guests/errors";
 import { GuestForm } from "@/components/guests/guest-form";
 
 export const metadata: Metadata = {
-  title: "Edit Tamu — Digital Invitation",
+  title: "Edit Tamu",
 };
 
 interface EditGuestPageProps {

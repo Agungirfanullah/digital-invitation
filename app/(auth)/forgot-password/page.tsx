@@ -5,7 +5,7 @@ import { getSupabaseUser } from "@/lib/auth/session";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
 export const metadata: Metadata = {
-  title: "Lupa Kata Sandi — Digital Invitation",
+  title: "Lupa Kata Sandi",
 };
 
 export default async function ForgotPasswordPage() {

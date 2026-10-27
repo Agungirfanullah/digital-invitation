@@ -5,7 +5,7 @@ import { getSupabaseUser } from "@/lib/auth/session";
 import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata: Metadata = {
-  title: "Buat Akun — Digital Invitation",
+  title: "Buat Akun",
 };
 
 export default async function RegisterPage() {

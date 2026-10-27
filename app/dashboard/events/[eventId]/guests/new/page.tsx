@@ -7,7 +7,7 @@ import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { GuestForm } from "@/components/guests/guest-form";
 
 export const metadata: Metadata = {
-  title: "Tambah Tamu — Digital Invitation",
+  title: "Tambah Tamu",
 };
 
 interface NewGuestPageProps {

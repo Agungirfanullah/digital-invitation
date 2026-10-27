@@ -92,13 +92,17 @@ digital-gift display) do not become MVP-defining by that fact.
   deployed origin, which fixed confirmation and reset links that landed on
   `localhost` (the full reset-password round trip was verified on
   production).
+- Presentation refresh `565f666` (2026-10-20, D-092): homepage visuals with
+  scroll-reveal animation, restyled dashboard, Opening gate as a framed card,
+  site-wide SEO metadata and a root JSON-LD block. Its review found issues,
+  listed as open item 11 below.
 - Bug fixes found along the way: the editor preview ignored the selected
   template's default palette (preview now resolves the theme exactly like
   the public projection, D-082); Supabase email rate-limit errors arriving
   without an error `code` showed a generic message and the raw error was
   logged as `{}` — both fixed in `lib/auth/errors.ts`.
 
-**Open items (verified 2026-10-13):**
+**Open items (verified 2026-10-13; item 11 added 2026-10-27):**
 
 1. **Pricing is shown but cannot be bought.** The homepage lists Free /
    Premium / Business prices from the `Plan` table, but there is no
@@ -135,6 +139,20 @@ digital-gift display) do not become MVP-defining by that fact.
 10. Documentation debt recorded in `docs/DECISIONS.md` ("Index notes"):
    D-067, D-070, D-072, D-073, D-077 are cited by code and docs but had no
    entry of their own.
+11. **Follow-ups from `565f666` (D-092, found 2026-10-27):**
+   - ~~every page title except the homepage shows the brand twice~~ —
+     fixed 2026-10-27: pages set a bare title, the layout template adds
+     " | Digital Invitation";
+   - ~~the root JSON-LD is emitted on every route with a hardcoded
+     `highPrice`~~ — fixed 2026-10-27: homepage only, prices from
+     `getActivePlans()`;
+   - ~~fabricated "4.9/5 Rating" in the hero~~ — removed 2026-10-27; "No. 1
+     di Indonesia" and "upgrade kapan saja" remain (product-owner call);
+   - ~~homepage OpenGraph title inherited by every page~~ — fixed
+     2026-10-27: each page previews with its own title;
+   - ~~23 files fail `prettier --check`~~ — formatted 2026-10-27;
+   - still open: root meta description says "khitanan" / "paling lengkap di
+     Indonesia"; `max-image-preview: large` reaches customer invitations.
 
 **Status (Phase 0.9):**
 
@@ -3629,6 +3647,13 @@ See "Remaining Manual Configuration" under Phase 1 above.
   API (as the E2E suites do) instead of the register form.
 
 ## Latest Verification
+
+**2026-10-27, on `565f666` + uncommitted D-092 fixes (partial):** TypeScript
+PASS, ESLint PASS, Prettier PASS except `docs/email-templates/*.html`
+(pre-existing, left as is), Vitest for `components/`, `lib/marketing/` and
+`lib/invitations/templates/` PASS (19 files / 834 tests). Titles, OpenGraph
+and JSON-LD checked in `next dev` HTML. The full Vitest suite, Playwright
+and `next build` were not re-run.
 
 Last full green run: 2026-10-13, on `be8b908` plus the link-preview image
 work (D-083). See the note after the block for the

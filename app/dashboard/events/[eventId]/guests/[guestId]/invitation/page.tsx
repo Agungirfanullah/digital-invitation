@@ -19,7 +19,7 @@ import { MessagePreview } from "@/components/guests/message-preview";
 import { GuestQrCode } from "@/components/guests/guest-qr-code";
 
 export const metadata: Metadata = {
-  title: "Undangan Tamu — Digital Invitation",
+  title: "Undangan Tamu",
 };
 
 interface GuestInvitationPageProps {

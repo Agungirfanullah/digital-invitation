@@ -7,7 +7,7 @@ import { EventNotFoundError, GiftMethodNotFoundError } from "@/lib/gifts/errors"
 import { GiftMethodForm } from "@/components/gifts/gift-method-form";
 
 export const metadata: Metadata = {
-  title: "Edit Metode Hadiah — Digital Invitation",
+  title: "Edit Metode Hadiah",
 };
 
 interface EditGiftMethodPageProps {

@@ -11,7 +11,7 @@ export function EventRow({
   event: { id: string; title: string; slug: string; type: EventType; status: EventStatus };
 }) {
   return (
-    <li className="group bg-card flex items-center gap-4 rounded-2xl border border-border/70 p-4.5 shadow-xs transition-all duration-200 hover:shadow-md hover:border-primary/40">
+    <li className="group bg-card border-border/70 hover:border-primary/40 flex items-center gap-4 rounded-2xl border p-4.5 shadow-xs transition-all duration-200 hover:shadow-md">
       <div
         aria-hidden="true"
         className="bg-primary/10 text-primary flex size-12 shrink-0 items-center justify-center rounded-xl shadow-xs transition-transform duration-200 group-hover:scale-105"
@@ -31,8 +31,8 @@ export function EventRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <h3 className="truncate font-bold text-foreground text-sm sm:text-base">{event.title}</h3>
-        <p className="text-muted-foreground text-xs mt-0.5">{EVENT_TYPE_LABELS[event.type]}</p>
+        <h3 className="text-foreground truncate text-sm font-bold sm:text-base">{event.title}</h3>
+        <p className="text-muted-foreground mt-0.5 text-xs">{EVENT_TYPE_LABELS[event.type]}</p>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           <EventStatusBadge status={event.status} />
           {event.status === "PUBLISHED" && (
@@ -40,7 +40,7 @@ export function EventRow({
               href={`/invite/${event.slug}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary text-xs font-semibold inline-flex items-center gap-1 underline-offset-4 hover:underline"
+              className="text-primary inline-flex items-center gap-1 text-xs font-semibold underline-offset-4 hover:underline"
             >
               Lihat Web ↗
             </Link>

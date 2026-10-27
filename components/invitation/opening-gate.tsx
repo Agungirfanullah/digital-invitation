@@ -139,7 +139,7 @@ export function OpeningGate({
           </svg>
           <svg
             viewBox="0 0 40 40"
-            className="absolute bottom-3 right-3 size-6 -scale-100 text-[color:var(--ii-accent)] opacity-60"
+            className="absolute right-3 bottom-3 size-6 -scale-100 text-[color:var(--ii-accent)] opacity-60"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.5"
@@ -156,14 +156,14 @@ export function OpeningGate({
 
           <h1
             id={headingId}
-            className="mt-4 text-3xl sm:text-4xl font-bold text-balance text-[color:var(--ii-primary)] tracking-tight leading-snug"
+            className="mt-4 text-3xl leading-snug font-bold tracking-tight text-balance text-[color:var(--ii-primary)] sm:text-4xl"
             style={{ fontFamily: "var(--ii-heading-font)" }}
           >
             {heading}
           </h1>
 
           {scheduleDate && (
-            <p className="mt-3 text-sm font-medium text-[color:var(--ii-text)] opacity-90 tracking-wide">
+            <p className="mt-3 text-sm font-medium tracking-wide text-[color:var(--ii-text)] opacity-90">
               {formatIndonesianDate(scheduleDate)}
             </p>
           )}
@@ -171,9 +171,13 @@ export function OpeningGate({
           {guestName && (
             <div className="my-5 w-full rounded-2xl border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-secondary)]/30 px-5 py-3 shadow-xs">
               <p className="text-sm text-[color:var(--ii-text)]">
-                <span className="text-xs uppercase tracking-widest text-[color:var(--ii-accent)] font-semibold">Dear</span>
+                <span className="text-xs font-semibold tracking-widest text-[color:var(--ii-accent)] uppercase">
+                  Dear
+                </span>
                 <br />
-                <span className="font-bold text-base text-[color:var(--ii-primary)]">{guestName}</span>
+                <span className="text-base font-bold text-[color:var(--ii-primary)]">
+                  {guestName}
+                </span>
               </p>
             </div>
           )}

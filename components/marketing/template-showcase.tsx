@@ -37,15 +37,30 @@ export function TemplateShowcase({
     <section
       id="template-showcase"
       aria-labelledby="template-showcase-heading"
-      className="relative overflow-hidden px-6 py-24 sm:py-32 bg-muted/20"
+      className="bg-muted/20 relative overflow-hidden px-6 py-24 sm:py-32"
     >
       {/* Decorative orbs */}
-      <div className="pointer-events-none absolute top-20 left-[5%] -z-10 size-80 rounded-full bg-primary/6 blur-[100px]" aria-hidden="true" />
-      <div className="pointer-events-none absolute bottom-20 right-[5%] -z-10 size-64 rounded-full bg-accent/10 blur-[80px]" aria-hidden="true" />
+      <div
+        className="bg-primary/6 pointer-events-none absolute top-20 left-[5%] -z-10 size-80 rounded-full blur-[100px]"
+        aria-hidden="true"
+      />
+      <div
+        className="bg-accent/10 pointer-events-none absolute right-[5%] bottom-20 -z-10 size-64 rounded-full blur-[80px]"
+        aria-hidden="true"
+      />
 
       <ScrollReveal className="mx-auto max-w-4xl text-center">
-        <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3.5 py-1.5 text-xs font-semibold text-primary backdrop-blur-sm">
-          <svg className="size-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <div className="border-primary/20 bg-primary/5 text-primary inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-semibold backdrop-blur-sm">
+          <svg
+            className="size-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
             <rect x="3" y="3" width="7" height="7" />
             <rect x="14" y="3" width="7" height="7" />
             <rect x="14" y="14" width="7" height="7" />
@@ -55,24 +70,28 @@ export function TemplateShowcase({
         </div>
         <h2
           id="template-showcase-heading"
-          className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl lg:text-[2.75rem] text-balance"
+          className="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-[2.75rem]"
         >
           Pilih Template{" "}
-          <span className="bg-gradient-to-r from-primary to-emerald-600 text-gradient">Favoritmu</span>
+          <span className="from-primary text-gradient bg-gradient-to-r to-emerald-600">
+            Favoritmu
+          </span>
         </h2>
-        <p className="text-muted-foreground mt-4 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-          Setiap template dirancang khusus dengan tipografi dan nuansa visual yang memukau. Coba langsung tampilan interaktif aslinya.
+        <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
+          Setiap template dirancang khusus dengan tipografi dan nuansa visual yang memukau. Coba
+          langsung tampilan interaktif aslinya.
         </p>
       </ScrollReveal>
 
       <ul className="mx-auto mt-16 grid max-w-6xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {templates.map((template, i) => (
           <ScrollReveal key={template.slug} delay={i * 100} direction="up">
-            <li
-              className="group relative flex flex-col items-center rounded-2xl border border-border/50 bg-card p-6 shadow-xs transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:border-primary/40"
-            >
+            <li className="group border-border/50 bg-card hover:border-primary/40 relative flex flex-col items-center rounded-2xl border p-6 shadow-xs transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
               {/* Hover glow overlay */}
-              <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/5 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" aria-hidden="true" />
+              <div
+                className="from-primary/5 absolute inset-0 rounded-2xl bg-gradient-to-b to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                aria-hidden="true"
+              />
 
               <div className="relative w-full max-w-[220px] transition-transform duration-500 group-hover:scale-[1.03]">
                 <PhoneFrame heightClassName="h-[360px]" compact>
@@ -81,8 +100,10 @@ export function TemplateShowcase({
               </div>
 
               <div className="relative mt-5 w-full text-center">
-                <h3 className="font-bold text-foreground text-base tracking-tight">{template.name}</h3>
-                <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1.5">
+                <h3 className="text-foreground text-base font-bold tracking-tight">
+                  {template.name}
+                </h3>
+                <p className="text-muted-foreground mt-1 flex items-center justify-center gap-1.5 text-xs">
                   <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden="true" />
                   Mobile-first & Responsif
                 </p>
@@ -90,7 +111,7 @@ export function TemplateShowcase({
                 <Link
                   href={`/demo/${template.slug}`}
                   target="_blank"
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 px-5 py-2 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                  className="border-primary/20 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground mt-4 inline-flex items-center gap-1.5 rounded-full border px-5 py-2 text-xs font-semibold transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
                 >
                   Lihat Demo Penuh
                   <svg

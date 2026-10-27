@@ -9,7 +9,7 @@ import { ANALYTICS_EMPTY_STATE_LABELS } from "@/lib/analytics/labels";
 import { ProgressBar } from "@/components/analytics/progress-bar";
 
 export const metadata: Metadata = {
-  title: "Analitik — Digital Invitation",
+  title: "Analitik",
 };
 
 interface AnalyticsPageProps {

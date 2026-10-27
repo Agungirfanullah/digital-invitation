@@ -7,7 +7,7 @@ import { EventNotFoundError } from "@/lib/events/errors";
 import { EditEventForm } from "@/components/events/edit-event-form";
 
 export const metadata: Metadata = {
-  title: "Edit Acara — Digital Invitation",
+  title: "Edit Acara",
 };
 
 interface EditEventPageProps {
