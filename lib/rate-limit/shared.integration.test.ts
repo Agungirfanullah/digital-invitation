@@ -42,12 +42,15 @@ describe("consumeDatabaseRateLimit", () => {
 
   it("starts a new window once the old one has ended", async () => {
     const key = nextKey();
-    const options = { limit: 1, windowMs: 300 };
+    // The window is measured on the database clock, so it must outlast one
+    // round trip: from CI to Supabase that alone exceeded an earlier 300 ms
+    // window and let the second call into a fresh one.
+    const options = { limit: 1, windowMs: 3_000 };
 
     expect((await consumeDatabaseRateLimit(key, options)).allowed).toBe(true);
     expect((await consumeDatabaseRateLimit(key, options)).allowed).toBe(false);
 
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    await new Promise((resolve) => setTimeout(resolve, 3_500));
 
     expect((await consumeDatabaseRateLimit(key, options)).allowed).toBe(true);
   });

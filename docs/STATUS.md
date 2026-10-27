@@ -3648,12 +3648,22 @@ See "Remaining Manual Configuration" under Phase 1 above.
 
 ## Latest Verification
 
-**2026-10-27, on `565f666` + uncommitted D-092 fixes (partial):** TypeScript
-PASS, ESLint PASS, Prettier PASS except `docs/email-templates/*.html`
-(pre-existing, left as is), Vitest for `components/`, `lib/marketing/` and
-`lib/invitations/templates/` PASS (19 files / 834 tests). Titles, OpenGraph
-and JSON-LD checked in `next dev` HTML. The full Vitest suite, Playwright
-and `next build` were not re-run.
+**2026-10-27, on `e63ea4a` (D-092 fixes):** TypeScript PASS, ESLint PASS,
+Prettier PASS except `docs/email-templates/*.html` (pre-existing, left as
+is), Vitest PASS locally (109 files / 1924 tests, live DEV database), `next
+build` PASS. Titles, OpenGraph and JSON-LD checked in `next dev` HTML.
+Playwright not re-run.
+
+**CI had been red on `main` since at least 2026-10-13** (every run from
+`022c00d` to `e63ea4a`). On `e63ea4a` the only failure was
+`lib/rate-limit/shared.integration.test.ts` → "starts a new window once the
+old one has ended": its 300 ms window, measured on the database clock, was
+shorter than one CI-to-Supabase round trip, so the second call landed in a
+fresh window. The limiter is correct; the test now uses a 3 s window. The
+`565f666` run also failed two publish-readiness tests in
+`lib/events/service.integration.test.ts` that passed on `e63ea4a` and
+locally — watch for them as a latency flake. Runs before `565f666` were not
+inspected (GitHub API quota).
 
 Last full green run: 2026-10-13, on `be8b908` plus the link-preview image
 work (D-083). See the note after the block for the
