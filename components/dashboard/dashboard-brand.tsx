@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ScrollTopLink } from "@/components/navigation/scroll-top-link";
 
 function initialsOf(name: string): string {
   const letters = name
@@ -9,9 +9,10 @@ function initialsOf(name: string): string {
   return letters.join("").toUpperCase() || "?";
 }
 
+/** The dashboard logo, linking to Beranda; on Beranda it scrolls back to the top. */
 export function DashboardLogo() {
   return (
-    <Link
+    <ScrollTopLink
       href="/dashboard"
       className="focus-visible:ring-ring text-foreground flex items-center gap-2.5 rounded-lg font-bold tracking-tight outline-none focus-visible:ring-2"
     >
@@ -32,7 +33,7 @@ export function DashboardLogo() {
       <span className="text-base">
         Digital<span className="text-primary font-medium">Invitation</span>
       </span>
-    </Link>
+    </ScrollTopLink>
   );
 }
 

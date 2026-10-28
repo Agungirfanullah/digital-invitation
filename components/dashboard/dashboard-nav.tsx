@@ -1,10 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { EVENT_ICONS, NAV_ICONS } from "@/components/dashboard/dashboard-icons";
+import { ScrollTopLink } from "@/components/navigation/scroll-top-link";
 
 const NEW_EVENT_PATH = "/dashboard/events/new";
 const EVENT_PATH = /^\/dashboard\/events\/([^/]+)(\/.*)?$/;
@@ -79,7 +79,7 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => v
     <ul className="space-y-0.5">
       {items.map((item) => (
         <li key={item.href}>
-          <Link
+          <ScrollTopLink
             href={item.href}
             onClick={onNavigate}
             aria-current={item.active ? "page" : undefined}
@@ -95,7 +95,7 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => v
               {item.icon}
             </span>
             {item.label}
-          </Link>
+          </ScrollTopLink>
         </li>
       ))}
     </ul>
