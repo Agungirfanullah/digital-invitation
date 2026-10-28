@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { SECTION_LINKS } from "@/components/marketing/nav-links";
-import { BrandLogo } from "@/components/marketing/site-header";
+import { BrandLogo } from "@/components/marketing/brand-logo";
 
 const EVENT_TYPES = Object.values(EVENT_TYPE_LABELS).filter((label) => label !== "Lainnya");
 

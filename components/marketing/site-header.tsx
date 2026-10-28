@@ -1,25 +1,9 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { LogoMark } from "@/components/marketing/icons";
+import { BrandLogo } from "@/components/marketing/brand-logo";
 import { MobileMenu } from "@/components/marketing/mobile-menu";
 import { SECTION_LINKS } from "@/components/marketing/nav-links";
-
-export function BrandLogo({ className = "" }: { className?: string }) {
-  return (
-    <Link
-      href="/"
-      className={`group text-foreground flex items-center gap-2.5 font-semibold tracking-tight ${className}`}
-    >
-      <span className="from-primary flex size-8 items-center justify-center rounded-lg bg-gradient-to-br to-emerald-600 text-white shadow-sm shadow-emerald-900/20 transition-transform group-hover:scale-105">
-        <LogoMark className="size-4" />
-      </span>
-      <span className="text-base font-bold tracking-tight">
-        Digital<span className="text-primary font-medium">Invitation</span>
-      </span>
-    </Link>
-  );
-}
 
 /**
  * Public Homepage header (docs/PRD.md §7, D-073 §19) — no authenticated

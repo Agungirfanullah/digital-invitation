@@ -93,6 +93,17 @@ test.describe("homepage", () => {
     await expect(cards).toHaveCount(total);
   });
 
+  test("the logo takes a scrolled-down visitor back to the top", async ({ page }) => {
+    await page.goto("/#harga");
+    await expect(
+      page.getByRole("heading", { name: "Harga yang Jelas, Tanpa Kejutan" }),
+    ).toBeInViewport();
+
+    await page.getByRole("banner").getByRole("link", { name: "DigitalInvitation" }).click();
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test("on a phone, the menu opens the section links", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");

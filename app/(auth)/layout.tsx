@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { BrandLogo } from "@/components/marketing/site-header";
+import { BrandLogo } from "@/components/marketing/brand-logo";
 
 /** Product facts for the side panel — features that exist, no ratings or user counts (CLAUDE.md §1.4). */
 const HIGHLIGHTS = [
