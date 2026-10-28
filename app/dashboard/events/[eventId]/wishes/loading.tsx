@@ -7,7 +7,7 @@ export default function WishesLoading() {
       </div>
       <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="bg-muted h-20 rounded-lg border" />
+          <div key={index} className="bg-muted/70 h-20 animate-pulse rounded-2xl" />
         ))}
       </div>
     </div>

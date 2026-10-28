@@ -17,7 +17,7 @@ export default async function ResetPasswordPage() {
   if (!user) {
     return (
       <div className="space-y-2 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Tautan tidak valid</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Tautan tidak valid</h1>
         <p className="text-muted-foreground text-sm">
           Tautan atur ulang kata sandi tidak valid atau sudah kedaluwarsa.
         </p>

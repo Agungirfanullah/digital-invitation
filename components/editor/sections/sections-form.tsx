@@ -96,7 +96,7 @@ export function SectionsForm({
 
       <FormError message={error} />
 
-      <ul className="divide-y rounded-lg border">
+      <ul className="border-border/60 bg-card divide-y rounded-2xl border shadow-xs">
         {supportedOrder.map((key, index) => {
           const state = states[key];
           const inputId = `section-${key}`;

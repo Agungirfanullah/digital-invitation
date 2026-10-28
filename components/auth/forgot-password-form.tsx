@@ -16,7 +16,7 @@ export function ForgotPasswordForm() {
   if (state.success) {
     return (
       <div className="space-y-2 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Periksa email kamu</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Periksa email kamu</h1>
         <p className="text-muted-foreground text-sm">{state.message}</p>
         <Link href="/login" className="text-foreground text-sm underline underline-offset-4">
           Kembali ke halaman masuk
@@ -28,7 +28,7 @@ export function ForgotPasswordForm() {
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <div className="space-y-1 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Lupa kata sandi</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Lupa kata sandi</h1>
         <p className="text-muted-foreground text-sm">
           Masukkan email akunmu, kami akan mengirimkan tautan atur ulang kata sandi.
         </p>
@@ -45,7 +45,7 @@ export function ForgotPasswordForm() {
         error={state.fieldErrors?.email?.[0]}
       />
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="h-11 w-full rounded-full font-semibold" disabled={pending}>
         {pending ? "Mengirim..." : "Kirim tautan atur ulang"}
       </Button>
 

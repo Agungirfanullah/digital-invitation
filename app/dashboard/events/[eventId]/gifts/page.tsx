@@ -9,6 +9,7 @@ import { GIFT_METHOD_TYPE_LABELS } from "@/lib/gifts/labels";
 import { Button } from "@/components/ui/button";
 import { GiftMethodTypeBadge } from "@/components/gifts/gift-method-type-badge";
 import { DeleteGiftMethodButton } from "@/components/gifts/delete-gift-method-button";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Hadiah",
@@ -34,30 +35,23 @@ export default async function GiftsPage({ params }: GiftsPageProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link
-          href={`/dashboard/events/${eventId}`}
-          className="text-muted-foreground text-sm underline underline-offset-4"
-        >
-          ← {data.event.title}
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Hadiah</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Kelola metode hadiah/angpao digital yang ditampilkan di undangan publik.
-            </p>
-          </div>
-          {canEdit && (
-            <Button asChild>
-              <Link href={`/dashboard/events/${eventId}/gifts/new`}>Tambah Metode</Link>
-            </Button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}`, label: data.event.title }}
+        title="Hadiah"
+        description={<>Kelola metode hadiah/angpao digital yang ditampilkan di undangan publik.</>}
+        actions={
+          <>
+            {canEdit && (
+              <Button asChild>
+                <Link href={`/dashboard/events/${eventId}/gifts/new`}>Tambah Metode</Link>
+              </Button>
+            )}
+          </>
+        }
+      />
 
       {data.giftMethods.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-8 text-center">
           <p className="font-medium">Belum ada metode hadiah.</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Tambahkan rekening bank, e-wallet, kode QR, atau instruksi hadiah fisik agar tamu bisa
@@ -70,7 +64,7 @@ export default async function GiftsPage({ params }: GiftsPageProps) {
           )}
         </div>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-lg border">
+        <ul className="border-border/60 bg-card divide-y overflow-hidden rounded-2xl border shadow-xs">
           {data.giftMethods.map((method) => (
             <li key={method.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">

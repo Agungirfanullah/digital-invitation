@@ -16,7 +16,7 @@ export function RegisterForm() {
   if (state.success) {
     return (
       <div className="space-y-2 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Periksa email kamu</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Periksa email kamu</h1>
         <p className="text-muted-foreground text-sm">{state.message}</p>
         <Link href="/login" className="text-foreground text-sm underline underline-offset-4">
           Kembali ke halaman masuk
@@ -28,7 +28,7 @@ export function RegisterForm() {
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <div className="space-y-1 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Buat akun</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Buat akun</h1>
         <p className="text-muted-foreground text-sm">Mulai buat undangan digitalmu.</p>
       </div>
 
@@ -69,7 +69,7 @@ export function RegisterForm() {
         error={state.fieldErrors?.confirmPassword?.[0]}
       />
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="h-11 w-full rounded-full font-semibold" disabled={pending}>
         {pending ? "Membuat akun..." : "Buat akun"}
       </Button>
 

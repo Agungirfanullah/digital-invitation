@@ -27,7 +27,7 @@ export function GuestConfirmationCard({
   resetLabel: string;
 }) {
   return (
-    <div className="space-y-4 rounded-lg border p-5">
+    <div className="border-border/60 bg-card space-y-4 rounded-2xl border p-5 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-lg font-semibold">{guest.guestName}</p>
         <CheckInStatusBadge isCheckedIn={guest.isCheckedIn} />

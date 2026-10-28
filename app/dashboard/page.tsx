@@ -1,32 +1,21 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import { requireAppUser } from "@/lib/auth/session";
 import { listEventsWithStatsForUser } from "@/lib/events/service";
 import { Button } from "@/components/ui/button";
+import { EVENT_ICONS, NAV_ICONS } from "@/components/dashboard/dashboard-icons";
 import { EventRow } from "@/components/dashboard/event-row";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-const RECENT_LIMIT = 3;
+const RECENT_LIMIT = 4;
 
-function ActionIcon({ children }: { children: React.ReactNode }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      className="size-9 shrink-0"
-    >
-      {children}
-    </svg>
-  );
+function firstName(name: string): string {
+  return name.trim().split(/\s+/)[0] || name;
 }
 
 export default async function DashboardPage() {
@@ -38,139 +27,126 @@ export default async function DashboardPage() {
   const recent = events.slice(0, RECENT_LIMIT);
   const latest = events[0];
 
+  // Every number here is counted from the owner's real events (CLAUDE.md §14).
   const tiles = [
-    { label: "Undangan", value: events.length, icon: "💌" },
-    { label: "Total Tamu", value: totalGuests, icon: "👥" },
-    { label: "Akan Hadir", value: totalAttending, icon: "✨" },
+    { label: "Undangan", value: events.length, icon: NAV_ICONS.invitations },
+    { label: "Total Tamu", value: totalGuests, icon: EVENT_ICONS.guests },
+    { label: "Akan Hadir", value: totalAttending, icon: EVENT_ICONS.rsvp },
   ];
 
+  const today = new Date().toLocaleDateString("id-ID", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
-      {/* Header with Greeting */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto max-w-5xl space-y-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">Beranda</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Selamat datang kembali,{" "}
-            <span className="text-foreground font-semibold">{user.name}</span>! Kelola undangan dan
-            pantau tamu acaramu.
+          <p className="text-muted-foreground text-sm font-medium">{today}</p>
+          <h1 className="text-foreground mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+            Halo, {firstName(user.name)}
+          </h1>
+          <p className="text-muted-foreground mt-1.5 text-sm">
+            Kelola undangan dan pantau tamu acaramu dari sini.
           </p>
         </div>
-        <div className="text-muted-foreground bg-muted/60 border-border/50 mt-2 w-fit rounded-full border px-3 py-1.5 text-xs font-medium sm:mt-0">
-          📅{" "}
-          {new Date().toLocaleDateString("id-ID", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          })}
-        </div>
-      </div>
+        <Button asChild className="rounded-full px-5 font-semibold shadow-sm">
+          <Link href="/dashboard/events/new">+ Buat Undangan Baru</Link>
+        </Button>
+      </header>
 
-      <section aria-label="Ringkasan" className="space-y-4">
-        {/* Metric tiles */}
-        <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <section aria-label="Ringkasan">
+        <dl className="grid grid-cols-3 gap-3 sm:gap-4">
           {tiles.map((tile) => (
             <div
               key={tile.label}
-              className="bg-card border-border/70 hover:border-primary/30 rounded-2xl border p-5 shadow-xs transition-all duration-200 hover:shadow-md"
+              className="border-border/60 bg-card rounded-2xl border p-4 shadow-xs sm:p-5"
             >
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
+              <div className="flex items-center justify-between gap-2">
+                <dt className="text-muted-foreground text-xs font-medium sm:text-sm">
                   {tile.label}
                 </dt>
-                <span className="text-lg">{tile.icon}</span>
+                <span className="bg-primary/10 text-primary hidden size-9 items-center justify-center rounded-xl sm:flex">
+                  <span className="size-[18px]">{tile.icon}</span>
+                </span>
               </div>
-              <dd className="text-primary mt-3 text-3xl font-extrabold tracking-tight tabular-nums">
+              <dd className="text-foreground mt-2 text-2xl font-extrabold tracking-tight tabular-nums sm:text-3xl">
                 {tile.value}
               </dd>
             </div>
           ))}
         </dl>
-
-        {/* Quick action banners */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Link
-            href="/dashboard/events/new"
-            className="from-primary via-primary/95 to-primary/85 text-primary-foreground focus-visible:ring-ring flex items-center gap-4 rounded-2xl bg-gradient-to-r p-5 shadow-md transition-all duration-200 outline-none hover:scale-[1.01] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2"
-          >
-            <div className="text-primary-foreground flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/15">
-              <ActionIcon>
-                <rect x="3.5" y="7" width="17" height="12.5" rx="2" />
-                <path d="m4 9 8 5.5L20 9M12 3.5v3M9.5 5h5" />
-              </ActionIcon>
-            </div>
-            <div>
-              <span className="block text-base font-bold tracking-tight">Buat Undangan Baru</span>
-              <span className="mt-0.5 block text-xs opacity-90">
-                Buat undangan pernikahan atau acaramu dalam hitungan menit.
-              </span>
-            </div>
-          </Link>
-
-          {latest && (
-            <Link
-              href={`/dashboard/events/${latest.id}/check-in`}
-              className="bg-foreground text-background focus-visible:ring-ring flex items-center gap-4 rounded-2xl p-5 shadow-md transition-all duration-200 outline-none hover:scale-[1.01] hover:shadow-lg focus-visible:ring-2 focus-visible:ring-offset-2"
-            >
-              <div className="text-background flex size-12 shrink-0 items-center justify-center rounded-xl bg-white/10">
-                <ActionIcon>
-                  <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
-                  <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
-                  <rect x="3.5" y="13.5" width="7" height="7" rx="1" />
-                  <path d="M14.5 14.5h3v3h-3zM19.5 14.5h1v1h-1zM14.5 19.5h1v1h-1zM19.5 19.5h1v1h-1z" />
-                </ActionIcon>
-              </div>
-              <div className="min-w-0">
-                <span className="block text-base font-bold tracking-tight">Check-in Tamu</span>
-                <span className="mt-0.5 block truncate text-xs opacity-80">
-                  Scan QR tamu saat hari-H · {latest.title}
-                </span>
-              </div>
-            </Link>
-          )}
-        </div>
       </section>
 
-      {/* Recent invitations section */}
-      <section aria-labelledby="my-invitations-heading" className="space-y-4">
-        <div className="border-border/50 flex items-end justify-between gap-4 border-b pb-3">
-          <div>
-            <h2
-              id="my-invitations-heading"
-              className="text-foreground text-lg font-bold tracking-tight"
-            >
-              Undangan milikmu
-            </h2>
-            <p className="text-muted-foreground text-xs sm:text-sm">
-              Undangan yang pernah kamu buat.
-            </p>
+      {latest && (
+        <section
+          aria-labelledby="latest-heading"
+          className="from-primary relative isolate overflow-hidden rounded-3xl bg-gradient-to-br to-emerald-800 p-6 text-white shadow-lg sm:p-8"
+        >
+          <div
+            className="pointer-events-none absolute -top-20 -right-16 -z-10 size-64 rounded-full bg-white/10 blur-3xl"
+            aria-hidden="true"
+          />
+          <p className="text-xs font-semibold tracking-wider text-emerald-200 uppercase">
+            Undangan terbaru
+          </p>
+          <h2 id="latest-heading" className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
+            {latest.title}
+          </h2>
+          <p className="mt-1 text-sm text-white/75">
+            {latest.stats.guests} tamu · {latest.stats.attendingPeople} akan hadir ·{" "}
+            {latest.stats.wishes} ucapan
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <QuickLink href={`/dashboard/events/${latest.id}`} icon={NAV_ICONS.overview}>
+              Ringkasan acara
+            </QuickLink>
+            <QuickLink href={`/dashboard/events/${latest.id}/guests`} icon={EVENT_ICONS.guests}>
+              Daftar tamu
+            </QuickLink>
+            <QuickLink href={`/dashboard/events/${latest.id}/check-in`} icon={EVENT_ICONS.checkIn}>
+              Check-in Tamu
+            </QuickLink>
           </div>
+        </section>
+      )}
+
+      <section aria-labelledby="my-invitations-heading" className="space-y-4">
+        <div className="flex items-end justify-between gap-4">
+          <h2
+            id="my-invitations-heading"
+            className="text-foreground text-lg font-bold tracking-tight"
+          >
+            Undangan milikmu
+          </h2>
           {events.length > 0 && (
             <Link
               href="/dashboard/events"
-              className="text-primary shrink-0 text-xs font-semibold underline-offset-4 hover:underline sm:text-sm"
+              className="text-primary shrink-0 text-sm font-semibold underline-offset-4 hover:underline"
             >
-              Selengkapnya »
+              Lihat semua
             </Link>
           )}
         </div>
 
         {events.length === 0 ? (
-          <div className="border-border/70 bg-card/40 mt-4 rounded-2xl border-2 border-dashed p-10 text-center">
-            <div className="bg-primary/10 text-primary mx-auto mb-3 flex size-12 items-center justify-center rounded-full">
-              💌
+          <div className="border-border/70 bg-card/50 rounded-3xl border-2 border-dashed px-6 py-14 text-center">
+            <div className="bg-primary/10 text-primary mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl">
+              <span className="size-7">{NAV_ICONS.invitations}</span>
             </div>
-            <p className="text-foreground font-semibold">Belum ada acara.</p>
-            <p className="text-muted-foreground mx-auto mt-1 max-w-sm text-sm">
-              Mulai dengan membuat acara pertamamu dan bagikan ke orang terdekat.
+            <p className="text-foreground text-lg font-bold">Belum ada acara.</p>
+            <p className="text-muted-foreground mx-auto mt-1.5 max-w-sm text-sm">
+              Mulai dengan membuat acara pertamamu, pilih template, lalu bagikan ke orang terdekat.
             </p>
-            <Button asChild className="mt-5 font-semibold shadow-xs">
+            <Button asChild className="mt-6 rounded-full px-6 font-semibold shadow-sm">
               <Link href="/dashboard/events/new">Buat Acara</Link>
             </Button>
           </div>
         ) : (
-          <ul className="mt-4 space-y-3">
+          <ul className="grid gap-4 md:grid-cols-2">
             {recent.map((event) => (
               <EventRow key={event.id} event={event} />
             ))}
@@ -178,5 +154,25 @@ export default async function DashboardPage() {
         )}
       </section>
     </div>
+  );
+}
+
+function QuickLink({
+  href,
+  icon,
+  children,
+}: {
+  href: string;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold backdrop-blur-sm transition-colors hover:bg-white/25 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
+    >
+      <span className="size-4">{icon}</span>
+      {children}
+    </Link>
   );
 }

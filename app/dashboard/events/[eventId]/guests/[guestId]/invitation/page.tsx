@@ -70,7 +70,7 @@ export default async function GuestInvitationPage({ params }: GuestInvitationPag
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border p-4">
+      <div className="border-border/60 bg-card flex flex-wrap items-center gap-2 rounded-2xl border p-4 shadow-xs">
         <span className="text-muted-foreground text-xs">Status undangan:</span>
         <InvitationStatusBadge status={detail.invitationStatus} />
         <span className="text-muted-foreground ml-4 text-xs">Status RSVP:</span>
@@ -78,7 +78,7 @@ export default async function GuestInvitationPage({ params }: GuestInvitationPag
       </div>
 
       {rsvp ? (
-        <div className="rounded-lg border p-4 text-sm">
+        <div className="border-border/60 bg-card rounded-2xl border p-4 text-sm shadow-xs">
           <p className="font-medium">Jawaban RSVP</p>
           {rsvp.attendance === "ATTENDING" && (
             <p className="mt-1">{rsvp.attendeeCount} orang akan hadir.</p>
@@ -91,13 +91,13 @@ export default async function GuestInvitationPage({ params }: GuestInvitationPag
           )}
         </div>
       ) : (
-        <div className="rounded-lg border p-4 text-sm">
+        <div className="border-border/60 bg-card rounded-2xl border p-4 text-sm shadow-xs">
           <p className="font-medium">Jawaban RSVP</p>
           <p className="text-muted-foreground mt-1">Tamu ini belum mengisi RSVP.</p>
         </div>
       )}
 
-      <div className="space-y-3 rounded-lg border p-4">
+      <div className="border-border/60 bg-card space-y-3 rounded-2xl border p-4 shadow-xs">
         <p className="text-sm font-medium">Tautan Undangan Pribadi</p>
         {inviteLink ? (
           <>

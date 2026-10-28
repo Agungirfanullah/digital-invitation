@@ -5,9 +5,9 @@ export default function GuestInvitationLoading() {
         <div className="bg-muted h-4 w-32 rounded" />
         <div className="bg-muted h-8 w-48 rounded" />
       </div>
-      <div className="bg-muted h-14 rounded-lg border" />
-      <div className="bg-muted h-24 rounded-lg border" />
-      <div className="bg-muted h-32 rounded-lg border" />
+      <div className="bg-muted/70 h-14 animate-pulse rounded-2xl" />
+      <div className="bg-muted/70 h-24 animate-pulse rounded-2xl" />
+      <div className="bg-muted/70 h-32 animate-pulse rounded-2xl" />
     </div>
   );
 }

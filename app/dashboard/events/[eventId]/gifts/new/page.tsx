@@ -5,6 +5,7 @@ import { EventMemberRole } from "@prisma/client";
 import { requireAppUser } from "@/lib/auth/session";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { GiftMethodForm } from "@/components/gifts/gift-method-form";
+import { PageHeader, Panel } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Tambah Metode Hadiah",
@@ -26,15 +27,16 @@ export default async function NewGiftMethodPage({ params }: NewGiftMethodPagePro
   if (!event) notFound();
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Tambah Metode Hadiah</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Tambahkan metode hadiah baru untuk {event.title}.
-        </p>
-      </div>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}/gifts`, label: "Hadiah" }}
+        title="Tambah Metode Hadiah"
+        description={<>Tambahkan metode hadiah baru untuk {event.title}.</>}
+      />
 
-      <GiftMethodForm eventId={eventId} />
+      <Panel className="p-5 sm:p-7">
+        <GiftMethodForm eventId={eventId} />
+      </Panel>
     </div>
   );
 }

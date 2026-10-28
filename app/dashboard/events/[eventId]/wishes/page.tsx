@@ -12,6 +12,7 @@ import { ModerateWishButtons } from "@/components/wishes/moderate-wish-buttons";
 import { WishStatusBadge } from "@/components/wishes/wish-status-badge";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Ucapan",
@@ -49,22 +50,18 @@ export default async function WishesPage({ params, searchParams }: WishesPagePro
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <Link
-          href={`/dashboard/events/${eventId}`}
-          className="text-muted-foreground text-sm underline underline-offset-4"
-        >
-          ← {data.event.title}
-        </Link>
-        <div className="mt-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Ucapan &amp; Doa</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Kelola ucapan dari tamu. Hanya ucapan yang disetujui akan tampil di undangan publik.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}`, label: data.event.title }}
+        title="Ucapan & Doa"
+        description={
+          <>Kelola ucapan dari tamu. Hanya ucapan yang disetujui akan tampil di undangan publik.</>
+        }
+      />
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border p-4">
+      <form
+        method="get"
+        className="border-border/60 bg-card flex flex-wrap items-end gap-3 rounded-2xl border p-4 shadow-xs"
+      >
         <div className="space-y-1.5">
           <label htmlFor="status" className="text-sm font-medium">
             Filter Status
@@ -83,7 +80,7 @@ export default async function WishesPage({ params, searchParams }: WishesPagePro
       </form>
 
       {data.wishes.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-8 text-center">
           <p className="font-medium">Belum ada ucapan.</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Ucapan dari tamu akan muncul di sini setelah mereka mengirimkannya melalui tautan
@@ -91,7 +88,7 @@ export default async function WishesPage({ params, searchParams }: WishesPagePro
           </p>
         </div>
       ) : (
-        <ul className="divide-y overflow-hidden rounded-lg border">
+        <ul className="border-border/60 bg-card divide-y overflow-hidden rounded-2xl border shadow-xs">
           {data.wishes.map((wish) => (
             <li key={wish.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
               <div className="min-w-0 flex-1">

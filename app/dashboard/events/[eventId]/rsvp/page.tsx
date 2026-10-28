@@ -14,6 +14,7 @@ import { InvitationStatusBadge } from "@/components/guests/invitation-status-bad
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "RSVP",
@@ -53,69 +54,83 @@ export default async function RsvpPage({ params, searchParams }: RsvpPageProps) 
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <Link
-          href={`/dashboard/events/${eventId}`}
-          className="text-muted-foreground text-sm underline underline-offset-4"
-        >
-          ← {data.event.title}
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Ringkasan RSVP</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Pantau konfirmasi kehadiran tamu untuk acara ini.
-            </p>
-          </div>
-          <Button asChild variant="outline">
-            <a href={`/dashboard/events/${eventId}/rsvp/export`}>Ekspor CSV</a>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}`, label: data.event.title }}
+        title="Ringkasan RSVP"
+        description={<>Pantau konfirmasi kehadiran tamu untuk acara ini.</>}
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <a href={`/dashboard/events/${eventId}/rsvp/export`}>Ekspor CSV</a>
+            </Button>
+          </>
+        }
+      />
 
-      <dl className="grid grid-cols-2 gap-4 rounded-lg border p-4 text-sm sm:grid-cols-4">
+      <dl className="border-border/60 bg-card grid grid-cols-2 gap-4 rounded-2xl border p-4 text-sm shadow-xs sm:grid-cols-4">
         <div>
-          <dt className="text-muted-foreground">Total Tamu</dt>
-          <dd className="mt-0.5 text-xl font-semibold">{data.counts.totalGuests}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Total Tamu</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
+            {data.counts.totalGuests}
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Akan Hadir</dt>
-          <dd className="mt-0.5 text-xl font-semibold text-green-700">{data.counts.attending}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Akan Hadir</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight text-green-700 tabular-nums">
+            {data.counts.attending}
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Tidak Hadir</dt>
-          <dd className="mt-0.5 text-xl font-semibold text-red-700">{data.counts.notAttending}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Tidak Hadir</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight text-red-700 tabular-nums">
+            {data.counts.notAttending}
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Belum Pasti</dt>
-          <dd className="mt-0.5 text-xl font-semibold text-amber-700">{data.counts.maybe}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Belum Pasti</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight text-amber-700 tabular-nums">
+            {data.counts.maybe}
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Belum Merespons</dt>
-          <dd className="mt-0.5 text-xl font-semibold">{data.counts.totalPending}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Belum Merespons</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
+            {data.counts.totalPending}
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Tingkat Respons</dt>
-          <dd className="mt-0.5 text-xl font-semibold">{data.counts.responseRate}%</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Tingkat Respons</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
+            {data.counts.responseRate}%
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Total Kuota Kursi</dt>
-          <dd className="mt-0.5 text-xl font-semibold">{data.counts.totalSeatsInvited}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">
+            Total Kuota Kursi
+          </dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
+            {data.counts.totalSeatsInvited}
+          </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">Orang Akan Hadir</dt>
-          <dd className="mt-0.5 text-xl font-semibold">{data.counts.confirmedSeats}</dd>
+          <dt className="text-muted-foreground text-xs font-medium sm:text-sm">Orang Akan Hadir</dt>
+          <dd className="mt-1 text-2xl font-bold tracking-tight tabular-nums">
+            {data.counts.confirmedSeats}
+          </dd>
         </div>
       </dl>
 
       {data.counts.totalGuests > 0 && data.counts.totalResponded === 0 && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-3 text-sm">
+        <p className="text-muted-foreground border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-3 text-sm">
           Belum ada tamu yang mengisi RSVP. Bagikan tautan undangan pribadi masing-masing tamu agar
           mereka dapat merespons.
         </p>
       )}
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border p-4">
+      <form
+        method="get"
+        className="border-border/60 bg-card flex flex-wrap items-end gap-3 rounded-2xl border p-4 shadow-xs"
+      >
         <div className="min-w-[180px] flex-1 space-y-1.5">
           <label htmlFor="q" className="text-sm font-medium">
             Cari Tamu
@@ -167,7 +182,7 @@ export default async function RsvpPage({ params, searchParams }: RsvpPageProps) 
       </form>
 
       {data.counts.totalGuests === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-8 text-center">
           <p className="font-medium">Belum ada tamu.</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Tambahkan tamu terlebih dahulu agar RSVP dapat dipantau di sini.
@@ -177,14 +192,14 @@ export default async function RsvpPage({ params, searchParams }: RsvpPageProps) 
           </Button>
         </div>
       ) : data.guests.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-8 text-center">
           <p className="font-medium">Tidak ada tamu yang cocok.</p>
           <p className="text-muted-foreground mt-1 text-sm">
             Tidak ada tamu yang cocok dengan pencarian/filter ini.
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="border-border/60 bg-card overflow-hidden rounded-2xl border shadow-xs">
           <ul className="divide-y">
             {data.guests.map((guest) => (
               <li

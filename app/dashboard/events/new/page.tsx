@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { CreateEventForm } from "@/components/events/create-event-form";
+import { PageHeader, Panel } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Buat Acara",
@@ -8,15 +9,18 @@ export const metadata: Metadata = {
 
 export default function NewEventPage() {
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Buat Acara</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Isi informasi dasar acaramu. Detail lainnya bisa dilengkapi setelah acara dibuat.
-        </p>
-      </div>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHeader
+        back={{ href: "/dashboard/events", label: "Undangan" }}
+        title="Buat Acara"
+        description={
+          <>Isi informasi dasar acaramu. Detail lainnya bisa dilengkapi setelah acara dibuat.</>
+        }
+      />
 
-      <CreateEventForm />
+      <Panel className="p-5 sm:p-7">
+        <CreateEventForm />
+      </Panel>
     </div>
   );
 }

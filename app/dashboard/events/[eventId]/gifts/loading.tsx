@@ -7,7 +7,7 @@ export default function GiftsLoading() {
       </div>
       <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="bg-muted h-16 rounded-lg border" />
+          <div key={index} className="bg-muted/70 h-16 animate-pulse rounded-2xl" />
         ))}
       </div>
     </div>

@@ -5,8 +5,8 @@ export default function CheckInLoading() {
         <div className="bg-muted h-4 w-40 rounded" />
         <div className="bg-muted h-8 w-48 rounded" />
       </div>
-      <div className="bg-muted h-24 rounded-lg border" />
-      <div className="bg-muted h-64 rounded-lg border" />
+      <div className="bg-muted/70 h-24 animate-pulse rounded-2xl" />
+      <div className="bg-muted/70 h-64 animate-pulse rounded-2xl" />
     </div>
   );
 }

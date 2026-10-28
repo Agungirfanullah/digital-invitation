@@ -44,19 +44,19 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
   const isPublished = event.status === "PUBLISHED";
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-5">
       <Link
         href="/dashboard/events"
-        className="text-primary inline-flex items-center gap-1.5 text-sm font-semibold underline-offset-4 hover:underline"
+        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
       >
         <span aria-hidden="true">←</span> Kembali ke Undangan
       </Link>
 
-      <div className="bg-card border-border/70 overflow-hidden rounded-2xl border shadow-sm">
-        <div className="from-primary via-primary/95 to-primary/85 text-primary-foreground space-y-4 bg-gradient-to-br p-5 shadow-xs sm:p-6">
+      <div className="bg-card border-border/60 overflow-hidden rounded-3xl border shadow-sm">
+        <div className="from-primary text-primary-foreground space-y-4 bg-gradient-to-br to-emerald-800 p-6 sm:p-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="truncate text-xl font-bold tracking-tight">{event.title}</h1>
+              <h1 className="truncate text-2xl font-bold tracking-tight">{event.title}</h1>
               <p className="mt-0.5 text-xs font-medium opacity-85">
                 {EVENT_TYPE_LABELS[event.type]}
               </p>
@@ -71,12 +71,11 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
               rel="noopener noreferrer"
               className="text-primary-foreground inline-flex items-center gap-1.5 rounded-lg bg-black/15 px-3 py-1.5 text-xs font-semibold underline-offset-4 transition-colors hover:bg-black/25"
             >
-              <span>🌐</span>
               <span className="truncate">Lihat undangan: /invite/{event.slug}</span>
             </Link>
           ) : (
             <p className="w-fit rounded-lg bg-black/15 px-3 py-1.5 text-xs opacity-85">
-              🔒 Belum dipublikasikan — hanya kamu yang bisa melihat.
+              Belum dipublikasikan — hanya kamu yang bisa melihat.
             </p>
           )}
 
@@ -91,23 +90,23 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
       </div>
 
       {!isPublished && readiness.missing.length > 0 && (
-        <div className="bg-muted rounded-lg p-4 text-sm">
-          <p className="font-medium">Lengkapi dulu sebelum dipublikasikan:</p>
-          <ul className="text-muted-foreground mt-1 list-disc pl-5">
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-5 text-sm">
+          <p className="font-semibold text-amber-900">Lengkapi dulu sebelum dipublikasikan:</p>
+          <ul className="mt-2 list-disc space-y-0.5 pl-5 text-amber-900/80">
             {readiness.missing.map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
           <Link
             href={`/dashboard/events/${event.id}/editor`}
-            className="text-foreground mt-2 inline-block underline underline-offset-4"
+            className="mt-3 inline-block font-semibold text-amber-900 underline underline-offset-4"
           >
             Buka editor undangan
           </Link>
         </div>
       )}
 
-      <dl className="grid grid-cols-1 gap-4 rounded-lg border p-4 text-sm sm:grid-cols-2">
+      <dl className="border-border/60 bg-card grid grid-cols-1 gap-4 rounded-2xl border p-4 text-sm shadow-xs sm:grid-cols-2">
         <div>
           <dt className="text-muted-foreground">Slug undangan</dt>
           <dd className="mt-0.5 break-all">/{event.slug}</dd>

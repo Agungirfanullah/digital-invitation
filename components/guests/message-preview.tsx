@@ -33,7 +33,7 @@ export function MessagePreview({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="border-border/60 bg-card space-y-3 rounded-2xl border p-4 shadow-xs">
       <p className="text-sm font-medium">Pratinjau Pesan</p>
       <pre className="bg-muted overflow-x-auto rounded-md p-3 text-sm whitespace-pre-wrap">
         {messageText}

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireAppUser } from "@/lib/auth/session";
 import { listTemplateOptions } from "@/lib/editor/service";
 import { listEventsForUser } from "@/lib/events/service";
+import { DashboardLogo } from "@/components/dashboard/dashboard-brand";
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard";
 
 export const metadata: Metadata = {
@@ -27,11 +28,19 @@ export default async function OnboardingPage() {
   const templates = (await listTemplateOptions()).filter((template) => template.implemented);
 
   return (
-    <div className="mx-auto max-w-xl px-4 py-12">
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Yuk, buat undangan pertamamu.</h1>
+    <div className="bg-muted/30 flex flex-1 flex-col px-4 py-6 sm:px-8">
+      <DashboardLogo />
+      <div className="mx-auto w-full max-w-xl py-10 sm:py-14">
+        <div className="mb-8 text-center">
+          <p className="text-primary text-sm font-semibold">Selamat datang, {user.name}</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-tight text-balance">
+            Yuk, buat undangan pertamamu.
+          </h1>
+        </div>
+        <div className="border-border/60 bg-card rounded-3xl border p-6 shadow-sm sm:p-8">
+          <OnboardingWizard templates={templates} />
+        </div>
       </div>
-      <OnboardingWizard templates={templates} />
     </div>
   );
 }

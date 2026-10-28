@@ -124,13 +124,13 @@ export function CheckInShell({ eventId, canMutate }: CheckInShellProps) {
       )}
 
       {stage.kind === "loading" && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-6 text-center text-sm">
           Memuat data tamu...
         </p>
       )}
 
       {stage.kind === "error" && (
-        <div className="space-y-3 rounded-lg border border-dashed p-6 text-center">
+        <div className="border-border/70 bg-card/50 space-y-3 rounded-2xl border-2 border-dashed p-6 text-center">
           <p className="text-destructive text-sm font-medium">{stage.message}</p>
           <Button type="button" onClick={reset}>
             Pindai / Cari Tamu Lain

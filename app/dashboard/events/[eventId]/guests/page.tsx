@@ -16,6 +16,7 @@ import { DeleteGuestButton } from "@/components/guests/delete-guest-button";
 import { CopyInviteLinkButton } from "@/components/guests/copy-invite-link-button";
 import { RsvpStatusBadge } from "@/components/rsvp/rsvp-status-badge";
 import { CheckInStatusBadge } from "@/components/checkin/checkin-status-badge";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Tamu",
@@ -56,40 +57,36 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <Link
-          href={`/dashboard/events/${eventId}`}
-          className="text-muted-foreground text-sm underline underline-offset-4"
-        >
-          ← {data.event.title}
-        </Link>
-        <div className="mt-2 flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Tamu</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {data.total} tamu terdaftar di acara ini.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {canEdit && (
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}`, label: data.event.title }}
+        title="Tamu"
+        description={<>{data.total} tamu terdaftar di acara ini.</>}
+        actions={
+          <>
+            <div className="flex flex-wrap gap-2">
+              {canEdit && (
+                <Button asChild variant="outline">
+                  <Link href={`/dashboard/events/${eventId}/guests/import`}>Impor CSV</Link>
+                </Button>
+              )}
+              {/* Export is VIEWER-and-above, same as the list itself (D-023) — never gated behind canEdit. */}
               <Button asChild variant="outline">
-                <Link href={`/dashboard/events/${eventId}/guests/import`}>Impor CSV</Link>
+                <a href={`/dashboard/events/${eventId}/guests/export`}>Ekspor CSV</a>
               </Button>
-            )}
-            {/* Export is VIEWER-and-above, same as the list itself (D-023) — never gated behind canEdit. */}
-            <Button asChild variant="outline">
-              <a href={`/dashboard/events/${eventId}/guests/export`}>Ekspor CSV</a>
-            </Button>
-            {canEdit && (
-              <Button asChild>
-                <Link href={`/dashboard/events/${eventId}/guests/new`}>Tambah Tamu</Link>
-              </Button>
-            )}
-          </div>
-        </div>
-      </div>
+              {canEdit && (
+                <Button asChild>
+                  <Link href={`/dashboard/events/${eventId}/guests/new`}>Tambah Tamu</Link>
+                </Button>
+              )}
+            </div>
+          </>
+        }
+      />
 
-      <form method="get" className="flex flex-wrap items-end gap-3 rounded-lg border p-4">
+      <form
+        method="get"
+        className="border-border/60 bg-card flex flex-wrap items-end gap-3 rounded-2xl border p-4 shadow-xs"
+      >
         <div className="min-w-[180px] flex-1 space-y-1.5">
           <label htmlFor="q" className="text-sm font-medium">
             Cari
@@ -131,7 +128,7 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
       </form>
 
       {data.guests.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-8 text-center">
+        <div className="border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-8 text-center">
           <p className="font-medium">Belum ada tamu.</p>
           <p className="text-muted-foreground mt-1 text-sm">
             {isFiltered
@@ -145,7 +142,7 @@ export default async function GuestsPage({ params, searchParams }: GuestsPagePro
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
+        <div className="border-border/60 bg-card overflow-hidden rounded-2xl border shadow-xs">
           <ul className="divide-y">
             {data.guests.map((guest) => {
               // `guest.invitationToken` is masked to `null` for a VIEWER

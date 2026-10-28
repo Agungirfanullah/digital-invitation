@@ -69,7 +69,7 @@ export function ManualSearch({ eventId, onSelect, disabled }: ManualSearchProps)
       )}
 
       {!pending && results.length > 0 && (
-        <ul className="divide-y overflow-hidden rounded-lg border">
+        <ul className="border-border/60 bg-card divide-y overflow-hidden rounded-2xl border shadow-xs">
           {results.map((item) => (
             <li key={item.guestId} className="flex items-center justify-between gap-3 p-3">
               <div className="min-w-0">

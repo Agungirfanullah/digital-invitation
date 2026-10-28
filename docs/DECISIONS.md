@@ -3361,3 +3361,51 @@ the dashboard and editor share; the redesign works within them. Adding
 `data-phone-screen` to `PhoneFrame` and an `as` prop to `ScrollReveal` are the
 only changes outside the marketing components.
 
+## D-096 — Dashboard and Account Pages Redesign
+
+**Decision (product owner, 2026-10-28):** after the homepage (D-095), refresh
+the dashboard and user-facing account pages in the same clean modern style.
+No route, Server Action, query shape, permission check or database change;
+labels, headings and form fields keep their names.
+
+**What changed:**
+
+- **Shell:** the dark sidebar became a light one (`app/dashboard/layout.tsx`)
+  with the logo, main navigation, and — inside an event — the event's own
+  pages ("Acara ini"): Ringkasan, Desain Undangan, Tamu, RSVP, Ucapan,
+  Hadiah, Analitik, Check-in, Pengaturan Acara. The event id comes from the
+  URL (`currentEventId()`), so the sidebar costs no extra query. Below `lg`, a
+  compact header with a new-event shortcut and a drawer
+  (`MobileDashboardBar`) replaces the old three-tab bar. The old sidebar's
+  logo had dark-green text on a dark-green background; fixed.
+- **Shared pieces:** `PageHeader` (back link, the page's single `<h1>`,
+  description, actions) and `Panel` in `components/dashboard/page-header.tsx`,
+  used by every event sub-page and form page; forms sit in a white panel.
+  Bordered boxes in dashboard pages and dashboard-only components became
+  white, rounded panels; dashed empty states and loading skeletons were
+  restyled the same way. Stat values are larger.
+- **Beranda:** greeting, three real-count tiles, a card for the newest
+  event with shortcuts, and event cards. **Undangan:** event cards in a grid,
+  now with each event's guest/attending/wish counts — the page switched to
+  `listEventsWithStatsForUser()`, the batched query Beranda already used.
+  **Ringkasan acara:** larger header, an amber "lengkapi dulu" callout, and
+  a refreshed menu grid.
+- **Login/Daftar/Lupa sandi:** two-column layout with a brand panel listing
+  real features; the form sits in a card. **Onboarding:** logo, larger
+  heading and the wizard in a card (steps unchanged).
+- **UI primitives:** `Button`, `Input`, `Select`, `Textarea` corners went from
+  `rounded-md` to `rounded-lg`. Sizes and colours are unchanged because the
+  public invitation's RSVP and wish forms use them too.
+
+**Kept out on purpose:** components rendered on public invitations
+(`components/rsvp`, `components/wishes`, `components/gifts/copy-value-button`,
+`components/guests/guest-qr-code`) were not restyled; templates are the next
+step of the refresh.
+
+**Naming constraints found:** sidebar labels avoid words page actions use
+("Edit", "Tambah Tamu", "Kelola"), because tests locate those by partial name
+and a viewer must see no "Edit" link; the Beranda shortcut reads "Ringkasan
+acara", not "Kelola acara". Analitik is listed before Check-in so the list's
+text never runs together into "…Check-inAnalitik" (contains "nAn", which
+`e2e/analytics.spec.ts` forbids).
+

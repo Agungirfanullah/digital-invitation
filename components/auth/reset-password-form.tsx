@@ -15,7 +15,7 @@ export function ResetPasswordForm() {
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <div className="space-y-1 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Atur ulang kata sandi</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Atur ulang kata sandi</h1>
         <p className="text-muted-foreground text-sm">Masukkan kata sandi baru untuk akunmu.</p>
       </div>
 
@@ -38,7 +38,7 @@ export function ResetPasswordForm() {
         error={state.fieldErrors?.confirmPassword?.[0]}
       />
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="h-11 w-full rounded-full font-semibold" disabled={pending}>
         {pending ? "Menyimpan..." : "Simpan kata sandi baru"}
       </Button>
     </form>

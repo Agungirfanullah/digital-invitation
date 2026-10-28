@@ -161,7 +161,7 @@ export function GalleryImageUploadForm({
       : "Unggah Foto";
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="border-border/60 bg-card space-y-3 rounded-2xl border p-4 shadow-xs">
       <h3 className="text-sm font-medium">Unggah Foto</h3>
       <FormError message={error} />
 

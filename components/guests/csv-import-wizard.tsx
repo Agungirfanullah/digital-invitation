@@ -42,7 +42,7 @@ export function CsvImportWizard({ eventId }: { eventId: string }) {
 
   if (confirmState.summary) {
     return (
-      <div className="space-y-4 rounded-lg border p-4">
+      <div className="border-border/60 bg-card space-y-4 rounded-2xl border p-4 shadow-xs">
         <p className="font-medium">Impor selesai.</p>
         <ul className="text-muted-foreground space-y-1 text-sm">
           <li>{confirmState.summary.imported} tamu berhasil diimpor.</li>
@@ -62,7 +62,7 @@ export function CsvImportWizard({ eventId }: { eventId: string }) {
       <div className="space-y-4">
         <FormError message={confirmState.error} />
 
-        <div className="rounded-lg border p-4 text-sm">
+        <div className="border-border/60 bg-card rounded-2xl border p-4 text-sm shadow-xs">
           <p>
             <strong>{preview.importableCount}</strong> baris siap diimpor,{" "}
             <strong>{preview.duplicateCount}</strong> duplikat akan dilewati,{" "}
@@ -71,7 +71,7 @@ export function CsvImportWizard({ eventId }: { eventId: string }) {
         </div>
 
         {preview.rows.length > 0 && (
-          <div className="max-h-96 overflow-auto rounded-lg border">
+          <div className="border-border/60 bg-card max-h-96 overflow-auto rounded-2xl border shadow-xs">
             <table className="w-full text-left text-sm">
               <thead className="bg-muted sticky top-0">
                 <tr>

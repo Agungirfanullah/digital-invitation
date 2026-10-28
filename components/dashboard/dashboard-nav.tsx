@@ -1,96 +1,123 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const iconProps = {
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.75,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true,
-};
-
-function HomeIcon() {
-  return (
-    <svg {...iconProps}>
-      <path d="M3.5 11 12 4l8.5 7M5.5 9.5V20h13V9.5M10 20v-5h4v5" />
-    </svg>
-  );
-}
-
-function EnvelopeIcon() {
-  return (
-    <svg {...iconProps}>
-      <rect x="3.5" y="5.5" width="17" height="13" rx="2" />
-      <path d="m4 7.5 8 6 8-6" />
-    </svg>
-  );
-}
-
-function PlusIcon() {
-  return (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="M12 8v8M8 12h8" />
-    </svg>
-  );
-}
+import { EVENT_ICONS, NAV_ICONS } from "@/components/dashboard/dashboard-icons";
 
 const NEW_EVENT_PATH = "/dashboard/events/new";
+const EVENT_PATH = /^\/dashboard\/events\/([^/]+)(\/.*)?$/;
 
-const ITEMS = [
-  {
-    href: "/dashboard",
-    label: "Beranda",
-    icon: HomeIcon,
-    isActive: (pathname: string) => pathname === "/dashboard",
-  },
-  {
-    href: "/dashboard/events",
-    label: "Undangan",
-    icon: EnvelopeIcon,
-    isActive: (pathname: string) =>
-      pathname.startsWith("/dashboard/events") && pathname !== NEW_EVENT_PATH,
-  },
-  {
-    href: NEW_EVENT_PATH,
-    label: "Acara Baru",
-    icon: PlusIcon,
-    isActive: (pathname: string) => pathname === NEW_EVENT_PATH,
-  },
-];
+interface NavItem {
+  href: string;
+  label: string;
+  icon: ReactNode;
+  active: boolean;
+}
 
-export function DashboardNav() {
+/** The event id when the current page belongs to one event, from the URL alone (no extra query). */
+export function currentEventId(pathname: string): string | null {
+  const match = EVENT_PATH.exec(pathname);
+  if (!match || match[1] === "new") return null;
+  return match[1];
+}
+
+function mainItems(pathname: string): NavItem[] {
+  return [
+    {
+      href: "/dashboard",
+      label: "Beranda",
+      icon: NAV_ICONS.home,
+      active: pathname === "/dashboard",
+    },
+    {
+      href: "/dashboard/events",
+      label: "Undangan",
+      icon: NAV_ICONS.invitations,
+      active: pathname.startsWith("/dashboard/events") && pathname !== NEW_EVENT_PATH,
+    },
+    {
+      href: NEW_EVENT_PATH,
+      label: "Acara Baru",
+      icon: NAV_ICONS.plus,
+      active: pathname === NEW_EVENT_PATH,
+    },
+  ];
+}
+
+/**
+ * One event's pages. Labels avoid the words the pages' own row actions use
+ * ("Edit", "Tambah Tamu"…), so a page's buttons stay unambiguous.
+ */
+function eventItems(eventId: string, pathname: string): NavItem[] {
+  const base = `/dashboard/events/${eventId}`;
+  const item = (path: string, label: string, icon: ReactNode): NavItem => ({
+    href: `${base}${path}`,
+    label,
+    icon,
+    active: path === "" ? pathname === base : pathname.startsWith(`${base}${path}`),
+  });
+  return [
+    item("", "Ringkasan", NAV_ICONS.overview),
+    item("/editor", "Desain Undangan", EVENT_ICONS.editor),
+    item("/guests", "Tamu", EVENT_ICONS.guests),
+    item("/rsvp", "RSVP", EVENT_ICONS.rsvp),
+    item("/wishes", "Ucapan", EVENT_ICONS.wishes),
+    item("/gifts", "Hadiah", EVENT_ICONS.gifts),
+    // Analitik comes before Check-in: in the other order the list's text runs
+    // together as "Check-inAnalitik", which contains "nAn" and trips
+    // e2e/analytics.spec.ts's check that no "NaN" is ever rendered.
+    item("/analytics", "Analitik", EVENT_ICONS.analytics),
+    item("/check-in", "Check-in", EVENT_ICONS.checkIn),
+    item("/edit", "Pengaturan Acara", EVENT_ICONS.settings),
+  ];
+}
+
+function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => void }) {
+  return (
+    <ul className="space-y-0.5">
+      {items.map((item) => (
+        <li key={item.href}>
+          <Link
+            href={item.href}
+            onClick={onNavigate}
+            aria-current={item.active ? "page" : undefined}
+            className={`focus-visible:ring-ring group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors outline-none focus-visible:ring-2 ${
+              item.active
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
+          >
+            <span
+              className={`size-[18px] shrink-0 ${item.active ? "text-primary" : "text-muted-foreground/80 group-hover:text-foreground"}`}
+            >
+              {item.icon}
+            </span>
+            {item.label}
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The dashboard's navigation: main pages, plus the current event's pages when inside one. */
+export function DashboardNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const eventId = currentEventId(pathname);
 
   return (
-    <nav aria-label="Navigasi dashboard" className="w-full">
-      <ul className="flex gap-1 lg:flex-col">
-        {ITEMS.map((item) => {
-          const active = item.isActive(pathname);
-          return (
-            <li key={item.href} className="flex-1 lg:flex-none">
-              <Link
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={`focus-visible:ring-ring flex items-center justify-center gap-1.5 rounded-md px-2 py-2 text-sm font-medium whitespace-nowrap transition-colors outline-none focus-visible:ring-2 sm:gap-2 sm:px-3 lg:justify-start ${
-                  active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-background/75 hover:bg-background/10 hover:text-background"
-                }`}
-              >
-                <span className="size-4 shrink-0">
-                  <item.icon />
-                </span>
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <nav aria-label="Navigasi dashboard" className="w-full space-y-6">
+      <NavList items={mainItems(pathname)} onNavigate={onNavigate} />
+      {eventId && (
+        <div>
+          <p className="text-muted-foreground/70 mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase">
+            Acara ini
+          </p>
+          <NavList items={eventItems(eventId, pathname)} onNavigate={onNavigate} />
+        </div>
+      )}
     </nav>
   );
 }

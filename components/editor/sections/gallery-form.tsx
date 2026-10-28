@@ -56,7 +56,7 @@ export function GalleryForm({ eventId, value, onChange }: GalleryFormProps) {
       </div>
 
       {items.length === 0 && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-6 text-center text-sm">
           Belum ada foto atau video.
         </p>
       )}
@@ -126,7 +126,7 @@ function GalleryVideoForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border p-4">
+    <div className="border-border/60 bg-card space-y-3 rounded-2xl border p-4 shadow-xs">
       <h3 className="text-sm font-medium">Tambah Video (tautan)</h3>
       <p className="text-muted-foreground text-xs">
         Video ditambahkan melalui tautan langsung ke berkas video, bukan diunggah — undangan ini
@@ -208,7 +208,7 @@ function GalleryItemCard({
   }
 
   return (
-    <li className="space-y-2 rounded-lg border p-3">
+    <li className="border-border/60 bg-card space-y-2 rounded-2xl border p-3 shadow-xs">
       {item.type === "VIDEO" ? (
         <video
           src={item.url}

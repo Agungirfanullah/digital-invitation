@@ -105,7 +105,7 @@ export function LoveStoryForm({
       <FormError message={deleteError} />
 
       {items.length === 0 && editingId !== "new" && (
-        <p className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+        <p className="text-muted-foreground border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-6 text-center text-sm">
           Belum ada momen yang ditambahkan.
         </p>
       )}
@@ -122,7 +122,7 @@ export function LoveStoryForm({
               />
             </li>
           ) : (
-            <li key={item.id} className="rounded-lg border p-4">
+            <li key={item.id} className="border-border/60 bg-card rounded-2xl border p-4 shadow-xs">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   {item.dateLabel && (
@@ -217,7 +217,7 @@ function LoveStoryItemForm({
   }
 
   return (
-    <div className="space-y-4 rounded-lg border p-4">
+    <div className="border-border/60 bg-card space-y-4 rounded-2xl border p-4 shadow-xs">
       <FormError message={error} />
       <FormField
         label="Label tanggal (opsional)"

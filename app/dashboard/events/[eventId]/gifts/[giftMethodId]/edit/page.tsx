@@ -5,6 +5,7 @@ import { requireAppUser } from "@/lib/auth/session";
 import { getGiftMethodForEditor } from "@/lib/gifts/service";
 import { EventNotFoundError, GiftMethodNotFoundError } from "@/lib/gifts/errors";
 import { GiftMethodForm } from "@/components/gifts/gift-method-form";
+import { PageHeader, Panel } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Edit Metode Hadiah",
@@ -29,13 +30,16 @@ export default async function EditGiftMethodPage({ params }: EditGiftMethodPageP
   }
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Edit Metode Hadiah</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Perbarui detail metode hadiah ini.</p>
-      </div>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}/gifts`, label: "Hadiah" }}
+        title="Edit Metode Hadiah"
+        description={<>Perbarui detail metode hadiah ini.</>}
+      />
 
-      <GiftMethodForm eventId={eventId} giftMethod={giftMethod} />
+      <Panel className="p-5 sm:p-7">
+        <GiftMethodForm eventId={eventId} giftMethod={giftMethod} />
+      </Panel>
     </div>
   );
 }

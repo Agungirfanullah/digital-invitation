@@ -5,6 +5,7 @@ import { EventMemberRole } from "@prisma/client";
 import { requireAppUser } from "@/lib/auth/session";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { GuestForm } from "@/components/guests/guest-form";
+import { PageHeader, Panel } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Tambah Tamu",
@@ -26,15 +27,18 @@ export default async function NewGuestPage({ params }: NewGuestPageProps) {
   if (!event) notFound();
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Tambah Tamu</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Tambahkan tamu baru untuk {event.title}. Tautan undangan pribadi dibuat otomatis.
-        </p>
-      </div>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}/guests`, label: "Tamu" }}
+        title="Tambah Tamu"
+        description={
+          <>Tambahkan tamu baru untuk {event.title}. Tautan undangan pribadi dibuat otomatis.</>
+        }
+      />
 
-      <GuestForm eventId={eventId} />
+      <Panel className="p-5 sm:p-7">
+        <GuestForm eventId={eventId} />
+      </Panel>
     </div>
   );
 }

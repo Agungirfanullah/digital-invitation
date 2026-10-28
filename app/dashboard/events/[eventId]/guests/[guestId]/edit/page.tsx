@@ -5,6 +5,7 @@ import { requireAppUser } from "@/lib/auth/session";
 import { getGuestForEditor } from "@/lib/guests/service";
 import { EventNotFoundError, GuestNotFoundError } from "@/lib/guests/errors";
 import { GuestForm } from "@/components/guests/guest-form";
+import { PageHeader, Panel } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Edit Tamu",
@@ -27,13 +28,16 @@ export default async function EditGuestPage({ params }: EditGuestPageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-lg">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Edit Tamu</h1>
-        <p className="text-muted-foreground mt-1 text-sm">Perbarui data {guest.name}.</p>
-      </div>
+    <div className="mx-auto max-w-lg space-y-6">
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}/guests`, label: "Tamu" }}
+        title="Edit Tamu"
+        description={<>Perbarui data {guest.name}.</>}
+      />
 
-      <GuestForm eventId={eventId} guest={guest} />
+      <Panel className="p-5 sm:p-7">
+        <GuestForm eventId={eventId} guest={guest} />
+      </Panel>
     </div>
   );
 }

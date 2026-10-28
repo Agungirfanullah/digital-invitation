@@ -1,69 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-const iconProps = {
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.5,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-  "aria-hidden": true,
-};
-
-const ICONS = {
-  editor: (
-    <svg {...iconProps}>
-      <rect x="3.5" y="4" width="17" height="16" rx="2" />
-      <path d="M3.5 9h17M9 9v11M13 13h4M13 16h3" />
-    </svg>
-  ),
-  guests: (
-    <svg {...iconProps}>
-      <circle cx="9" cy="8.5" r="3.25" />
-      <path d="M2.75 19.5c.5-3.4 3-5.25 6.25-5.25s5.75 1.85 6.25 5.25" />
-      <path d="M15.5 5.5a3 3 0 0 1 0 6M18 14.75c1.6.7 2.9 2.3 3.25 4.75" />
-    </svg>
-  ),
-  rsvp: (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="m8.5 12.5 2.3 2.3 4.7-5.3" />
-    </svg>
-  ),
-  gifts: (
-    <svg {...iconProps}>
-      <rect x="3.5" y="9" width="17" height="11" rx="1.5" />
-      <path d="M3.5 13h17M12 9v11" />
-      <path d="M12 9C9.5 9 8 7.5 8 6a2 2 0 0 1 4 0 2 2 0 0 1 4 0c0 1.5-1.5 3-4 3Z" />
-    </svg>
-  ),
-  wishes: (
-    <svg {...iconProps}>
-      <path d="M4 5h16v11H8.5L4 20.25V5Z" />
-      <path d="M8.5 9.5h7M8.5 12.5h4" />
-    </svg>
-  ),
-  checkIn: (
-    <svg {...iconProps}>
-      <rect x="3.5" y="3.5" width="7" height="7" rx="1" />
-      <rect x="13.5" y="3.5" width="7" height="7" rx="1" />
-      <rect x="3.5" y="13.5" width="7" height="7" rx="1" />
-      <path d="M14.5 14.5h3v3h-3zM19.5 14.5h1v1h-1zM14.5 19.5h1v1h-1zM19.5 19.5h1v1h-1z" />
-    </svg>
-  ),
-  analytics: (
-    <svg {...iconProps}>
-      <path d="M4 20V10M10 20V4M16 20v-8M21 20H3" />
-    </svg>
-  ),
-  settings: (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="3" />
-      <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8" />
-    </svg>
-  ),
-} satisfies Record<string, ReactNode>;
+import { EVENT_ICONS as ICONS } from "@/components/dashboard/dashboard-icons";
 
 export function EventMenuGrid({ eventId }: { eventId: string }) {
   const base = `/dashboard/events/${eventId}`;
@@ -84,18 +22,18 @@ export function EventMenuGrid({ eventId }: { eventId: string }) {
         <li key={item.href}>
           <Link
             href={item.href}
-            className={`group focus-visible:ring-ring flex h-full min-h-24 flex-col items-center justify-center gap-2 rounded-2xl p-3 text-center text-xs font-semibold transition-all duration-200 outline-none hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-offset-2 ${
+            className={`group focus-visible:ring-ring flex h-full min-h-28 flex-col items-start justify-between gap-3 rounded-2xl p-4 text-left text-sm font-semibold transition-all duration-200 outline-none hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-offset-2 ${
               item.primary
-                ? "from-primary via-primary/95 to-primary/85 text-primary-foreground glow-primary bg-gradient-to-br shadow-md hover:opacity-95"
-                : "border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary border shadow-xs"
+                ? "bg-foreground text-background shadow-sm"
+                : "border-border/60 bg-card text-foreground hover:border-primary/30 border shadow-xs"
             }`}
           >
             <span
-              className={`size-7 transition-transform duration-200 group-hover:scale-110 ${
-                item.primary ? "text-primary-foreground" : "text-primary"
+              className={`flex size-10 items-center justify-center rounded-xl transition-transform duration-200 group-hover:scale-110 ${
+                item.primary ? "bg-white/15 text-white" : "bg-primary/10 text-primary"
               }`}
             >
-              {item.icon}
+              <span className="size-5">{item.icon}</span>
             </span>
             <span className="leading-tight">{item.label}</span>
           </Link>

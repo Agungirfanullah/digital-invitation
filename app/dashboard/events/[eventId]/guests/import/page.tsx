@@ -5,6 +5,7 @@ import { EventMemberRole } from "@prisma/client";
 import { requireAppUser } from "@/lib/auth/session";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { CsvImportWizard } from "@/components/guests/csv-import-wizard";
+import { PageHeader, Panel } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Impor Tamu",
@@ -22,16 +23,21 @@ export default async function ImportGuestsPage({ params }: ImportGuestsPageProps
   if (!event) notFound();
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Impor Tamu dari CSV</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Impor daftar tamu untuk {event.title}. Setiap tamu yang berhasil diimpor otomatis mendapat
-          tautan undangan pribadi.
-        </p>
-      </div>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <PageHeader
+        back={{ href: `/dashboard/events/${eventId}/guests`, label: "Tamu" }}
+        title="Impor Tamu dari CSV"
+        description={
+          <>
+            Impor daftar tamu untuk {event.title}. Setiap tamu yang berhasil diimpor otomatis
+            mendapat tautan undangan pribadi.
+          </>
+        }
+      />
 
-      <CsvImportWizard eventId={eventId} />
+      <Panel className="p-5 sm:p-7">
+        <CsvImportWizard eventId={eventId} />
+      </Panel>
     </div>
   );
 }

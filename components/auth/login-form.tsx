@@ -24,7 +24,7 @@ export function LoginForm({
   return (
     <form action={formAction} className="space-y-4" noValidate>
       <div className="space-y-1 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Masuk</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Masuk</h1>
         <p className="text-muted-foreground text-sm">Lanjutkan mengelola undanganmu.</p>
       </div>
 
@@ -65,7 +65,7 @@ export function LoginForm({
         </Link>
       </div>
 
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="h-11 w-full rounded-full font-semibold" disabled={pending}>
         {pending ? "Masuk..." : "Masuk"}
       </Button>
 
