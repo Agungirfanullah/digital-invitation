@@ -6,9 +6,11 @@ import { InvitationRenderer } from "@/components/invitation/invitation-renderer"
 import { PhoneFrame } from "@/components/invitation/phone-frame";
 import { ArrowRightIcon, CheckIcon, QrCodeIcon, SendIcon } from "@/components/marketing/icons";
 import { PhoneAutoScroll } from "@/components/marketing/phone-auto-scroll";
+import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { buildDemoInvitationWithPhotos } from "@/lib/marketing/demo-invitation";
 
 const HERO_TEMPLATE = "dark-luxury";
+const EVENT_TYPE_COUNT = Object.keys(EVENT_TYPE_LABELS).length;
 
 /** Plain product facts, not ratings or customer counts (CLAUDE.md §1.4, D-073, D-092). */
 const FACTS = ["Gratis untuk mulai", "Tamu tidak perlu instal aplikasi", "Kirim lewat WhatsApp"];
@@ -55,7 +57,7 @@ export function Hero({ ctaHref }: { ctaHref: string }) {
               <span className="bg-primary/60 absolute inline-flex size-full animate-ping rounded-full" />
               <span className="bg-primary relative inline-flex size-2 rounded-full" />
             </span>
-            Platform Undangan Digital Modern No. 1 di Indonesia
+            Undangan digital untuk {EVENT_TYPE_COUNT} jenis acara
           </p>
 
           <h1

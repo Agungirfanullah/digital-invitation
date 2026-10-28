@@ -107,8 +107,9 @@ digital-gift display) do not become MVP-defining by that fact.
 1. **Pricing is shown but cannot be bought.** The homepage lists Free /
    Premium / Business prices from the `Plan` table, but there is no
    checkout, no plan enforcement and no payment provider (Roadmap Phase 18
-   not started). Needs a product decision: hide paid plans until billing
-   exists, or build Phase 18.
+   not started). Decided 2026-10-28 (D-095, option A): paid plans are marked
+   "Segera hadir" and all features are free during the early period, until
+   Phase 18 is built.
 2. ~~Rate limiting is in-memory per process~~ — now database-backed and
    shared across instances (D-089). Production must run
    `prisma migrate deploy` for `RateLimitBucket`; until then the limiter
@@ -146,16 +147,16 @@ digital-gift display) do not become MVP-defining by that fact.
    - ~~the root JSON-LD is emitted on every route with a hardcoded
      `highPrice`~~ — fixed 2026-10-27: homepage only, prices from
      `getActivePlans()`;
-   - ~~fabricated "4.9/5 Rating" in the hero~~ — removed 2026-10-27; "No. 1
-     di Indonesia" and "upgrade kapan saja" remain (product-owner call);
+   - ~~fabricated "4.9/5 Rating" in the hero~~ — removed 2026-10-27; ~~"No.
+     1 di Indonesia" and "upgrade kapan saja"~~ — replaced 2026-10-28 (D-095);
    - ~~homepage OpenGraph title inherited by every page~~ — fixed
      2026-10-27: each page previews with its own title;
    - ~~23 files fail `prettier --check`~~ — formatted 2026-10-27;
    - ~~`max-image-preview: large` reaches customer invitations~~ —
      resolved 2026-10-27 by D-094: published invitations are `noindex`,
      page and preview image;
-   - still open: root meta description says "khitanan" / "paling lengkap di
-     Indonesia".
+   - ~~root meta description says "khitanan" / "paling lengkap di
+     Indonesia"~~ — rewritten 2026-10-28 (D-095).
 12. **UI refresh in progress (D-095, started 2026-10-28):** product owner asked
     for a more attractive, SEO-minded UI across homepage, dashboard, user
     menus and templates, without backend/database/infrastructure changes.

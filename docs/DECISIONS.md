@@ -3217,6 +3217,8 @@ the brand.
 **Update 2026-10-27 — item 5 resolved by D-094** (invitations are no longer
 indexed at all).
 
+**Update 2026-10-28 — items 6 and the root description resolved by D-095.**
+
 Still open: "No. 1 di Indonesia" and
 the "upgrade kapan saja" pricing copy (6); the root meta `description`
 (inherited by pages without their own, e.g. `/login`) still says "khitanan"
@@ -3334,9 +3336,25 @@ database and infrastructure are out of scope; only `components/marketing/*`,
   mockups are illustrations with sample content, hidden from assistive
   technology.
 
-**Not changed, awaiting the product owner (D-092 item 6):** "No. 1 di
-Indonesia" in the Hero badge and the pricing copy "Akses fitur penuh tanpa
-batas" / "upgrade kapan saja" are kept word for word.
+**Copy decisions (product owner, 2026-10-28, following the recommendations):**
+
+- The Hero badge "Platform Undangan Digital Modern No. 1 di Indonesia" (no
+  source for "No. 1") became "Undangan digital untuk 8 jenis acara", counted
+  from `EVENT_TYPE_LABELS`.
+- The root meta description no longer says "khitanan" (not an event type)
+  or "paling lengkap di Indonesia"; it lists the real event types and
+  features. Pages without their own description (e.g. `/login`) inherit it.
+- **Paid plans are "Segera hadir" (option A).** There is no checkout, no
+  payment provider and no plan enforcement (`maxEvents`/`maxGuests` are only
+  displayed; `Template.isPremium` is unused), Roadmap Phase 18 not started.
+  The pricing section now highlights the free plan as "Tersedia sekarang",
+  listing features that work today; Premium and Business show their planned
+  limits and features under a "Segera hadir" badge with a "Mulai gratis
+  dulu" link; a note says the per-plan limits apply once paid plans open.
+  "Akses fitur penuh tanpa batas" (contradicted by the cards' own limits)
+  and "upgrade kapan saja" (no upgrade path) are gone, and the FAQ's free-plan
+  answer says all features are free during the early period. The homepage
+  JSON-LD still states the plans' price range from the `Plan` table.
 
 **Brand tokens unchanged:** `app/globals.css` keeps its colour tokens, which
 the dashboard and editor share; the redesign works within them. Adding

@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: "%s | Digital Invitation",
   },
   description:
-    "Platform pembuatan undangan digital pernikahan, khitanan, ulang tahun & acara formal paling lengkap di Indonesia. Dilengkapi RSVP real-time, QR check-in, dan digital gift.",
+    "Buat undangan digital untuk pernikahan, lamaran, ulang tahun, aqiqah, anniversary, dan acara lainnya. Lengkap dengan RSVP, ucapan, QR check-in, dan amplop digital.",
   keywords: [
     "undangan digital",
     "undangan pernikahan online",

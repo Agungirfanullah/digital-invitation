@@ -6,8 +6,21 @@ import { Button } from "@/components/ui/button";
 import { ArrowRightIcon, CheckIcon } from "@/components/marketing/icons";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 
-/** The plan visually highlighted as the suggested default — an editorial choice, not a claim about sales/popularity data we don't have. */
-const RECOMMENDED_PLAN_SLUG = "premium";
+/** What the free plan gives today, while no plan limit is enforced — all shipped features. */
+const AVAILABLE_NOW = [
+  "Semua template",
+  "Tamu, RSVP, dan ucapan",
+  "Kirim tautan pribadi via WhatsApp",
+  "Check-in QR dan analitik",
+  "Amplop digital",
+];
+
+/** One line under each plan's price. */
+const PLAN_TAGLINES: Record<string, string> = {
+  free: "Semua fitur terbuka selama masa awal",
+  premium: "Untuk acara spesialmu, dengan fitur lengkap",
+  business: "Untuk penyelenggara banyak acara",
+};
 
 /**
  * Homepage Pricing (docs/PRD.md §8 item 10, §42, D-073). `plans` comes
@@ -16,6 +29,11 @@ const RECOMMENDED_PLAN_SLUG = "premium";
  * marketing copy matching `docs/PRD.md` §42 verbatim (per plan slug); the
  * PRD's own feature-bullet prose is the authoritative source for that
  * text, distinct from the plan's numeric `price`/`limits`.
+ *
+ * Paid plans cannot be bought yet: there is no checkout and no plan
+ * enforcement (Roadmap Phase 18, STATUS open item 1). Until there is, the
+ * free plan is the highlighted, available one, paid plans are marked
+ * "Segera hadir", and the section says the limits do not apply yet (D-095).
  */
 const PLAN_FEATURES: Record<string, string[]> = {
   free: ["Template terbatas", "RSVP dasar", "Branding platform"],
@@ -64,14 +82,15 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
           </span>
         </h2>
         <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
-          Mulai gratis sekarang juga, upgrade kapan pun kamu membutuhkan fitur lebih lengkap dan
-          tanpa batasan.
+          Mulai gratis sekarang. Pembayaran paket berbayar belum dibuka, jadi selama masa awal semua
+          fitur bisa kamu pakai tanpa biaya.
         </p>
       </ScrollReveal>
 
       <ul className="mx-auto mt-14 grid max-w-5xl grid-cols-1 items-start gap-5 md:grid-cols-3">
         {plans.map((plan, i) => {
-          const isRecommended = plan.slug === RECOMMENDED_PLAN_SLUG;
+          // Only a free plan can be used today; it is the highlighted card.
+          const isRecommended = plan.price === 0;
           return (
             <ScrollReveal key={plan.slug} as="li" delay={i * 120} className="h-full">
               <article
@@ -87,9 +106,13 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
                   >
                     {plan.name}
                   </h3>
-                  {isRecommended && (
+                  {isRecommended ? (
                     <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-300">
-                      Rekomendasi
+                      Tersedia sekarang
+                    </span>
+                  ) : (
+                    <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs font-semibold">
+                      Segera hadir
                     </span>
                   )}
                 </div>
@@ -109,9 +132,7 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
                 <p
                   className={`mt-2 text-sm ${isRecommended ? "text-background/60" : "text-muted-foreground"}`}
                 >
-                  {plan.price === 0
-                    ? "Cocok untuk mencoba fitur dasar"
-                    : "Akses fitur penuh tanpa batas"}
+                  {PLAN_TAGLINES[plan.slug] ?? ""}
                 </p>
 
                 <Button
@@ -124,7 +145,7 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
                   }`}
                 >
                   <Link href={ctaHref}>
-                    {isRecommended ? "Mulai Sekarang" : "Buat Undangan"}
+                    {isRecommended ? "Mulai Gratis" : "Mulai gratis dulu"}
                     <ArrowRightIcon className="ml-1.5 size-4 transition-transform group-hover:translate-x-0.5" />
                   </Link>
                 </Button>
@@ -134,21 +155,31 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
                     isRecommended ? "border-background/15" : "border-border/60"
                   }`}
                 >
-                  {plan.maxEvents !== null && (
-                    <PlanFeature highlight={isRecommended}>
-                      <strong className="font-semibold">Hingga {plan.maxEvents} acara</strong>
-                    </PlanFeature>
+                  {isRecommended ? (
+                    AVAILABLE_NOW.map((feature) => (
+                      <PlanFeature key={feature} highlight>
+                        {feature}
+                      </PlanFeature>
+                    ))
+                  ) : (
+                    <>
+                      {plan.maxEvents !== null && (
+                        <PlanFeature highlight={false}>
+                          <strong className="font-semibold">Hingga {plan.maxEvents} acara</strong>
+                        </PlanFeature>
+                      )}
+                      {plan.maxGuests !== null && (
+                        <PlanFeature highlight={false}>
+                          <strong className="font-semibold">Hingga {plan.maxGuests} tamu</strong>
+                        </PlanFeature>
+                      )}
+                      {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
+                        <PlanFeature key={feature} highlight={false}>
+                          {feature}
+                        </PlanFeature>
+                      ))}
+                    </>
                   )}
-                  {plan.maxGuests !== null && (
-                    <PlanFeature highlight={isRecommended}>
-                      <strong className="font-semibold">Hingga {plan.maxGuests} tamu</strong>
-                    </PlanFeature>
-                  )}
-                  {(PLAN_FEATURES[plan.slug] ?? []).map((feature) => (
-                    <PlanFeature key={feature} highlight={isRecommended}>
-                      {feature}
-                    </PlanFeature>
-                  ))}
                 </ul>
               </article>
             </ScrollReveal>
@@ -156,8 +187,8 @@ export function Pricing({ plans, ctaHref }: { plans: PublicPlan[]; ctaHref: stri
         })}
       </ul>
 
-      <p className="text-muted-foreground mt-10 text-center text-sm">
-        Tanpa biaya tersembunyi · Transparan & bisa upgrade kapan saja
+      <p className="text-muted-foreground mx-auto mt-10 max-w-2xl text-center text-sm">
+        Batas acara, tamu, dan fitur per paket di atas mulai berlaku saat paket berbayar dibuka.
       </p>
     </section>
   );

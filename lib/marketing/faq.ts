@@ -20,7 +20,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Apakah ada paket gratis?",
     answer:
-      "Ada. Paket Free memungkinkanmu membuat undangan tanpa biaya, dengan batas jumlah acara dan tamu.",
+      "Ada. Kamu bisa mulai membuat undangan tanpa biaya. Selama masa awal, semua fitur bisa dipakai gratis; paket berbayar segera hadir.",
   },
   {
     question: "Acara apa saja yang bisa dibuatkan undangan?",
