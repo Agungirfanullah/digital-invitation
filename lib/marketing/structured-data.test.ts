@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { FAQ_ITEMS } from "@/lib/marketing/faq";
 import { buildHomepageJsonLd, serializeJsonLd } from "@/lib/marketing/structured-data";
 import type { PublicPlan } from "@/lib/plans/service";
 
@@ -67,6 +68,29 @@ describe("buildHomepageJsonLd", () => {
     const output = JSON.stringify(buildHomepageJsonLd(SEEDED_PLANS, undefined));
 
     expect(output).not.toMatch(/aggregateRating|ratingValue|reviewCount|"review"/);
+  });
+});
+
+describe("FAQPage", () => {
+  it("lists the FAQ section's own questions and answers", () => {
+    const jsonLd = buildHomepageJsonLd(SEEDED_PLANS, undefined, FAQ_ITEMS);
+    const faqPage = jsonLd["@graph"].find(
+      (node) => (node as { "@type": string })["@type"] === "FAQPage",
+    ) as { mainEntity: { name: string; acceptedAnswer: { text: string } }[] };
+
+    expect(faqPage.mainEntity).toHaveLength(FAQ_ITEMS.length);
+    expect(faqPage.mainEntity[0]).toEqual({
+      "@type": "Question",
+      name: FAQ_ITEMS[0].question,
+      acceptedAnswer: { "@type": "Answer", text: FAQ_ITEMS[0].answer },
+    });
+  });
+
+  it("is left out when there are no questions", () => {
+    const types = buildHomepageJsonLd(SEEDED_PLANS, undefined)["@graph"].map(
+      (node) => (node as { "@type": string })["@type"],
+    );
+    expect(types).toEqual(["SoftwareApplication", "Organization"]);
   });
 });
 

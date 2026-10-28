@@ -1,87 +1,63 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { LogoMark } from "@/components/marketing/icons";
+import { MobileMenu } from "@/components/marketing/mobile-menu";
+import { SECTION_LINKS } from "@/components/marketing/nav-links";
+
+export function BrandLogo({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      href="/"
+      className={`group text-foreground flex items-center gap-2.5 font-semibold tracking-tight ${className}`}
+    >
+      <span className="from-primary flex size-8 items-center justify-center rounded-lg bg-gradient-to-br to-emerald-600 text-white shadow-sm shadow-emerald-900/20 transition-transform group-hover:scale-105">
+        <LogoMark className="size-4" />
+      </span>
+      <span className="text-base font-bold tracking-tight">
+        Digital<span className="text-primary font-medium">Invitation</span>
+      </span>
+    </Link>
+  );
+}
 
 /**
- * Minimal public Homepage header (docs/PRD.md §7, D-073 §19) — no
- * authenticated dashboard navigation is duplicated here; it only ever
- * links into the existing `/login`/`ctaHref` entry points.
+ * Public Homepage header (docs/PRD.md §7, D-073 §19) — no authenticated
+ * dashboard navigation is duplicated here; it only ever links into the
+ * existing `/login`/`ctaHref` entry points. Below `md` the section links
+ * move into `MobileMenu`.
  */
 export function SiteHeader({ ctaHref }: { ctaHref: string }) {
   return (
-    <header className="border-border/40 glass-panel sticky top-0 z-50 flex items-center justify-between border-b px-6 py-3.5 transition-all">
-      <div className="flex items-center gap-8">
-        <Link
-          href="/"
-          className="group text-foreground flex items-center gap-2.5 font-semibold tracking-tight"
-        >
-          <span className="bg-primary text-primary-foreground flex size-8 items-center justify-center rounded-lg shadow-sm transition-transform group-hover:scale-105">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="size-4.5"
-              aria-hidden="true"
-            >
-              <path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z" />
-            </svg>
-          </span>
-          <span className="text-base font-bold tracking-tight">
-            Digital<span className="text-primary font-normal">Invitation</span>
-          </span>
-        </Link>
+    <header className="glass-panel border-border/50 sticky top-0 z-50 border-b">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-5 sm:px-6">
+        <BrandLogo />
 
-        <nav
-          aria-label="Navigasi bagian"
-          className="hidden items-center gap-6 text-sm font-medium md:flex"
-        >
-          <a
-            href="#template-showcase"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+        <nav aria-label="Navigasi bagian" className="hidden items-center gap-1 md:flex">
+          {SECTION_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted/70 rounded-full px-3.5 py-2 text-sm font-medium transition-colors"
+            >
+              {link.label}
+            </a>
+          ))}
+        </nav>
+
+        <nav aria-label="Navigasi utama" className="flex items-center gap-2">
+          <Link
+            href="/login"
+            className="text-muted-foreground hover:text-foreground hidden rounded-full px-3 py-2 text-sm font-medium transition-colors sm:block"
           >
-            Template
-          </a>
-          <a
-            href="#benefits-heading"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Keunggulan
-          </a>
-          <a
-            href="#how-it-works-heading"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Cara Kerja
-          </a>
-          <a
-            href="#pricing-heading"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Harga
-          </a>
-          <a
-            href="#faq-heading"
-            className="text-muted-foreground hover:text-foreground transition-colors"
-          >
-            FAQ
-          </a>
+            Masuk
+          </Link>
+          <Button asChild size="sm" className="rounded-full px-4 shadow-sm">
+            <Link href={ctaHref}>Buat Undangan</Link>
+          </Button>
+          <MobileMenu />
         </nav>
       </div>
-
-      <nav aria-label="Navigasi utama" className="flex items-center gap-3">
-        <Link
-          href="/login"
-          className="text-muted-foreground hover:text-foreground px-2 py-1 text-sm font-medium transition-colors"
-        >
-          Masuk
-        </Link>
-        <Button asChild size="sm" className="shadow-sm transition-shadow hover:shadow-md">
-          <Link href={ctaHref}>Buat Undangan</Link>
-        </Button>
-      </nav>
     </header>
   );
 }

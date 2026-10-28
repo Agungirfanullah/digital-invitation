@@ -69,6 +69,7 @@ export function PhoneFrame({
           aria-hidden
         />
         <div
+          data-phone-screen=""
           className={`no-scrollbar relative overflow-hidden overflow-y-auto ${screenRadiusClass} bg-white ${heightClassName}`}
           style={{ containerType: "inline-size" }}
         >

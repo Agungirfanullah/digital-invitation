@@ -1,107 +1,59 @@
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
+import { ArrowRightIcon } from "@/components/marketing/icons";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 
 /** Homepage closing CTA (docs/PRD.md §8 item 13, D-073) — same target as the Hero CTA, no separate acquisition flow. */
 export function ClosingCta({ ctaHref }: { ctaHref: string }) {
   return (
-    <section
-      aria-labelledby="closing-cta-heading"
-      className="relative overflow-hidden px-6 py-24 sm:py-32"
-    >
+    <section aria-labelledby="closing-cta-heading" className="px-5 py-20 sm:px-6 sm:py-28">
       <ScrollReveal direction="none">
-        <div className="border-primary/20 relative mx-auto max-w-4xl overflow-hidden rounded-3xl border shadow-xl">
-          {/* Multi-gradient background */}
+        <div className="from-primary relative isolate mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br via-emerald-700 to-emerald-900 px-6 py-16 text-center text-white shadow-2xl shadow-emerald-950/25 sm:px-12 sm:py-20">
           <div
-            className="from-primary/15 via-primary/8 to-accent/10 absolute inset-0 bg-gradient-to-br"
-            aria-hidden="true"
-          />
-          <div
-            className="from-card/50 absolute inset-0 bg-gradient-to-t to-transparent"
-            aria-hidden="true"
-          />
-
-          {/* Decorative orbs */}
-          <div
-            className="bg-primary/20 pointer-events-none absolute -top-20 -left-20 size-60 rounded-full blur-3xl"
-            aria-hidden="true"
-          />
-          <div
-            className="pointer-events-none absolute -right-20 -bottom-20 size-60 rounded-full bg-emerald-500/15 blur-3xl"
-            aria-hidden="true"
-          />
-
-          {/* Dot pattern */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.03]"
+            className="pointer-events-none absolute inset-0 -z-10 opacity-[0.12]"
             aria-hidden="true"
             style={{
-              backgroundImage: "radial-gradient(circle, var(--foreground) 1px, transparent 1px)",
-              backgroundSize: "24px 24px",
+              backgroundImage:
+                "linear-gradient(to right, white 1px, transparent 1px), linear-gradient(to bottom, white 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+              maskImage: "radial-gradient(ellipse 60% 70% at 50% 50%, black, transparent)",
+              WebkitMaskImage: "radial-gradient(ellipse 60% 70% at 50% 50%, black, transparent)",
             }}
           />
+          <div
+            className="animate-float-gentle pointer-events-none absolute -top-24 -left-24 -z-10 size-72 rounded-full bg-emerald-300/25 blur-3xl"
+            aria-hidden="true"
+          />
+          <div
+            className="pointer-events-none absolute -right-20 -bottom-28 -z-10 size-80 rounded-full bg-white/10 blur-3xl"
+            aria-hidden="true"
+          />
 
-          <div className="relative p-10 text-center sm:p-16">
-            <div className="mx-auto max-w-2xl">
-              <div className="border-primary/25 bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full border px-4 py-1.5 text-xs font-semibold shadow-xs backdrop-blur-sm">
-                ✨ Mulai Sekarang Tanpa Biaya
-              </div>
-              <h2
-                id="closing-cta-heading"
-                className="text-foreground mt-5 text-3xl font-extrabold tracking-tight text-balance sm:text-4xl lg:text-5xl"
-              >
-                Siap Membuat{" "}
-                <span className="from-primary text-gradient bg-gradient-to-r to-emerald-600">
-                  Undangan Digital
-                </span>
-                mu?
-              </h2>
-              <p className="text-muted-foreground mt-5 text-base leading-relaxed sm:text-lg">
-                Mulai gratis hari ini — undanganmu bisa siap dalam hitungan menit dan siap dibagikan
-                ke seluruh keluarga serta sahabat.
-              </p>
+          <h2
+            id="closing-cta-heading"
+            className="mx-auto max-w-3xl text-3xl font-extrabold tracking-tight text-balance sm:text-5xl"
+          >
+            Siap Membuat Undangan Digitalmu?
+          </h2>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
+            Mulai gratis hari ini. Pilih template, isi detail acaramu, dan bagikan ke keluarga serta
+            sahabat saat sudah siap.
+          </p>
 
-              <div className="mt-9 flex flex-col items-center justify-center gap-4">
-                <Button
-                  asChild
-                  size="lg"
-                  className="glow-primary h-13 px-10 text-base font-semibold shadow-lg transition-all hover:-translate-y-0.5 hover:opacity-95 hover:shadow-xl active:translate-y-0"
-                >
-                  <Link href={ctaHref}>
-                    Buat Undangan Sekarang
-                    <svg
-                      className="ml-2 size-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                  </Link>
-                </Button>
-                <p className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="bg-primary size-1 rounded-full" aria-hidden="true" />
-                    Bebas pilih template
-                  </span>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1">
-                    <span className="bg-primary size-1 rounded-full" aria-hidden="true" />
-                    Personalisasi instan
-                  </span>
-                  <span className="text-border">·</span>
-                  <span className="flex items-center gap-1">
-                    <span className="bg-primary size-1 rounded-full" aria-hidden="true" />
-                    Tanpa ribet
-                  </span>
-                </p>
-              </div>
-            </div>
+          <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href={ctaHref}
+              className="group text-primary inline-flex h-12 items-center gap-2 rounded-full bg-white px-8 text-base font-semibold shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl"
+            >
+              Buat Undangan Sekarang
+              <ArrowRightIcon className="size-4 transition-transform group-hover:translate-x-0.5" />
+            </Link>
+            <a
+              href="#template-showcase"
+              className="inline-flex h-12 items-center rounded-full border border-white/30 px-7 text-base font-medium text-white transition-colors hover:bg-white/10"
+            >
+              Jelajahi template
+            </a>
           </div>
         </div>
       </ScrollReveal>

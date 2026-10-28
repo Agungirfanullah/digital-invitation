@@ -69,6 +69,54 @@ test.describe("homepage", () => {
     await expect(pricing.getByText("Gratis", { exact: true })).toBeVisible();
   });
 
+  test("the style filter narrows the template carousel and every card links to its demo", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    const carousel = page.getByRole("list", { name: "Daftar template" });
+    const cards = carousel.locator(":scope > li:visible");
+    const total = await cards.count();
+    expect(total).toBeGreaterThan(1);
+
+    await page.getByRole("button", { name: /^Ceria/ }).click();
+    await expect(page.getByRole("button", { name: /^Ceria/ })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    await expect(cards).toHaveCount(1);
+    await expect(carousel.getByRole("link", { name: "Lihat demo Playful Pop" })).toHaveAttribute(
+      "href",
+      "/demo/playful-pop",
+    );
+
+    await page.getByRole("button", { name: /^Semua/ }).click();
+    await expect(cards).toHaveCount(total);
+  });
+
+  test("on a phone, the menu opens the section links", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Buka menu" }).click();
+    await page
+      .getByRole("navigation", { name: "Navigasi utama" })
+      .getByRole("link", { name: "Harga", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/#harga$/);
+    await expect(page.getByRole("button", { name: "Buka menu" })).toBeVisible();
+  });
+
+  test("describes its FAQ to search engines and shows no star ratings", async ({ page }) => {
+    await page.goto("/");
+    const jsonLd = JSON.parse(
+      (await page.locator('script[type="application/ld+json"]').textContent()) ?? "{}",
+    ) as { "@graph": { "@type": string; mainEntity?: { name: string }[] }[] };
+    const faqPage = jsonLd["@graph"].find((node) => node["@type"] === "FAQPage");
+    expect(faqPage?.mainEntity?.[0].name).toBe("Apakah ada paket gratis?");
+
+    await expect(page.getByText("Apakah ada paket gratis?")).toBeVisible();
+    await expect(page.getByText("★")).toHaveCount(0);
+  });
+
   test("renders real event data (no console errors, no mobile overflow at 390px)", async ({
     page,
   }) => {

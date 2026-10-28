@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 
 /**
  * ScrollReveal — animates children into view as they cross the viewport
@@ -12,13 +12,16 @@ export function ScrollReveal({
   className = "",
   delay = 0,
   direction = "up",
+  as: Tag = "div",
 }: {
   children: ReactNode;
   className?: string;
   delay?: number;
   direction?: "up" | "down" | "left" | "right" | "none";
+  /** "li" when the revealed element is itself a list item, so lists stay valid HTML. */
+  as?: "div" | "li";
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const el = ref.current;
@@ -48,9 +51,12 @@ export function ScrollReveal({
   }[direction];
 
   return (
-    <div ref={ref} className={`${directionClass} ${className}`}>
+    <Tag
+      ref={ref as RefObject<HTMLDivElement & HTMLLIElement>}
+      className={`${directionClass} ${className}`}
+    >
       {children}
-    </div>
+    </Tag>
   );
 }
 

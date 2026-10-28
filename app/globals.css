@@ -80,6 +80,15 @@
 }
 
 @layer base {
+  html {
+    /* Keeps in-page anchors (#harga, #faq…) clear of the sticky site header. */
+    scroll-padding-top: 5rem;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -296,6 +305,24 @@
   transform: translateY(0) translateX(0) scale(1) !important;
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* An infinite horizontal strip: the track holds its items twice, so moving
+   it by half its width loops seamlessly. Hovering pauses it. */
+.animate-marquee {
+  animation: marquee 40s linear infinite;
+}
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
 /* Reduced-motion users — skip animations immediately */
 @media (prefers-reduced-motion: reduce) {
   .scroll-reveal-up,
@@ -306,5 +333,19 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-float-delayed,
+  .animate-float-gentle,
+  .animate-pulse-subtle,
+  .animate-shimmer,
+  .animate-gradient,
+  .animate-fade-in-up,
+  .animate-scale-in,
+  .animate-marquee {
+    animation: none;
   }
 }

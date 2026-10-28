@@ -156,6 +156,11 @@ digital-gift display) do not become MVP-defining by that fact.
      page and preview image;
    - still open: root meta description says "khitanan" / "paling lengkap di
      Indonesia".
+12. **UI refresh in progress (D-095, started 2026-10-28):** product owner asked
+    for a more attractive, SEO-minded UI across homepage, dashboard, user
+    menus and templates, without backend/database/infrastructure changes.
+    Order chosen: homepage (done, D-095) → then dashboard/user menus and
+    templates, each as its own change.
 
 **Status (Phase 0.9):**
 

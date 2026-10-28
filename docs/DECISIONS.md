@@ -3292,3 +3292,54 @@ images, or no indexing), the product owner chose no indexing.
 Marketing pages (homepage, `/demo/*`) keep the layout's `index, follow` and
 `max-image-preview: large`.
 
+## D-095 — Homepage Redesign ("Modern Bersih")
+
+**Decision (product owner, 2026-10-28):** redesign the homepage first, in a
+clean modern style, before the dashboard and the templates. Backend,
+database and infrastructure are out of scope; only `components/marketing/*`,
+`app/page.tsx` and presentation helpers in `lib/marketing/` change.
+
+**What changed:**
+
+- **Structure:** Hero → event-type strip → Template Showcase → feature grid
+  → How It Works → Invitation Preview → Pricing → "Kenapa" → FAQ → closing
+  CTA → footer. The four single-feature sections and the separate Benefits
+  cards became one feature grid (`benefits.tsx`); `feature-section.tsx` was
+  removed. The page is about 9,500 px tall on desktop (was 12,900) and about
+  12,000 px on a 390 px phone (was 22,500).
+- **Template Showcase:** a style filter (`lib/marketing/template-styles.ts`,
+  presentation-only grouping, not stored) and a snap-scrolling carousel
+  replace the 16-card grid. Previews are `inert` and `aria-hidden`: the demo
+  link on each card is the way in, and the 16 previews' own `<h1>`s no longer
+  reach the accessibility tree.
+- **Demo photos:** the Picsum sample photos moved from `app/demo/[slug]` to
+  `buildDemoInvitationWithPhotos()` in `lib/marketing/demo-invitation.ts`, so
+  the homepage previews show the same covers, portraits and galleries as the
+  demo pages instead of mostly blank screens.
+- **Motion:** the Hero and Invitation Preview phones scroll slowly through
+  the whole invitation (`PhoneAutoScroll`), pausing while hovered or touched
+  and only while on screen; an event-type marquee; existing scroll reveals.
+  All of it stops under `prefers-reduced-motion`.
+- **Header:** a mobile menu (`MobileMenu`) for the section links, which had
+  no way in below `md`.
+- **SEO:** FAQPage JSON-LD built from the same list the FAQ renders
+  (`lib/marketing/faq.ts`); a canonical URL for `/`; the footer links every
+  template demo and names the supported event types.
+- **Honesty (CLAUDE.md §1.4, D-073):** the star icons on the "Kenapa"
+  statements were removed (they read as ratings). "Paling Populer" became
+  "Rekomendasi" (no sales data behind "popular"). The Hero's WhatsApp card
+  says "Pesan siap dikirim", not "Terkirim": the product opens WhatsApp with
+  a composed message and records no delivery. The analytics mockup lost its
+  "Real-time" badge and uses the dashboard's own labels. Floating cards and
+  mockups are illustrations with sample content, hidden from assistive
+  technology.
+
+**Not changed, awaiting the product owner (D-092 item 6):** "No. 1 di
+Indonesia" in the Hero badge and the pricing copy "Akses fitur penuh tanpa
+batas" / "upgrade kapan saja" are kept word for word.
+
+**Brand tokens unchanged:** `app/globals.css` keeps its colour tokens, which
+the dashboard and editor share; the redesign works within them. Adding
+`data-phone-screen` to `PhoneFrame` and an `as` prop to `ScrollReveal` are the
+only changes outside the marketing components.
+

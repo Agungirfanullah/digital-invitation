@@ -3,43 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
-import { buildDemoInvitation, templateDisplayName } from "@/lib/marketing/demo-invitation";
+import {
+  buildDemoInvitationWithPhotos,
+  templateDisplayName,
+} from "@/lib/marketing/demo-invitation";
 import { InvitationRenderer } from "@/components/invitation/invitation-renderer";
 
 interface DemoPageProps {
   params: Promise<{ slug: string }>;
-}
-
-/**
- * A small set of specific Picsum photo IDs (Picsum serves free-to-use
- * Unsplash photos, no attribution required), each individually viewed and
- * picked because it actually shows a person — not a random seed, which
- * (confirmed by inspection) just as often turns up a forest, a hiking
- * backpack, or a dog. Grouped into two moods and assigned per template so
- * the demo's cover/gallery photos suit that template's own palette,
- * instead of one photo style looking out of place everywhere. Still never
- * a real couple's photo (this product has no rights to use one) — these
- * are editorial/lifestyle portraits of individual models.
- */
-const ELEGANT_PHOTO_IDS = [1027, 338];
-const WARM_PHOTO_IDS = [64, 1012, 823];
-
-const WARM_MOOD_SLUGS = new Set([
-  "floral-romance",
-  "soft-romantic",
-  "cinematic-journey",
-  "rustic-earth",
-  "playful-pop",
-  "blue-bloom",
-  "garden-tropical",
-]);
-
-function demoPhotoIds(slug: string): number[] {
-  return WARM_MOOD_SLUGS.has(slug) ? WARM_PHOTO_IDS : ELEGANT_PHOTO_IDS;
-}
-
-function demoPhotoUrl(id: number, width: number, height: number): string {
-  return `https://picsum.photos/id/${id}/${width}/${height}`;
 }
 
 export async function generateMetadata({ params }: DemoPageProps): Promise<Metadata> {
@@ -84,46 +55,15 @@ export default async function DemoPage({ params }: DemoPageProps) {
   const { slug } = await params;
   if (!isKnownTemplateKey(slug)) notFound();
 
-  // Demo-page-only additions (not touched in the Homepage's shared
-  // buildDemoInvitation() usage):
-  // - a generic, obviously-fake guest name so this page can also
-  //   demonstrate personalization and the guest-facing QR check-in button
-  //   — both genuinely real features, shown honestly in a page already
-  //   labeled as a demo. This never flips RSVP/Wishes into their
-  //   submittable state, since those read the separate `rsvp`/`wishGuest`
-  //   props (intentionally omitted below), not `invitation.guest`.
-  // - sample member photos, a cover photo + gallery so the demo can show the real photo-upload
-  //   features too, using the verified-to-show-a-person photo IDs above
-  //   (demoPhotoIds()), matched to this template's own mood.
-  const base = buildDemoInvitation(slug);
-  const photoIds = demoPhotoIds(slug);
+  // Sample photos come from buildDemoInvitationWithPhotos(), shared with the
+  // Homepage previews. The page adds a generic, obviously-fake guest name so
+  // it can also demonstrate personalization and the guest-facing QR check-in
+  // button, both real features, shown honestly on a page labeled as a demo.
+  // This never flips RSVP/Wishes into their submittable state: those read the
+  // separate `rsvp`/`wishGuest` props, intentionally omitted below.
   const invitation = {
-    ...base,
+    ...buildDemoInvitationWithPhotos(slug),
     guest: { displayName: "Tamu Undangan" },
-    // Sample portraits for the couple, so the demo shows member photos too.
-    identity: base.identity && {
-      ...base.identity,
-      members: base.identity.members.map((member, index) => ({
-        ...member,
-        photoUrl: demoPhotoUrl(photoIds[(index + 1) % photoIds.length], 400, 500),
-      })),
-    },
-    theme: {
-      ...base.theme,
-      backgroundImageUrl: demoPhotoUrl(photoIds[0], 800, 1200),
-    },
-    galleries: [
-      {
-        title: null,
-        items: [0, 1, 2, 3].map((i) => ({
-          id: `demo-gallery-${i}`,
-          type: "IMAGE" as const,
-          url: demoPhotoUrl(photoIds[i % photoIds.length], 800, 800),
-          thumbnailUrl: null,
-          caption: null,
-        })),
-      },
-    ],
   };
 
   return (

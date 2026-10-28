@@ -1,3 +1,4 @@
+import type { FaqItem } from "@/lib/marketing/faq";
 import type { PublicPlan } from "@/lib/plans/service";
 
 /**
@@ -39,8 +40,26 @@ function resolveOrigin(appUrl: string | undefined): string | null {
   }
 }
 
-export function buildHomepageJsonLd(plans: PublicPlan[], appUrl: string | undefined) {
+/** The FAQ section's questions, from the same list it renders, so the two never disagree. */
+function buildFaqPage(faq: FaqItem[]) {
+  if (faq.length === 0) return null;
+  return {
+    "@type": "FAQPage",
+    mainEntity: faq.map((item) => ({
+      "@type": "Question",
+      name: item.question,
+      acceptedAnswer: { "@type": "Answer", text: item.answer },
+    })),
+  };
+}
+
+export function buildHomepageJsonLd(
+  plans: PublicPlan[],
+  appUrl: string | undefined,
+  faq: FaqItem[] = [],
+) {
   const offers = buildAggregateOffer(plans);
+  const faqPage = buildFaqPage(faq);
   const origin = resolveOrigin(appUrl);
 
   return {
@@ -59,6 +78,7 @@ export function buildHomepageJsonLd(plans: PublicPlan[], appUrl: string | undefi
         name: PRODUCT_NAME,
         ...(origin && { url: origin, logo: `${origin}/favicon.ico` }),
       },
+      ...(faqPage ? [faqPage] : []),
     ],
   };
 }

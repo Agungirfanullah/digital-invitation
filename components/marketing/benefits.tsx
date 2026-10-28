@@ -1,132 +1,179 @@
+import type { ComponentType, ReactNode } from "react";
+
+import {
+  AnalyticsMockup,
+  CheckInMockup,
+  EditorMockup,
+  GiftMockup,
+  GuestListMockup,
+  RsvpMockup,
+  WhatsAppMockup,
+} from "@/components/marketing/feature-mockups";
 import {
   CalendarCheckIcon,
-  DashboardIcon,
-  PaletteIcon,
+  ChartBarIcon,
+  PencilIcon,
+  QrCodeIcon,
+  SendIcon,
+  ShieldIcon,
   UsersIcon,
+  WalletIcon,
 } from "@/components/marketing/icons";
 import { ScrollReveal } from "@/components/marketing/scroll-reveal";
 
-const BENEFITS = [
+interface Feature {
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  visual?: ReactNode;
+  /** Wide tiles span two columns; their mockup keeps a readable width. */
+  wide?: boolean;
+  /** Grid spans; chosen so the md (2-column) and lg (3-column) grids have no gaps. */
+  span?: string;
+}
+
+/** Each tile describes an already-shipped capability (docs/PRD.md §8 items 3, 6-9, D-073). */
+const FEATURES: Feature[] = [
   {
-    title: "Desain siap pakai",
+    title: "Kelola tamu tanpa ribet",
     description:
-      "Pilih dari beberapa template siap pakai, lalu sesuaikan isinya tanpa perlu desainer.",
-    icon: PaletteIcon,
-    gradient: "from-violet-500/15 via-purple-500/10 to-fuchsia-500/5",
-    iconBg: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-    accent: "group-hover:border-violet-500/40",
-  },
-  {
-    title: "Kelola tamu di satu tempat",
-    description:
-      "Tambahkan tamu satu per satu atau impor dari CSV, lengkap dengan tautan pribadi masing-masing.",
+      "Tambah tamu satu per satu atau impor dari CSV dengan pratinjau, validasi, dan deteksi duplikat sebelum disimpan.",
     icon: UsersIcon,
-    gradient: "from-blue-500/15 via-sky-500/10 to-cyan-500/5",
-    iconBg: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-    accent: "group-hover:border-blue-500/40",
+    visual: <GuestListMockup />,
+    wide: true,
+    span: "md:col-span-2",
   },
   {
-    title: "RSVP otomatis",
-    description:
-      "Tamu mengisi kehadiran langsung dari undangan, dan jawabannya langsung terlihat di dashboard.",
+    title: "RSVP dari undangan",
+    description: "Tamu mengonfirmasi kehadiran langsung dari tautan pribadinya.",
     icon: CalendarCheckIcon,
-    gradient: "from-emerald-500/15 via-green-500/10 to-teal-500/5",
-    iconBg: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-    accent: "group-hover:border-emerald-500/40",
+    visual: <RsvpMockup />,
   },
   {
-    title: "Pantau semuanya dari dashboard",
-    description: "Kelola acara, tamu, dan undangan digitalmu dari satu dashboard yang sama.",
-    icon: DashboardIcon,
-    gradient: "from-amber-500/15 via-orange-500/10 to-yellow-500/5",
-    iconBg: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-    accent: "group-hover:border-amber-500/40",
+    title: "Kirim personal via WhatsApp",
+    description: "Pesan berisi nama dan tautan pribadi tiap tamu, siap dikirim sekali ketuk.",
+    icon: SendIcon,
+    visual: <WhatsAppMockup />,
+  },
+  {
+    title: "Check-in QR di hari-H",
+    description:
+      "Panitia memindai QR tamu di lokasi dan langsung tahu siapa yang sudah datang, tanpa daftar hadir kertas.",
+    icon: QrCodeIcon,
+    visual: <CheckInMockup />,
+    wide: true,
+    span: "md:col-span-2",
+  },
+  {
+    title: "Amplop digital",
+    description: "Tampilkan rekening atau e-wallet, tamu tinggal salin.",
+    icon: WalletIcon,
+    visual: <GiftMockup />,
+  },
+  {
+    title: "Analitik undangan",
+    description: "Lihat berapa kali undanganmu dibuka, RSVP masuk, dan tamu yang check-in.",
+    icon: ChartBarIcon,
+    visual: <AnalyticsMockup />,
+  },
+  {
+    title: "Editor dengan pratinjau langsung",
+    description: "Setiap perubahan langsung terlihat dan tersimpan otomatis.",
+    icon: PencilIcon,
+    visual: <EditorMockup />,
+    span: "md:col-span-2 lg:col-span-1",
   },
 ];
 
-/** Homepage Product Benefits (docs/PRD.md §8 item 3, D-073) — static copy describing already-shipped capabilities only. */
+/** Homepage feature grid (docs/PRD.md §8 items 3 and 6-9, D-073). */
 export function Benefits() {
   return (
     <section
+      id="fitur"
       aria-labelledby="benefits-heading"
-      className="relative overflow-hidden px-6 py-24 sm:py-32"
+      className="bg-muted/40 relative overflow-hidden px-5 py-20 sm:px-6 sm:py-28"
     >
-      {/* Subtle gradient mesh */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-40"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(ellipse 80% 50% at 20% 80%, color-mix(in oklab, var(--primary) 10%, transparent), transparent 60%)",
-        }}
-      />
-
-      <div className="mx-auto max-w-5xl">
-        <ScrollReveal className="text-center">
-          <div className="border-primary/20 bg-primary/5 text-primary inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-semibold backdrop-blur-sm">
-            <svg
-              className="size-3.5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z" />
-            </svg>
-            Fitur Terlengkap
-          </div>
+      <div className="mx-auto max-w-6xl">
+        <ScrollReveal className="mx-auto max-w-3xl text-center">
+          <p className="text-primary text-sm font-semibold">Fitur lengkap</p>
           <h2
             id="benefits-heading"
-            className="mt-4 text-3xl font-bold tracking-tight text-balance sm:text-4xl lg:text-[2.75rem]"
+            className="mt-3 text-3xl font-extrabold tracking-tight text-balance sm:text-5xl"
           >
             Semua yang Kamu Butuhkan untuk{" "}
-            <span className="from-primary text-gradient bg-gradient-to-r to-emerald-600">
+            <span className="from-primary text-gradient bg-gradient-to-r to-emerald-500">
               Undangan Digital
             </span>
           </h2>
           <p className="text-muted-foreground mx-auto mt-4 max-w-2xl text-base leading-relaxed sm:text-lg">
-            Dirancang khusus untuk mempermudah calon pengantin dan pemilik acara mengelola undangan
-            dari persiapan hingga hari-H.
+            Dari menyusun daftar tamu sampai menyambut mereka di pintu masuk, semuanya ada di satu
+            tempat.
           </p>
         </ScrollReveal>
 
-        <ul className="mt-16 grid grid-cols-1 gap-5 sm:grid-cols-2">
-          {BENEFITS.map((benefit, i) => (
+        {/* A swipeable row on phones, a grid from md up. */}
+        <ul className="no-scrollbar -mx-5 mt-12 flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 md:mx-0 md:mt-14 md:grid md:grid-cols-2 md:gap-5 md:overflow-visible md:px-0 md:pb-0 lg:grid-cols-3">
+          {FEATURES.map((feature, index) => (
             <ScrollReveal
-              key={benefit.title}
-              delay={i * 120}
-              direction={i % 2 === 0 ? "left" : "right"}
+              key={feature.title}
+              as="li"
+              delay={(index % 3) * 90}
+              className={`w-[85%] shrink-0 snap-start md:w-auto ${feature.span ?? ""}`}
             >
-              <li
-                className={`group border-border/50 bg-card relative flex flex-col rounded-2xl border p-7 shadow-xs transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl ${benefit.accent}`}
-              >
-                {/* Gradient overlay on hover */}
-                <div
-                  className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${benefit.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
-                  aria-hidden="true"
-                />
-
-                <div className="relative">
-                  <div
-                    className={`${benefit.iconBg} flex size-12 items-center justify-center rounded-xl shadow-xs transition-all duration-300 group-hover:scale-110 group-hover:shadow-md`}
-                  >
-                    <benefit.icon className="size-6" />
-                  </div>
-                  <h3 className="text-foreground mt-5 text-lg font-bold tracking-tight">
-                    {benefit.title}
-                  </h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                    {benefit.description}
-                  </p>
-                </div>
-              </li>
+              <FeatureTile feature={feature} />
             </ScrollReveal>
           ))}
+          <ScrollReveal
+            as="li"
+            delay={180}
+            className="w-[85%] shrink-0 snap-start md:col-span-2 md:w-auto lg:col-span-3"
+          >
+            <PrivacyTile />
+          </ScrollReveal>
         </ul>
       </div>
     </section>
+  );
+}
+
+function FeatureTile({ feature }: { feature: Feature }) {
+  const Icon = feature.icon;
+  return (
+    <article className="group border-border/60 bg-card hover:border-primary/30 flex h-full flex-col gap-6 overflow-hidden rounded-3xl border p-6 shadow-xs transition-all duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7">
+      <div>
+        <span className="bg-primary/10 text-primary flex size-11 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110">
+          <Icon className="size-5" />
+        </span>
+        <h3 className="text-foreground mt-5 text-lg font-bold tracking-tight">{feature.title}</h3>
+        <p className="text-muted-foreground mt-2 max-w-md text-sm leading-relaxed">
+          {feature.description}
+        </p>
+      </div>
+      {feature.visual && (
+        <div className="bg-muted/50 mt-auto flex justify-center rounded-2xl p-4 transition-transform duration-500 group-hover:scale-[1.02]">
+          <div className={`w-full ${feature.wide ? "max-w-md" : ""}`}>{feature.visual}</div>
+        </div>
+      )}
+    </article>
+  );
+}
+
+/** Customer invitations are kept out of search engines (D-094) and guest links are random (CLAUDE.md §7.2). */
+function PrivacyTile() {
+  return (
+    <article className="from-primary relative flex h-full flex-col justify-center overflow-hidden rounded-3xl bg-gradient-to-br to-emerald-800 p-7 text-white shadow-lg sm:p-9">
+      <div
+        className="pointer-events-none absolute -top-16 -right-16 size-56 rounded-full bg-white/10 blur-2xl"
+        aria-hidden="true"
+      />
+      <span className="flex size-11 items-center justify-center rounded-xl bg-white/15">
+        <ShieldIcon className="size-5" />
+      </span>
+      <h3 className="mt-5 text-xl font-bold tracking-tight sm:text-2xl">Privat sejak awal</h3>
+      <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/80 sm:text-base">
+        Undanganmu tidak muncul di Google dan hanya bisa dibuka lewat tautannya. Tautan setiap tamu
+        acak dan tidak bisa ditebak, jadi RSVP dan ucapan hanya datang dari tamu yang kamu undang.
+      </p>
+    </article>
   );
 }
