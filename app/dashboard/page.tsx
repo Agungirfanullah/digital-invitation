@@ -83,19 +83,20 @@ export default async function DashboardPage() {
 
       {latest && (
         <section
-          aria-labelledby="latest-heading"
+          aria-label="Undangan terbaru"
           className="from-primary relative isolate overflow-hidden rounded-3xl bg-gradient-to-br to-emerald-800 p-6 text-white shadow-lg sm:p-8"
         >
           <div
             className="pointer-events-none absolute -top-20 -right-16 -z-10 size-64 rounded-full bg-white/10 blur-3xl"
             aria-hidden="true"
           />
-          <p className="text-xs font-semibold tracking-wider text-emerald-200 uppercase">
+          <p
+            aria-hidden="true"
+            className="text-xs font-semibold tracking-wider text-emerald-200 uppercase"
+          >
             Undangan terbaru
           </p>
-          <h2 id="latest-heading" className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
-            {latest.title}
-          </h2>
+          <p className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">{latest.title}</p>
           <p className="mt-1 text-sm text-white/75">
             {latest.stats.guests} tamu · {latest.stats.attendingPeople} akan hadir ·{" "}
             {latest.stats.wishes} ucapan
