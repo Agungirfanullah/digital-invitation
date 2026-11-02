@@ -166,9 +166,8 @@ digital-gift display) do not become MVP-defining by that fact.
     share, D-098) done; step 2 (differentiating the six look-alike templates
     and Royal Gold vs Art Deco) and step 3 (polish) not started. Also
     done 2026-11-02 at the owner's request: event hub menu and invitation
-    editor redesign (D-099). Couple
-    parents' names are still not shown publicly; waiting on the product
-    owner (D-098).
+    editor redesign (D-099). Couple parents' names are shown publicly since
+    D-100 (owner's decision).
 
 **Status (Phase 0.9):**
 

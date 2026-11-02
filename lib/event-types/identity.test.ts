@@ -45,7 +45,7 @@ describe("EVENT_TYPE_CONFIG", () => {
 });
 
 describe("buildPublicIdentity", () => {
-  it("Wedding regression: nickname pair, role labels, instagram — and no parents", () => {
+  it("Wedding: nickname pair, role labels, instagram and each partner's parents (D-100)", () => {
     expect(buildPublicIdentity("WEDDING", IDENTITY_BY_TYPE.WEDDING)).toEqual({
       family: "COUPLE",
       heading: "Mempelai",
@@ -56,17 +56,54 @@ describe("buildPublicIdentity", () => {
           name: "Ayu Lestari",
           instagram: "ayulestari",
           photoUrl: "https://storage.example/events/e/identity/ayu.jpg",
+          parents: { relation: "Putri dari", names: "Bapak Lestari & Ibu Lestari" },
         },
         {
           role: "Mempelai Pria",
           name: "Budi Santoso",
           instagram: "budisantoso",
           photoUrl: "https://storage.example/events/e/identity/budi.jpg",
+          parents: { relation: "Putra dari", names: "Bapak Santoso & Ibu Santoso" },
         },
       ],
       pairMembers: true,
       details: [],
     });
+  });
+
+  it("adds Bapak/Ibu to plain parent names, keeps a typed title, and shows a single parent", () => {
+    const couple = IDENTITY_BY_TYPE.WEDDING;
+    if (couple.family !== "COUPLE") throw new Error("fixture");
+    const members = buildPublicIdentity("WEDDING", {
+      family: "COUPLE",
+      data: {
+        ...couple.data,
+        brideFather: "Hendra Wijaya",
+        brideMother: "  ",
+        groomFather: "Alm. Agus Santoso",
+        groomMother: "Dewi Kartika",
+      },
+    })?.members;
+
+    expect(members?.[0].parents).toEqual({ relation: "Putri dari", names: "Bapak Hendra Wijaya" });
+    expect(members?.[1].parents).toEqual({
+      relation: "Putra dari",
+      names: "Alm. Agus Santoso & Ibu Dewi Kartika",
+    });
+  });
+
+  it("shows no parents line when neither parent was entered", () => {
+    const couple = IDENTITY_BY_TYPE.WEDDING;
+    if (couple.family !== "COUPLE") throw new Error("fixture");
+    const members = buildPublicIdentity("WEDDING", {
+      family: "COUPLE",
+      data: { ...couple.data, brideFather: null, brideMother: null },
+    })?.members;
+
+    expect(members?.[0].parents).toBeNull();
+    expect(
+      buildPublicIdentity("BIRTHDAY", IDENTITY_BY_TYPE.BIRTHDAY)?.members[0].parents,
+    ).toBeNull();
   });
 
   it("gives each type its own identity presentation", () => {

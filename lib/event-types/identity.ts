@@ -152,8 +152,34 @@ function member(
   name: string | null,
   instagram: string | null = null,
   photoUrl: string | null = null,
+  parents: PublicIdentityMember["parents"] = null,
 ): PublicIdentityMember[] {
-  return name ? [{ role, name, instagram, photoUrl }] : [];
+  return name ? [{ role, name, instagram, photoUrl, parents }] : [];
+}
+
+// Names the owner already typed with a title ("Bapak H. Ahmad", "Alm. Budi")
+// are shown as typed; plain names get "Bapak"/"Ibu" in front.
+const HONORIFIC =
+  /^(bapak|bpk\.?|bp\.?|pak|ibu|bu|ny\.?|nyonya|alm\.?|almh\.?|almarhum|almarhumah)(\s|$)/i;
+
+function withHonorific(title: string, name: string): string {
+  return HONORIFIC.test(name.trim()) ? name.trim() : `${title} ${name.trim()}`;
+}
+
+/**
+ * "Putri dari Bapak Hendra & Ibu Sri" for a couple member, from whichever
+ * parent names were entered (D-100). Null when neither was.
+ */
+function coupleParents(
+  relation: "Putri dari" | "Putra dari",
+  father: string | null,
+  mother: string | null,
+): PublicIdentityMember["parents"] {
+  const names = compact([
+    father?.trim() ? withHonorific("Bapak", father) : null,
+    mother?.trim() ? withHonorific("Ibu", mother) : null,
+  ]);
+  return names.length ? { relation, names: names.join(" & ") } : null;
 }
 
 function compact(values: (string | null | false)[]): string[] {
@@ -207,12 +233,14 @@ export function buildPublicIdentity(
           data.brideFullName ?? data.brideNickname,
           data.brideInstagram,
           data.bridePhotoUrl,
+          coupleParents("Putri dari", data.brideFather, data.brideMother),
         ),
         ...member(
           secondRole,
           data.groomFullName ?? data.groomNickname,
           data.groomInstagram,
           data.groomPhotoUrl,
+          coupleParents("Putra dari", data.groomFather, data.groomMother),
         ),
       ];
       details = compact([

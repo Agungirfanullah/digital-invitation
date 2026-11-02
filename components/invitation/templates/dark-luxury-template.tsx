@@ -33,6 +33,7 @@ import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 import { MemberPhoto } from "@/components/invitation/sections/member-photo";
+import { MemberParents } from "@/components/invitation/sections/member-parents";
 
 /**
  * Cinematic / restrained-premium composition — dark surface, generous
@@ -143,6 +144,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
               <p className="text-2xl font-medium tracking-wide text-[color:var(--ii-primary)]">
                 {member.name}
               </p>
+              <MemberParents member={member} />
               {member.instagram && (
                 <a
                   href={toInstagramProfileUrl(member.instagram)}

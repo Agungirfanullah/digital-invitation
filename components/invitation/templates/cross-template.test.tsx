@@ -123,8 +123,8 @@ describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {
     expect(screen.getByText("Budi Santoso")).toBeInTheDocument();
     expect(screen.getByText("@ayulestari")).toBeInTheDocument();
     expect(screen.getByText(/memberikan doa restu\./)).toBeInTheDocument();
-    // Parents were never public and still aren't.
-    expect(screen.queryByText(/Bapak Lestari/)).not.toBeInTheDocument();
+    // Shown since D-100.
+    expect(screen.getByText("Bapak Lestari & Ibu Lestari")).toBeInTheDocument();
   });
 
   it("hides owner-disabled dedicated sections (identity, schedule, RSVP, wishes) while Hero stays on", () => {
@@ -564,6 +564,15 @@ describe.each(ALL_SLUGS)("%s — every event type", (slug) => {
     for (const member of base.identity?.members ?? []) {
       expect(screen.queryByRole("img", { name: `Foto ${member.name}` })).not.toBeInTheDocument();
     }
+  });
+
+  it("shows each partner's parents under their name (D-100)", () => {
+    render(<Template invitation={buildInvitationForType("WEDDING")} />);
+
+    expect(screen.getByText("Putri dari")).toBeInTheDocument();
+    expect(screen.getByText("Bapak Lestari & Ibu Lestari")).toBeInTheDocument();
+    expect(screen.getByText("Putra dari")).toBeInTheDocument();
+    expect(screen.getByText("Bapak Santoso & Ibu Santoso")).toBeInTheDocument();
   });
 
   it.each(NON_WEDDING_TERMINOLOGY_TYPES)("never shows wedding terminology for %s", (type) => {

@@ -97,12 +97,18 @@ export interface PublicIdentityMember {
   instagram: string | null;
   /** Public URL of the person's photo (own storage), or null. */
   photoUrl: string | null;
+  /**
+   * A couple member's parents, e.g. relation "Putri dari", names "Bapak
+   * Hendra Wijaya & Ibu Sri Rahayu"; null when none were entered or the
+   * type has no couple (D-100).
+   */
+  parents: { relation: string; names: string } | null;
 }
 
 /**
  * Type-aware identity, built only by `buildPublicIdentity()`
- * (lib/event-types/identity.ts). Deliberately excludes the private-ish
- * profile fields the public page never showed (e.g. a couple's parents).
+ * (lib/event-types/identity.ts). Only fields meant for guests: a couple's
+ * parents are shown since D-100.
  */
 export interface PublicIdentity {
   family: IdentityFamily;

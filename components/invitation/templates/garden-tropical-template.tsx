@@ -33,6 +33,7 @@ import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 import { MemberPhoto } from "@/components/invitation/sections/member-photo";
+import { MemberParents } from "@/components/invitation/sections/member-parents";
 
 /**
  * Green/outdoor-garden composition — an elongated palm-frond line motif
@@ -146,6 +147,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
               >
                 {member.name}
               </p>
+              <MemberParents member={member} />
               {member.instagram && (
                 <a
                   href={toInstagramProfileUrl(member.instagram)}

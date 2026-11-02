@@ -33,6 +33,7 @@ import { WishForm } from "@/components/wishes/wish-form";
 import { CopyValueButton } from "@/components/gifts/copy-value-button";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 import { MemberPhoto } from "@/components/invitation/sections/member-photo";
+import { MemberParents } from "@/components/invitation/sections/member-parents";
 
 /**
  * Editorial / fashion-magazine composition — asymmetric, rule-divided,
@@ -123,6 +124,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
             <div key={`${index}-${member.name}`} className={index % 2 === 1 ? "sm:text-right" : ""}>
               <MemberPhoto member={member} shape="square" />
               <p className="text-3xl font-medium text-[color:var(--ii-primary)]">{member.name}</p>
+              <MemberParents member={member} />
               {member.instagram && (
                 <a
                   href={toInstagramProfileUrl(member.instagram)}

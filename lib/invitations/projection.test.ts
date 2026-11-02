@@ -109,7 +109,7 @@ const PROFILE_ROWS: Record<EventType, Partial<PublicEventRecord>> = {
 };
 
 describe("toPublicInvitation — identity", () => {
-  it("Wedding regression: an existing WeddingProfile row renders the same couple as before", () => {
+  it("Wedding: an existing WeddingProfile row renders the couple with their parents (D-100)", () => {
     const dto = toPublicInvitation(fakeEvent({ weddingProfile: WEDDING_ROW }), null);
     expect(dto.identity).toEqual({
       family: "COUPLE",
@@ -121,19 +121,19 @@ describe("toPublicInvitation — identity", () => {
           name: "Ayu Lestari",
           instagram: "ayulestari",
           photoUrl: null,
+          parents: { relation: "Putri dari", names: "Bapak Lestari & Ibu Lestari" },
         },
         {
           role: "Mempelai Pria",
           name: "Budi Santoso",
           instagram: "budisantoso",
           photoUrl: null,
+          parents: { relation: "Putra dari", names: "Bapak Santoso & Ibu Santoso" },
         },
       ],
       pairMembers: true,
       details: [],
     });
-    // Parents were never part of the public payload and still aren't.
-    expect(JSON.stringify(dto)).not.toContain("Bapak Lestari");
   });
 
   it("falls back to both full names when only one nickname is set (unchanged Wedding rule)", () => {

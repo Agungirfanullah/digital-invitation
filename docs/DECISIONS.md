@@ -3528,3 +3528,28 @@ change):**
 Undangan" and "Pengaturan Acara" active in the editor, because "/edit" was
 matched as a prefix of "/editor". Matching now uses whole path segments;
 `components/dashboard/dashboard-nav.test.tsx` covers it.
+
+## D-100 — Couple Parents Are Shown on the Public Invitation
+
+**Context:** the editor has always asked for each partner's father's and
+mother's names ("Nama ayah", "Nama ibu"), but the public invitation never
+showed them (D-091 left it as "a separate choice"), and nothing told the
+owner so. D-098 put sample parents in the demo but kept them hidden until
+the product owner decided.
+
+**Decision (product owner, 2026-11-02):** show them. Each couple member in
+the public identity carries `parents: { relation, names } | null`, built by
+`buildPublicIdentity()` (so the public page and the editor preview match):
+"Putri dari" for the first partner (bride column), "Putra dari" for the
+second, then the names joined with "&". A plain name gets "Bapak"/"Ibu" in
+front; a name the owner typed with a title (Bapak, Bpk., Pak, Ibu, Bu, Ny.,
+Alm., Almh., …) is shown as typed. With only one parent entered, only that
+one is shown; with none, no line at all. All 16 templates render it under
+the name through one shared component
+(`components/invitation/sections/member-parents.tsx`). Other identity
+families are unchanged (Aqiqah already showed the baby's parents in its
+details).
+
+**Consequences:** existing published couple invitations whose owners filled
+in the parent fields start showing them right away. No schema or query
+change: the fields were already loaded.

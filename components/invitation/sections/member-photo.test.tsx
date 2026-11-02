@@ -9,6 +9,7 @@ const member = (photoUrl: string | null): PublicIdentityMember => ({
   name: "Citra Anindya",
   instagram: null,
   photoUrl,
+  parents: null,
 });
 
 describe("MemberPhoto", () => {

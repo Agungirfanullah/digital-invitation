@@ -1,6 +1,7 @@
 import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 import type { PublicIdentity, PublicIdentityMember } from "@/lib/invitations/types";
 import { toInstagramProfileUrl } from "@/lib/invitations/format";
+import { MemberParents } from "@/components/invitation/sections/member-parents";
 
 function Member({ member }: { member: PublicIdentityMember }) {
   return (
@@ -12,6 +13,7 @@ function Member({ member }: { member: PublicIdentityMember }) {
         </p>
       )}
       <p className="text-2xl font-medium text-[color:var(--ii-primary)]">{member.name}</p>
+      <MemberParents member={member} />
       {member.instagram && (
         <a
           href={toInstagramProfileUrl(member.instagram)}
