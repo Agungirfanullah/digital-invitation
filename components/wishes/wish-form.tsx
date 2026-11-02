@@ -42,9 +42,19 @@ export function WishForm({ eventId, token, guestName }: WishFormProps) {
   const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
 
   return (
-    <form key={formKey} action={formAction} className="space-y-4 rounded-lg border p-5" noValidate>
+    <form
+      key={formKey}
+      action={formAction}
+      className="space-y-4 rounded-[var(--ii-radius,0.75rem)] border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-background)] p-6 text-left shadow-sm"
+      noValidate
+    >
       <div>
-        <h3 className="text-lg font-medium">Kirim Ucapan &amp; Doa</h3>
+        <h3
+          className="text-xl font-semibold text-[color:var(--ii-primary)]"
+          style={{ fontFamily: "var(--ii-heading-font)" }}
+        >
+          Kirim Ucapan &amp; Doa
+        </h3>
         <p className="mt-1 text-sm opacity-80">Tuliskan ucapan Anda untuk tuan rumah.</p>
       </div>
 
@@ -70,6 +80,7 @@ export function WishForm({ eventId, token, guestName }: WishFormProps) {
           defaultValue={guestName}
           maxLength={100}
           required
+          className="rounded-[var(--ii-radius,0.75rem)]"
           aria-invalid={!!fieldErrors?.name?.[0]}
         />
         {fieldErrors?.name?.[0] && (
@@ -87,6 +98,7 @@ export function WishForm({ eventId, token, guestName }: WishFormProps) {
           rows={3}
           maxLength={500}
           placeholder="Tuliskan ucapan dan doa Anda..."
+          className="rounded-[var(--ii-radius,0.75rem)]"
           required
           aria-invalid={!!fieldErrors?.message?.[0]}
         />
@@ -95,7 +107,11 @@ export function WishForm({ eventId, token, guestName }: WishFormProps) {
         )}
       </div>
 
-      <Button type="submit" disabled={pending}>
+      <Button
+        type="submit"
+        disabled={pending}
+        className="h-11 w-full rounded-[var(--ii-radius,0.75rem)] font-semibold"
+      >
         {pending ? "Mengirim..." : "Kirim Ucapan"}
       </Button>
     </form>

@@ -2,6 +2,7 @@ import { DesktopCoverPanel } from "@/components/invitation/desktop-cover-panel";
 import { FloatingSectionNav } from "@/components/invitation/floating-section-nav";
 import { GuestQrButton } from "@/components/invitation/guest-qr-button";
 import { OpeningGate } from "@/components/invitation/opening-gate";
+import { templateLookVars } from "@/components/invitation/template-look";
 import { resolveTemplateComponent } from "@/lib/invitations/templates/registry";
 import type { PublicInvitation } from "@/lib/invitations/types";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
@@ -42,8 +43,9 @@ export function InvitationRenderer({
   // whenever `bypassOpening` is set (the editor's live preview, and the
   // Homepage's small marketing thumbnails), the same signal that already
   // distinguishes those internal preview contexts from a real visit.
+  // `--ii-radius` lets the shared sections follow the template's corner style.
   const content = (
-    <>
+    <div style={templateLookVars(invitation.templateKey)}>
       <Template invitation={invitation} rsvp={rsvp} wishGuest={wishGuest} />
       {!bypassOpening && (
         <>
@@ -51,7 +53,7 @@ export function InvitationRenderer({
           {invitation.guest && <GuestQrButton guestName={invitation.guest.displayName} />}
         </>
       )}
-    </>
+    </div>
   );
 
   if (bypassOpening) return content;

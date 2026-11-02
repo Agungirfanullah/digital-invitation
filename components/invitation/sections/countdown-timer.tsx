@@ -42,7 +42,7 @@ export function CountdownTimer({
   onPhoto = false,
 }: {
   schedule: PublicSchedule;
-  /** True when the section sits on the cover photo: darker discs, so the numbers stay legible on any photo. */
+  /** True when the section sits on the cover photo: frosted light tiles, legible on any photo. */
   onPhoto?: boolean;
 }) {
   const target = useMemo(() => resolveCountdownTargetDate(schedule), [schedule]);
@@ -58,21 +58,26 @@ export function CountdownTimer({
   if (!remaining) return null;
 
   return (
-    <div className="mx-auto grid max-w-xs grid-cols-4 gap-3" aria-hidden="true">
+    <div className="mx-auto grid max-w-sm grid-cols-4 gap-2.5 sm:gap-3" aria-hidden="true">
       {UNITS.map(({ key, label }) => (
-        <div key={key} className="text-center">
-          <div
-            className={`mx-auto flex aspect-square w-full max-w-16 items-center justify-center rounded-full shadow-sm ${
-              onPhoto
-                ? "bg-black/55 text-white backdrop-blur-sm"
-                : "bg-[color:var(--ii-primary)] text-[color:var(--primary-foreground)]"
-            }`}
+        <div
+          key={key}
+          className={`flex flex-col items-center justify-center rounded-[var(--ii-radius,0.75rem)] border px-1 py-4 ${
+            onPhoto
+              ? "border-white/30 bg-white/10 text-white backdrop-blur-md"
+              : "border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-background)] text-[color:var(--ii-primary)] shadow-sm"
+          }`}
+        >
+          <span
+            data-testid="countdown-value"
+            className="text-3xl leading-none font-semibold tabular-nums"
+            style={{ fontFamily: "var(--ii-heading-font)" }}
           >
-            <span data-testid="countdown-value" className="text-xl font-semibold tabular-nums">
-              {remaining[key]}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-[color:var(--ii-text)] opacity-80">{label}</p>
+            {remaining[key]}
+          </span>
+          <span className="mt-2 text-[10px] font-medium tracking-[0.2em] uppercase opacity-80">
+            {label}
+          </span>
         </div>
       ))}
     </div>

@@ -4,6 +4,7 @@ import { buildPublicIdentity } from "@/lib/event-types/identity";
 import { resolveEnabledSections, resolveSectionOrder } from "@/lib/event-types/sections";
 import { getTemplateDefaultTheme } from "@/lib/invitations/templates/default-themes";
 import type { PublicInvitation } from "@/lib/invitations/types";
+import { DEMO_INVITATION_EVENT_ID } from "@/lib/marketing/demo-ids";
 
 /**
  * A static, fabricated sample invitation for the Homepage's Invitation
@@ -12,13 +13,15 @@ import type { PublicInvitation } from "@/lib/invitations/types";
  * `lib/invitations/projection.ts`'s `toPublicInvitation()` uses
  * (`buildPublicIdentity`, `resolveEnabledSections`, `resolveSectionOrder`,
  * `getTemplateDefaultTheme`) so the preview renders through the real
- * template system, not a second one. No gallery/gift/wishes content is
- * included — inventing sample guest wishes or gift transactions would be
- * the same kind of fabricated social proof CLAUDE.md forbids for
- * Testimonials; the RSVP/Wishes sections already have a real, tested
- * "no personal link" fallback state (`components/rsvp/rsvp-section.tsx`)
- * that renders correctly with no guest token, which is what this preview
- * relies on instead.
+ * template system, not a second one.
+ *
+ * It carries sample full names, parents, a love story and two gift methods
+ * so a visitor sees every section a template can show. All of it is
+ * obviously sample data on pages labeled as demos: the bank is "Bank
+ * Contoh", never a real bank, so nobody can transfer money to the sample
+ * account. Guest wishes stay empty on purpose: invented guest messages
+ * would be fabricated social proof (CLAUDE.md §1.4). The RSVP section shows
+ * a sample form that cannot be sent (`isDemoInvitation`, D-098).
  */
 const DEMO_DAYS_AHEAD = 75;
 
@@ -32,7 +35,7 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
   const type = "WEDDING" as const;
 
   return {
-    eventId: "demo-invitation",
+    eventId: DEMO_INVITATION_EVENT_ID,
     slug: "demo",
     type,
     title: "Pernikahan Ayu & Budi",
@@ -42,15 +45,15 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
     identity: buildPublicIdentity(type, {
       family: "COUPLE",
       data: {
-        brideFullName: null,
+        brideFullName: "Ayu Lestari Putri",
         brideNickname: "Ayu",
-        brideFather: null,
-        brideMother: null,
+        brideFather: "Bapak Hendra Wijaya",
+        brideMother: "Ibu Sri Rahayu",
         brideInstagram: null,
-        groomFullName: null,
+        groomFullName: "Budi Santoso",
         groomNickname: "Budi",
-        groomFather: null,
-        groomMother: null,
+        groomFather: "Bapak Agus Santoso",
+        groomMother: "Ibu Dewi Kartika",
         groomInstagram: null,
         bridePhotoUrl: null,
         groomPhotoUrl: null,
@@ -82,9 +85,54 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
         },
       },
     ],
-    loveStory: null,
+    loveStory: {
+      title: null,
+      items: [
+        {
+          id: "demo-story-1",
+          dateLabel: "2019",
+          title: "Pertama Bertemu",
+          description:
+            "Berkenalan di sebuah acara kampus dan langsung akrab sejak obrolan pertama.",
+          imageUrl: null,
+        },
+        {
+          id: "demo-story-2",
+          dateLabel: "2022",
+          title: "Menjalin Hubungan",
+          description: "Setelah tiga tahun berteman, kami memutuskan untuk melangkah bersama.",
+          imageUrl: null,
+        },
+        {
+          id: "demo-story-3",
+          dateLabel: "2026",
+          title: "Lamaran",
+          description: "Dengan restu kedua keluarga, kami bersiap menuju hari bahagia.",
+          imageUrl: null,
+        },
+      ],
+    },
     galleries: [],
-    giftMethods: [],
+    giftMethods: [
+      {
+        id: "demo-gift-bank",
+        type: "BANK",
+        providerName: "Bank Contoh",
+        accountName: "Ayu Lestari Putri",
+        accountNumber: "1234567890",
+        qrImageUrl: null,
+        instructions: null,
+      },
+      {
+        id: "demo-gift-address",
+        type: "OTHER",
+        providerName: "Kirim Kado",
+        accountName: null,
+        accountNumber: null,
+        qrImageUrl: null,
+        instructions: "Jl. Uji Coba No. 1, Jakarta",
+      },
+    ],
     wishes: [],
     guest: null,
   };

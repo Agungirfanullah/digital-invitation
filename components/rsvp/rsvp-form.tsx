@@ -17,6 +17,8 @@ export interface RsvpFormProps {
   guestName: string;
   seatQuota: number;
   existing: RsvpAnswer | null;
+  /** A sample on the demo invitation: fully interactive, but never submitted. */
+  demo?: boolean;
 }
 
 /**
@@ -26,21 +28,48 @@ export interface RsvpFormProps {
  * reset them on a Server Action call), so a success banner on top is
  * enough to confirm the answer while keeping it immediately editable
  * again, matching "existing RSVP is editable by the same guest."
+ *
+ * In `demo` mode the form has no action at all and its button is disabled,
+ * so nothing can reach the Server Action (which would refuse the empty
+ * token anyway).
  */
-export function RsvpForm({ eventId, token, guestName, seatQuota, existing }: RsvpFormProps) {
+export function RsvpForm({
+  eventId,
+  token,
+  guestName,
+  seatQuota,
+  existing,
+  demo = false,
+}: RsvpFormProps) {
   const action = submitRsvpAction.bind(null, eventId, token);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [attendance, setAttendance] = useState<RSVPAttendance | "">(existing?.attendance ?? "");
   const fieldErrors = state.status === "error" ? state.fieldErrors : undefined;
 
   return (
-    <form action={formAction} className="space-y-5 rounded-lg border p-5" noValidate>
+    <form
+      action={demo ? undefined : formAction}
+      onSubmit={demo ? (event) => event.preventDefault() : undefined}
+      className="space-y-5 rounded-[var(--ii-radius,0.75rem)] border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-background)] p-6 text-left shadow-sm"
+      noValidate
+    >
       <div>
-        <h3 className="text-lg font-medium">Apakah Anda akan hadir?</h3>
+        <h3
+          className="text-xl font-semibold text-[color:var(--ii-primary)]"
+          style={{ fontFamily: "var(--ii-heading-font)" }}
+        >
+          Apakah Anda akan hadir?
+        </h3>
         <p className="mt-1 text-sm opacity-80">
           Halo {guestName}, mohon konfirmasi kehadiran Anda di bawah ini.
         </p>
       </div>
+
+      {demo && (
+        <p className="rounded-md border border-dashed px-3 py-2 text-xs opacity-80">
+          Contoh formulir. Tamu mengisi RSVP lewat tautan undangan pribadinya.
+        </p>
+      )}
 
       {state.status === "success" && (
         <p role="status" className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">
@@ -60,7 +89,7 @@ export function RsvpForm({ eventId, token, guestName, seatQuota, existing }: Rsv
         {RSVP_ATTENDANCE_OPTIONS.map((option) => (
           <label
             key={option.value}
-            className="flex cursor-pointer items-center gap-3 rounded-md border p-3 text-sm has-[:checked]:border-current"
+            className="flex cursor-pointer items-center gap-3 rounded-[var(--ii-radius,0.75rem)] border border-[color:var(--ii-accent)]/30 p-3.5 text-sm transition-colors hover:border-[color:var(--ii-primary)]/60 has-[:checked]:border-[color:var(--ii-primary)] has-[:checked]:bg-[color:var(--ii-primary)]/10 has-[:checked]:font-medium"
           >
             <input
               type="radio"
@@ -68,7 +97,7 @@ export function RsvpForm({ eventId, token, guestName, seatQuota, existing }: Rsv
               value={option.value}
               defaultChecked={existing?.attendance === option.value}
               onChange={() => setAttendance(option.value)}
-              className="size-4"
+              className="size-4 accent-[color:var(--ii-primary)]"
               required
             />
             {option.label}
@@ -91,7 +120,7 @@ export function RsvpForm({ eventId, token, guestName, seatQuota, existing }: Rsv
             min={1}
             max={seatQuota}
             defaultValue={existing?.attendeeCount ?? 1}
-            className="border-input flex h-9 w-24 rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm"
+            className="flex h-10 w-24 rounded-[var(--ii-radius,0.75rem)] border border-[color:var(--ii-accent)]/40 bg-transparent px-3 py-1 text-sm shadow-sm"
             aria-invalid={!!fieldErrors?.attendeeCount?.[0]}
             aria-describedby="attendeeCount-hint"
           />
@@ -114,6 +143,7 @@ export function RsvpForm({ eventId, token, guestName, seatQuota, existing }: Rsv
           rows={3}
           defaultValue={existing?.message ?? ""}
           placeholder="Tuliskan pesan atau catatan tambahan..."
+          className="rounded-[var(--ii-radius,0.75rem)]"
           aria-invalid={!!fieldErrors?.message?.[0]}
         />
         {fieldErrors?.message?.[0] && (
@@ -121,7 +151,11 @@ export function RsvpForm({ eventId, token, guestName, seatQuota, existing }: Rsv
         )}
       </div>
 
-      <Button type="submit" disabled={pending}>
+      <Button
+        type="submit"
+        disabled={pending || demo}
+        className="h-11 w-full rounded-[var(--ii-radius,0.75rem)] font-semibold"
+      >
         {pending ? "Mengirim..." : existing ? "Perbarui RSVP" : "Kirim RSVP"}
       </Button>
     </form>

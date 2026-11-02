@@ -172,7 +172,7 @@ export function OpeningGate({
             <div className="my-5 w-full rounded-2xl border border-[color:var(--ii-accent)]/30 bg-[color:var(--ii-secondary)]/30 px-5 py-3 shadow-xs">
               <p className="text-sm text-[color:var(--ii-text)]">
                 <span className="text-xs font-semibold tracking-widest text-[color:var(--ii-accent)] uppercase">
-                  Dear
+                  Kepada Yth.
                 </span>
                 <br />
                 <span className="text-base font-bold text-[color:var(--ii-primary)]">

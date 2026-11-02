@@ -139,6 +139,7 @@ describe("OpeningGate (D-069)", () => {
       </OpeningGate>,
     );
     expect(within(screen.getByRole("dialog")).getByText("Dedi Pratama")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Kepada Yth.");
   });
 
   it("guest identity unavailable: Opening still renders correctly, without a greeting", () => {
@@ -150,7 +151,7 @@ describe("OpeningGate (D-069)", () => {
     );
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("button", { name: "Buka Undangan" })).toBeInTheDocument();
-    expect(dialog).not.toHaveTextContent("Dear");
+    expect(dialog).not.toHaveTextContent("Kepada Yth.");
   });
 
   it("Opening enabled: locks page scroll while the gate is up and restores the exact previous value after reveal", () => {

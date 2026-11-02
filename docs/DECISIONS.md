@@ -3429,3 +3429,60 @@ back-to-back pushes do not pile up.
 arrives later (it waits for the running one). Integration tests must still
 not rely on fixed values in globally unique columns, since a run can also
 die for other reasons.
+
+## D-098 — Templates Step 1: Fuller Demo and Shared Sections That Follow the Template
+
+**Context:** a visual audit of the 16 templates on 2026-11-02 (390×844 and
+1440×900, no console errors, no horizontal overflow) found that the sections
+every template shares looked the same everywhere: the countdown repeated the
+cover photo with four black discs, the gallery was always a 2×2 square grid,
+the RSVP and wish forms ignored the template's shape, and the desktop cover
+panel used one arched-photo layout for all. The demos also showed almost
+nothing beyond the hero: no full names, love story or gift section, and RSVP
+and Ucapan only said "hanya dapat diisi melalui tautan pribadi". The product
+owner chose to start with these shared parts and asked for full names,
+parents, a love story, gift accounts and the RSVP form in every demo.
+
+**Decision:**
+
+- **Demo content** (`lib/marketing/demo-invitation.ts`): full names, a
+  three-step love story, a bank account at "Bank Contoh" (a made-up bank, so
+  nobody can send money to the sample account) and a gift address. Guest
+  wishes stay empty: invented guest messages would be fabricated social proof
+  (CLAUDE.md §1.4).
+- **Sample RSVP form on demos only:** `RsvpSection` recognises the demo by
+  its fixed event id (`lib/marketing/demo-ids.ts`; real events have cuid ids)
+  and renders the real `RsvpForm` with `demo`: fully clickable, labeled
+  "Contoh formulir", with no form action and a disabled button. The Server
+  Action would refuse the empty token anyway. Real invitations without a
+  personal link keep the existing explanation.
+- **Template look** (`components/invitation/template-look.ts`): one map from
+  template key to corner shape (round, soft, square), countdown mood and
+  desktop panel layout. `InvitationRenderer` sets `--ii-radius` once; shared
+  components read `rounded-[var(--ii-radius,0.75rem)]`.
+- **Countdown:** frosted tiles on the cover photo only for photo-led
+  templates (Dark Luxury, Cinematic Journey, Royal Gold, Industrial Loft);
+  the others sit on a soft tint of the theme so the cover photo is not
+  repeated. Numbers use the heading font; the date is shown under the tiles.
+- **Gallery:** a mosaic in groups of three (one tall photo beside two
+  stacked, alternating sides); a trailing pair stays square and a single
+  leftover photo spans the width.
+- **RSVP and wish forms:** theme-colored borders, the template's corners,
+  heading font, selected answer highlighted, full-width button.
+- **Desktop cover panel:** two new layouts beside the existing ornate, plain
+  and geometric ones: "editorial" (left-aligned title beside a tall
+  square-cornered photo; Modern Editorial, Mono Frame, Industrial Loft) and
+  "fullbleed" (photo fills the panel, title at the bottom; Dark Luxury,
+  Cinematic Journey). Playful Pop moved to the plain layout.
+- **Opening gate:** the guest greeting reads "Kepada Yth." like the
+  templates, instead of "Dear".
+
+**Consequences:** these components are shared, so every published invitation
+picks up the new countdown, gallery, form and desktop panel styles. No data,
+query, validation or authorization changed.
+
+**Open:** couples' parents' names are collected by the editor ("Nama ayah",
+"Nama ibu") but have never been shown on the public invitation (D-091, "a
+separate choice"). The demo now carries sample parents, but showing them only
+in the demo would advertise a feature real invitations lack, so they stay
+hidden until the product owner decides whether real invitations show them.

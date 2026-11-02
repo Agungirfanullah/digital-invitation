@@ -1,3 +1,4 @@
+import { isDemoInvitation } from "@/lib/marketing/demo-ids";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 import { RsvpForm } from "@/components/rsvp/rsvp-form";
 
@@ -13,6 +14,9 @@ export interface RsvpSectionProps {
  * no guest identity to attach an answer to, and the underlying Server
  * Action independently re-verifies the token regardless of what this
  * component renders.
+ *
+ * The demo invitation shows the real form as a sample that cannot be sent
+ * (D-098), so visitors see what their guests will fill in.
  */
 export function RsvpSection({ eventId, rsvp }: RsvpSectionProps) {
   return (
@@ -33,10 +37,34 @@ export function RsvpSection({ eventId, rsvp }: RsvpSectionProps) {
             seatQuota={rsvp.view.seatQuota}
             existing={rsvp.view.existing}
           />
+        ) : isDemoInvitation(eventId) ? (
+          <RsvpForm
+            demo
+            eventId={eventId}
+            token=""
+            guestName="Tamu Undangan"
+            seatQuota={2}
+            existing={null}
+          />
         ) : (
-          <p className="rounded-lg border border-dashed p-5 text-center text-sm opacity-80">
-            RSVP hanya dapat diisi melalui tautan undangan pribadi Anda.
-          </p>
+          <div className="flex flex-col items-center gap-3 rounded-[var(--ii-radius,0.75rem)] border border-dashed border-[color:var(--ii-accent)]/50 px-6 py-7 text-center">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="size-7 text-[color:var(--ii-accent)]"
+            >
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <path d="m3 7 9 6 9-6" />
+            </svg>
+            <p className="text-sm opacity-80">
+              RSVP hanya dapat diisi melalui tautan undangan pribadi Anda.
+            </p>
+          </div>
         )}
       </div>
     </section>

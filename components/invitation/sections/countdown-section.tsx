@@ -3,6 +3,7 @@ import {
   coverPhotoTextStyle,
 } from "@/components/invitation/sections/cover-photo-background";
 import { CountdownTimer } from "@/components/invitation/sections/countdown-timer";
+import { templateLook } from "@/components/invitation/template-look";
 import { resolveCountdownTarget } from "@/lib/invitations/countdown";
 import { formatIndonesianDate, formatTimeRange } from "@/lib/invitations/format";
 import type { PublicInvitation } from "@/lib/invitations/types";
@@ -18,15 +19,21 @@ export function CountdownSection({ invitation }: { invitation: PublicInvitation 
   const schedule = resolveCountdownTarget(invitation);
   if (!schedule) return null;
 
-  // With a cover photo the section sits on it (dark scrim + light text, the
-  // same treatment as Hero), like the photo-backed sections guests expect.
-  const photoUrl = invitation.theme.backgroundImageUrl;
+  // Cinematic and dark templates sit the countdown on the cover photo (dark
+  // scrim + light text, the same treatment as Hero). The others use a soft
+  // tint of the theme, so the cover photo is not repeated mid-page.
+  const onPhoto = templateLook(invitation.templateKey).countdown === "photo";
+  const photoUrl = onPhoto ? invitation.theme.backgroundImageUrl : null;
 
   return (
     <section
       aria-label="Hitung mundur"
       className="relative isolate overflow-hidden px-6 py-16 text-center"
-      style={coverPhotoTextStyle(photoUrl)}
+      style={
+        coverPhotoTextStyle(photoUrl) ?? {
+          background: "color-mix(in oklab, var(--ii-secondary) 22%, var(--ii-background))",
+        }
+      }
     >
       <CoverPhotoLayer imageUrl={photoUrl} />
       <div className="relative">
@@ -40,6 +47,12 @@ export function CountdownSection({ invitation }: { invitation: PublicInvitation 
           )}.`}
         </p>
         <CountdownTimer schedule={schedule} onPhoto={!!photoUrl} />
+        <p
+          aria-hidden="true"
+          className="mt-6 text-sm tracking-wide text-[color:var(--ii-text)] opacity-80"
+        >
+          {formatIndonesianDate(schedule.date)}
+        </p>
       </div>
     </section>
   );

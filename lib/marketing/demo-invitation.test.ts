@@ -24,6 +24,22 @@ describe("buildDemoInvitationWithPhotos", () => {
     expect(elegant).not.toEqual(warm);
   });
 
+  it("fills every section a template can show, with obviously sample data", () => {
+    const demo = buildDemoInvitationWithPhotos("royal-gold");
+
+    expect(demo.identity?.members.map((member) => member.name)).toEqual([
+      "Ayu Lestari Putri",
+      "Budi Santoso",
+    ]);
+    expect(demo.loveStory?.items.length).toBeGreaterThanOrEqual(3);
+    // A made-up bank, so nobody can send money to the sample account.
+    expect(demo.giftMethods.find((method) => method.type === "BANK")?.providerName).toBe(
+      "Bank Contoh",
+    );
+    // Invented guest wishes would be fabricated social proof.
+    expect(demo.wishes).toEqual([]);
+  });
+
   it("never carries a guest, so previews never look personalized", () => {
     expect(buildDemoInvitationWithPhotos("royal-gold").guest).toBeNull();
   });

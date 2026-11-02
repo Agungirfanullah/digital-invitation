@@ -3,6 +3,7 @@ import { getHeroHeading, getHeroScheduleDate } from "@/lib/event-types/identity"
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { formatIndonesianDate } from "@/lib/invitations/format";
 import type { PublicInvitation } from "@/lib/invitations/types";
+import { templateLook } from "@/components/invitation/template-look";
 
 function CornerOrnament({ className = "" }: { className?: string }) {
   return (
@@ -82,33 +83,112 @@ function GeometricCorner({ className = "" }: { className?: string }) {
   );
 }
 
+type PanelProps = {
+  invitation: PublicInvitation;
+  photoUrl: string | null;
+  heroDate: string | null;
+};
+
 /**
- * Some templates' own design briefs forbid what the default ornate panel
- * draws (see each template file's top comment): Mono Frame/Art Deco/
- * Industrial Loft/Modern Editorial/Minimal Elegant stay straight-edged,
- * and Soft Romantic allows no botanical or geometric motifs at all.
+ * Text-led layout for straight-edged, typographic templates (Modern
+ * Editorial, Mono Frame, Industrial Loft): a left-aligned title block beside
+ * a tall, square-cornered photo.
  */
-const GEOMETRIC_TEMPLATES = new Set([
-  "mono-frame",
-  "art-deco",
-  "industrial-loft",
-  "modern-editorial",
-  "minimal-elegant",
-]);
-const PLAIN_TEMPLATES = new Set(["soft-romantic"]);
+function EditorialPanel({ invitation, photoUrl, heroDate }: PanelProps) {
+  return (
+    <div className="flex h-full items-center gap-12 px-14 py-14 xl:px-20">
+      <div className="min-w-0 flex-1 text-left">
+        <p className="text-xs font-semibold tracking-[0.45em] text-[color:var(--ii-accent)] uppercase">
+          {EVENT_TYPE_LABELS[invitation.type]}
+        </p>
+        <div className="mt-6 h-px w-16 bg-[color:var(--ii-accent)]" />
+        <h2
+          className="mt-8 text-6xl leading-[1.05] text-balance text-[color:var(--ii-primary)] xl:text-7xl"
+          style={{ fontFamily: "var(--ii-heading-font)" }}
+        >
+          {getHeroHeading(invitation)}
+        </h2>
+        {heroDate && (
+          <p className="mt-8 text-sm font-medium tracking-[0.25em] text-[color:var(--ii-text)] uppercase">
+            {formatIndonesianDate(heroDate)}
+          </p>
+        )}
+      </div>
+      <div className="relative h-[min(72vh,40rem)] w-[min(38%,22rem)] shrink-0">
+        <div className="absolute inset-0 translate-x-3 translate-y-3 border border-[color:var(--ii-accent)]" />
+        <div className="relative size-full overflow-hidden bg-[color:var(--ii-secondary)]/30">
+          {photoUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
+            <img src={photoUrl} alt="" className="size-full object-cover" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-type PanelVariant = "ornate" | "geometric" | "plain";
-
-function panelVariant(templateKey: string | null): PanelVariant {
-  if (templateKey && GEOMETRIC_TEMPLATES.has(templateKey)) return "geometric";
-  if (templateKey && PLAIN_TEMPLATES.has(templateKey)) return "plain";
-  return "ornate";
+/**
+ * Photo-led layout for cinematic and dark templates (Dark Luxury, Cinematic
+ * Journey): the cover photo fills the panel, the title sits at the bottom
+ * on a dark gradient. Without a photo it falls back to a theme gradient.
+ */
+function FullbleedPanel({ invitation, photoUrl, heroDate }: PanelProps) {
+  return (
+    <div
+      className="relative h-full"
+      style={
+        photoUrl
+          ? undefined
+          : {
+              background:
+                "linear-gradient(160deg, var(--ii-background), color-mix(in oklab, var(--ii-secondary) 45%, var(--ii-background)))",
+            }
+      }
+    >
+      {photoUrl && (
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL. */}
+          <img src={photoUrl} alt="" className="absolute inset-0 size-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" />
+        </>
+      )}
+      <div
+        className={`absolute inset-x-0 bottom-0 px-14 pb-16 xl:px-20 ${
+          photoUrl ? "text-white" : "text-[color:var(--ii-primary)]"
+        }`}
+      >
+        <p
+          className={`text-xs font-semibold tracking-[0.45em] uppercase ${
+            photoUrl ? "text-white/80" : "text-[color:var(--ii-accent)]"
+          }`}
+        >
+          {EVENT_TYPE_LABELS[invitation.type]}
+        </p>
+        <h2
+          className="mt-5 max-w-2xl text-6xl leading-[1.05] text-balance xl:text-7xl"
+          style={{ fontFamily: "var(--ii-heading-font)" }}
+        >
+          {getHeroHeading(invitation)}
+        </h2>
+        {heroDate && (
+          <div className="mt-6 flex items-center gap-4">
+            <span
+              className={`h-px w-12 ${photoUrl ? "bg-white/60" : "bg-[color:var(--ii-accent)]"}`}
+            />
+            <p className="text-sm tracking-[0.25em] uppercase opacity-90">
+              {formatIndonesianDate(heroDate)}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 /**
  * The fixed left-hand "cover" shown beside the invitation's scrolling
- * column on wide (lg+) viewports only — a large arched photo, ornamental
- * frame, heading and date, mirroring the desktop layout guests have come
+ * column on wide (lg+) viewports only — the cover photo, heading and date
+ * in one of five layouts chosen per template (`template-look.ts`), mirroring the desktop layout guests have come
  * to expect from digital invitations instead of stretching a mobile-first
  * template across the whole screen. Purely presentational and duplicated
  * from data already in the invitation, so it's `aria-hidden` (the real
@@ -118,13 +198,9 @@ function panelVariant(templateKey: string | null): PanelVariant {
 export function DesktopCoverPanel({ invitation }: { invitation: PublicInvitation }) {
   const photoUrl = invitation.theme.backgroundImageUrl;
   const heroDate = getHeroScheduleDate(invitation);
-  const variant = panelVariant(invitation.templateKey);
-  const Corner = variant === "geometric" ? GeometricCorner : CornerOrnament;
-  const frameShape = variant === "geometric" ? "" : "rounded-t-full";
-  const glow =
-    variant === "geometric"
-      ? "0 0 0 10px color-mix(in oklab, var(--ii-accent) 12%, transparent)"
-      : "0 0 70px 12px color-mix(in oklab, var(--ii-accent) 35%, transparent), 0 0 0 10px color-mix(in oklab, var(--ii-accent) 12%, transparent)";
+  // Templates whose own design briefs forbid the ornate frame (see each
+  // template file's top comment) get another layout (template-look.ts).
+  const variant = templateLook(invitation.templateKey).panel;
 
   return (
     <div
@@ -133,6 +209,40 @@ export function DesktopCoverPanel({ invitation }: { invitation: PublicInvitation
       style={themeToCssVars(invitation.theme)}
       className="fixed inset-y-0 right-[var(--invite-column)] left-0 hidden overflow-hidden bg-[color:var(--ii-background)] lg:block"
     >
+      {variant === "editorial" && (
+        <EditorialPanel invitation={invitation} photoUrl={photoUrl} heroDate={heroDate} />
+      )}
+      {variant === "fullbleed" && (
+        <FullbleedPanel invitation={invitation} photoUrl={photoUrl} heroDate={heroDate} />
+      )}
+      {(variant === "ornate" || variant === "plain" || variant === "geometric") && (
+        <ClassicPanel
+          invitation={invitation}
+          photoUrl={photoUrl}
+          heroDate={heroDate}
+          variant={variant}
+        />
+      )}
+    </div>
+  );
+}
+
+/** The original arched-photo layout, in ornate, plain or geometric dress. */
+function ClassicPanel({
+  invitation,
+  photoUrl,
+  heroDate,
+  variant,
+}: PanelProps & { variant: "ornate" | "plain" | "geometric" }) {
+  const Corner = variant === "geometric" ? GeometricCorner : CornerOrnament;
+  const frameShape = variant === "geometric" ? "" : "rounded-t-full";
+  const glow =
+    variant === "geometric"
+      ? "0 0 0 10px color-mix(in oklab, var(--ii-accent) 12%, transparent)"
+      : "0 0 70px 12px color-mix(in oklab, var(--ii-accent) 35%, transparent), 0 0 0 10px color-mix(in oklab, var(--ii-accent) 12%, transparent)";
+
+  return (
+    <>
       {variant !== "plain" && (
         <>
           <Corner className="absolute top-4 left-4 size-24" />
@@ -182,6 +292,6 @@ export function DesktopCoverPanel({ invitation }: { invitation: PublicInvitation
           </p>
         )}
       </div>
-    </div>
+    </>
   );
 }

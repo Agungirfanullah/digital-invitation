@@ -161,7 +161,12 @@ digital-gift display) do not become MVP-defining by that fact.
     for a more attractive, SEO-minded UI across homepage, dashboard, user
     menus and templates, without backend/database/infrastructure changes.
     Order chosen: homepage (done, D-095) → dashboard and account pages
-    (done, D-096) → templates, each as its own change.
+    (done, D-096) → templates, each as its own change. Templates: audit done
+    2026-11-02; step 1 (richer demo content and the sections all templates
+    share, D-098) done; step 2 (differentiating the six look-alike templates
+    and Royal Gold vs Art Deco) and step 3 (polish) not started. Couple
+    parents' names are still not shown publicly; waiting on the product
+    owner (D-098).
 
 **Status (Phase 0.9):**
 

@@ -126,24 +126,42 @@ describe("CountdownSection (D-068)", () => {
     wishes: true,
   };
 
-  it("sits on the cover photo, with darker discs, when the event has one", () => {
+  it("sits on the cover photo, with frosted tiles, for a photo-led template", () => {
     const base = buildFullyPopulatedInvitation({ sections: ALL_ON });
     const invitation = {
       ...base,
+      templateKey: "cinematic-journey",
       theme: { ...base.theme, backgroundImageUrl: "https://example.com/cover.jpg" },
     };
     const { container } = render(<CountdownSection invitation={invitation} />);
 
     expect(container.querySelector("[style*='cover.jpg']")).toBeInTheDocument();
-    expect(container.querySelector("[class*='bg-black']")).toBeInTheDocument();
+    expect(container.querySelector("[class*='bg-white/10']")).toBeInTheDocument();
   });
 
-  it("has no photo layer and uses the theme color for the discs without a cover photo", () => {
+  it("uses a theme tint instead of repeating the cover photo for other templates", () => {
     const base = buildFullyPopulatedInvitation({ sections: ALL_ON });
-    const invitation = { ...base, theme: { ...base.theme, backgroundImageUrl: null } };
+    const invitation = {
+      ...base,
+      templateKey: "floral-romance",
+      theme: { ...base.theme, backgroundImageUrl: "https://example.com/cover.jpg" },
+    };
     const { container } = render(<CountdownSection invitation={invitation} />);
 
     expect(container.querySelector("[style*='background-image']")).not.toBeInTheDocument();
-    expect(container.querySelector("[class*='bg-black']")).not.toBeInTheDocument();
+    expect(container.querySelector("[class*='bg-white/10']")).not.toBeInTheDocument();
+  });
+
+  it("has no photo layer without a cover photo, even for a photo-led template", () => {
+    const base = buildFullyPopulatedInvitation({ sections: ALL_ON });
+    const invitation = {
+      ...base,
+      templateKey: "cinematic-journey",
+      theme: { ...base.theme, backgroundImageUrl: null },
+    };
+    const { container } = render(<CountdownSection invitation={invitation} />);
+
+    expect(container.querySelector("[style*='background-image']")).not.toBeInTheDocument();
+    expect(container.querySelector("[class*='bg-white/10']")).not.toBeInTheDocument();
   });
 });
