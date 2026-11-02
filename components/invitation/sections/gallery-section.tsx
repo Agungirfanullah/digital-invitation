@@ -1,5 +1,6 @@
 import type { PublicGallery } from "@/lib/invitations/types";
 import { GalleryGrid } from "@/components/invitation/sections/gallery-grid";
+import { SectionHeading } from "@/components/invitation/sections/section-heading";
 
 /**
  * Server Component — only the grid/lightbox interaction
@@ -12,24 +13,19 @@ export function GallerySection({ galleries }: { galleries: PublicGallery[] }) {
   if (nonEmptyGalleries.length === 0) return null;
 
   return (
-    <section aria-labelledby="gallery-heading" className="px-6 py-16">
-      <h2
-        id="gallery-heading"
-        className="mb-8 text-center text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase"
-      >
-        Galeri
-      </h2>
+    <section aria-labelledby="gallery-heading" className="px-8 py-20">
+      <div className="mx-auto max-w-md">
+        <SectionHeading id="gallery-heading">Galeri</SectionHeading>
 
-      {nonEmptyGalleries.map((gallery, galleryIndex) => (
-        <div key={galleryIndex} className="mx-auto mb-8 max-w-2xl last:mb-0">
-          {gallery.title && (
-            <p className="mb-3 text-center font-medium text-[color:var(--ii-primary)]">
-              {gallery.title}
-            </p>
-          )}
-          <GalleryGrid items={gallery.items} />
-        </div>
-      ))}
+        {nonEmptyGalleries.map((gallery, galleryIndex) => (
+          <div key={galleryIndex} className="mb-10 last:mb-0">
+            {gallery.title && (
+              <p className="mb-3 text-sm text-[color:var(--ii-primary)]">{gallery.title}</p>
+            )}
+            <GalleryGrid items={gallery.items} />
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

@@ -1,6 +1,7 @@
 import type { PublicWish } from "@/lib/invitations/types";
 import { formatIndonesianDateTime } from "@/lib/invitations/format";
 import { WishForm } from "@/components/wishes/wish-form";
+import { SectionHeading } from "@/components/invitation/sections/section-heading";
 
 export interface WishesSectionProps {
   eventId: string;
@@ -25,30 +26,21 @@ export interface WishesSectionProps {
  */
 export function WishesSection({ eventId, wishes, guest }: WishesSectionProps) {
   return (
-    <section aria-labelledby="wishes-heading" className="px-6 py-16">
-      <h2
-        id="wishes-heading"
-        className="mb-8 text-center text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase"
-      >
-        Ucapan &amp; Doa
-      </h2>
-
+    <section aria-labelledby="wishes-heading" className="px-8 py-20">
       <div className="mx-auto max-w-md space-y-8 text-[color:var(--ii-text)]">
+        <SectionHeading id="wishes-heading">Ucapan &amp; Doa</SectionHeading>
         {guest ? (
           <WishForm eventId={eventId} token={guest.token} guestName={guest.guestName} />
         ) : (
-          <p className="rounded-lg border border-dashed p-5 text-center text-sm opacity-80">
+          <p className="border-l border-[color:var(--ii-accent)] py-1 pl-4 text-sm opacity-80">
             Ucapan hanya dapat dikirim melalui tautan undangan pribadi Anda.
           </p>
         )}
 
         {wishes.length > 0 && (
-          <ul className="space-y-4">
+          <ul className="divide-y divide-[color:var(--ii-secondary)] border-y border-[color:var(--ii-secondary)]">
             {wishes.map((wish) => (
-              <li
-                key={wish.id}
-                className="rounded-lg border border-[color:var(--ii-accent)]/30 p-4 text-sm"
-              >
+              <li key={wish.id} className="py-5 text-sm">
                 <p className="whitespace-pre-wrap">{wish.message}</p>
                 <p className="mt-2 text-xs tracking-wide opacity-70">
                   {wish.name} · {formatIndonesianDateTime(wish.createdAt)}

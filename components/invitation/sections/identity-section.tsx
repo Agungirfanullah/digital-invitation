@@ -2,70 +2,69 @@ import { MemberPhoto } from "@/components/invitation/sections/member-photo";
 import type { PublicIdentity, PublicIdentityMember } from "@/lib/invitations/types";
 import { toInstagramProfileUrl } from "@/lib/invitations/format";
 import { MemberParents } from "@/components/invitation/sections/member-parents";
+import { SectionHeading } from "@/components/invitation/sections/section-heading";
 
 function Member({ member }: { member: PublicIdentityMember }) {
   return (
-    <div className="flex flex-col items-center gap-1 text-center">
-      <MemberPhoto member={member} />
-      {member.role && (
-        <p className="text-xs tracking-widest text-[color:var(--ii-accent)] uppercase">
-          {member.role}
-        </p>
-      )}
-      <p className="text-2xl font-medium text-[color:var(--ii-primary)]">{member.name}</p>
-      <MemberParents member={member} />
-      {member.instagram && (
-        <a
-          href={toInstagramProfileUrl(member.instagram)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-[color:var(--ii-text)] underline-offset-2 opacity-70 hover:underline"
+    <div className="flex items-start gap-5 py-8 text-left">
+      <div className="shrink-0 empty:hidden [&>div]:mx-0 [&>div]:mb-0 [&>div]:h-32 [&>div]:w-24 [&>div]:border-0 [&>div]:shadow-none">
+        <MemberPhoto member={member} shape="square" />
+      </div>
+      <div className="min-w-0 pt-1">
+        {member.role && (
+          <p className="text-[11px] tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
+            {member.role}
+          </p>
+        )}
+        <p
+          className="mt-1 text-3xl leading-tight text-[color:var(--ii-primary)]"
+          style={{ fontFamily: "var(--ii-heading-font)" }}
         >
-          @{member.instagram}
-        </a>
-      )}
+          {member.name}
+        </p>
+        <MemberParents member={member} />
+        {member.instagram && (
+          <a
+            href={toInstagramProfileUrl(member.instagram)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block text-sm text-[color:var(--ii-text)] underline underline-offset-4 opacity-70"
+          >
+            @{member.instagram}
+          </a>
+        )}
+      </div>
     </div>
   );
 }
 
 /**
  * Type-aware identity block (couple, celebrant, baby & family, host,
- * organization). Callers render it only when `invitation.identity` exists —
- * there is no fake identity data to fall back to.
+ * organization), laid out as Minimal Elegant's left-aligned list: a small
+ * portrait beside each name, hairlines between members. Callers render it
+ * only when `invitation.identity` exists — there is no fake identity data
+ * to fall back to.
  */
 export function IdentitySection({ identity }: { identity: PublicIdentity }) {
-  const [first, ...rest] = identity.members;
-
   return (
-    <section aria-labelledby="identity-heading" className="px-6 py-16 text-center">
-      <h2
-        id="identity-heading"
-        className="mb-8 text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase"
-      >
-        {identity.heading}
-      </h2>
-      {first && (
-        <div className="mx-auto flex max-w-md flex-col items-center gap-8 sm:flex-row sm:justify-center sm:gap-12">
-          <Member member={first} />
-          {rest.map((member, index) => (
-            <div key={`${index}-${member.name}`} className="contents">
-              {identity.pairMembers && (
-                <p aria-hidden="true" className="text-2xl text-[color:var(--ii-primary)]">
-                  &amp;
-                </p>
-              )}
-              <Member member={member} />
-            </div>
-          ))}
-        </div>
-      )}
-      {identity.details.length > 0 && (
-        <ul className="mx-auto mt-6 max-w-sm space-y-1 text-sm text-[color:var(--ii-text)] opacity-80">
-          {identity.details.map((detail) => (
-            <li key={detail}>{detail}</li>
-          ))}
-        </ul>
-      )}
+    <section aria-labelledby="identity-heading" className="px-8 py-20">
+      <div className="mx-auto max-w-md">
+        <SectionHeading id="identity-heading">{identity.heading}</SectionHeading>
+        {identity.members.length > 0 && (
+          <div className="divide-y divide-[color:var(--ii-secondary)] border-y border-[color:var(--ii-secondary)]">
+            {identity.members.map((member, index) => (
+              <Member key={`${index}-${member.name}`} member={member} />
+            ))}
+          </div>
+        )}
+        {identity.details.length > 0 && (
+          <ul className="mt-6 space-y-1 text-sm text-[color:var(--ii-text)] opacity-80">
+            {identity.details.map((detail) => (
+              <li key={detail}>{detail}</li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
