@@ -100,10 +100,16 @@ Templates are guest-facing and the riskiest part, so:
 - **GitHub API without auth** allows 60 requests/hour and `gh` is not
   installed. Poll CI sparingly; the run page HTML is not rate-limited, and
   job logs/artifacts need the owner to download them.
-- **Cancelled CI runs leave test rows behind** (`cancel-in-progress` kills
-  Vitest before `afterEach`). Never use fixed values for globally unique
-  columns (slug, token) in integration tests; add a per-run suffix. This broke
-  CI from `1df842d` until 2026-11-02.
+- **Cancelled CI runs leave test rows behind** (a run killed mid-test skips
+  `afterEach`). Never use fixed values for globally unique columns (slug,
+  token) in integration tests; add a per-run suffix. This broke CI from
+  `1df842d` until 2026-11-02. Since D-097, pushes are no longer cancelled
+  mid-run; pull requests still are. The DEV database was cleaned on
+  2026-11-02 and holds only `dev.tester@example.com` plus its 2 events; keep
+  that account.
+- **E2E in CI sometimes times out on the first attempt** (CI-to-Supabase
+  latency, ~8 s per invitation page). Re-run the failed job before changing
+  code; if the same tests fail again, then raise their waits.
 - **Accessible names:** an inline-block or an inline `<svg>` inside a
   heading adds a space to its accessible name ("Cantik , Personal");
   use CSS `text-decoration` for underlines.

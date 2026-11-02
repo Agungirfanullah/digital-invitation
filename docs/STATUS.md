@@ -3663,9 +3663,23 @@ suffix…" with `Unique constraint failed on the fields: (slug)`. The run for
 `fd5f730` was cancelled mid-test by a newer push (`cancel-in-progress`),
 after creating events with the fixed slugs `acara-unik`/`acara-unik-2` but
 before `afterEach` could delete them; every later run then collided with
-those rows. The two onboarding slug tests now use a per-run suffix. The DEV
-database also holds about 270 leftover test users from interrupted runs over
-time; they break nothing now and were left for the product owner to decide.
+those rows. The two onboarding slug tests now use a per-run suffix (`43b5413`).
+CI on `43b5413` (run 41397846666): Validate passed; E2E failed 3 tests on the
+first attempt (`event-types`, `gallery`, `identity-photos`, all timeouts with
+~8 s per invitation page load), passed locally in CI mode, and passed on the
+product owner's re-run with no code change, so it was CI-to-Supabase latency,
+not a bug. **CI green again.**
+
+Afterwards, with the product owner's approval, the DEV database was cleaned:
+275 leftover test users (`test-…@example.invalid`, `e2e-…@example.com`), their
+47 events and 7 Supabase Auth users were deleted (none had financial
+records; no storage files remained). Kept: `dev.tester@example.com` and its 2
+events. CI pushes are no longer cancelled mid-run (D-097).
+
+Seen in the local E2E run but not in CI: three onboarding tests flaked with
+`Unable to start a transaction in the given time` (`connection_limit=1`
+per server process, Prisma's 2 s `maxWait`). Not changed; it touches
+database connection settings and waits for the product owner.
 
 **2026-10-27, CI green again on `f1d16ff`:** both GitHub Actions jobs,
 Validate (Prisma, typecheck, lint, Vitest, `next build`) and E2E

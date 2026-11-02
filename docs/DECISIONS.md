@@ -3409,3 +3409,23 @@ acara", not "Kelola acara". Analitik is listed before Check-in so the list's
 text never runs together into "…Check-inAnalitik" (contains "nAn", which
 `e2e/analytics.spec.ts` forbids).
 
+
+## D-097 — CI Stops Cancelling Push Runs Mid-Run
+
+**Context:** `.github/workflows/ci.yml` used `cancel-in-progress: true`, so
+every push cancelled the previous run on the same branch. A run killed during
+the tests skips their cleanup hooks and leaves rows in the shared Supabase
+DEV database. On 2026-10-28 the cancelled run for `fd5f730` left two events
+with fixed slugs behind, and every later run failed until 2026-11-02 (fixed
+in `43b5413`). Over time the same mechanism had left 275 test users in the
+DEV database (deleted 2026-11-02 with the product owner's approval).
+
+**Decision:** `cancel-in-progress` is true only for `pull_request` events.
+Pushes keep the same concurrency group, so a run that has started always
+finishes; a newer push still replaces a run that is only queued, so
+back-to-back pushes do not pile up.
+
+**Trade-off:** after several quick pushes, the result for the latest commit
+arrives later (it waits for the running one). Integration tests must still
+not rely on fixed values in globally unique columns, since a run can also
+die for other reasons.

@@ -8,9 +8,14 @@ on:
     branches:
       - "**"
 
+# Pushes are never cancelled mid-run: a run killed during the tests skips
+# their cleanup and leaves rows in the shared DEV database, which broke CI
+# from 1df842d until 2026-11-02. A newer push still replaces a run that is
+# only queued (not started), so back-to-back pushes do not pile up.
+# Pull requests keep cancelling superseded runs.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   validate:
