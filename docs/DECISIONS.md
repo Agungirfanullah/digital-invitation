@@ -3486,3 +3486,45 @@ query, validation or authorization changed.
 separate choice"). The demo now carries sample parents, but showing them only
 in the demo would advertise a feature real invitations lack, so they stay
 hidden until the product owner decides whether real invitations show them.
+
+## D-099 — Event Hub Menu and Invitation Editor Redesign
+
+**Context:** the product owner marked the event hub's back link and tool
+grid, and the whole invitation editor, as not appealing enough. The editor
+was also cramped: beside the dashboard sidebar it ran four columns (sidebar,
+section list, form, preview) and the identity form split into two narrow
+columns, so labels and buttons wrapped.
+
+**Decision (presentation only; no data, query, action or validation
+change):**
+
+- **Event hub:** a breadcrumb ("Semua undangan / {title}") replaces the
+  plain back link. The tools are grouped: "Siapkan undangan" (a large dark
+  Editor Undangan card with a "Buka editor" call to action, plus Edit Acara)
+  and "Tamu & interaksi" (six cards, each with its own icon color and a
+  one-line description of what the page is for). Cards fade in one after
+  another; the animation is skipped under reduced motion.
+- **Editor shell:** one card with a toolbar: a round back button, the title
+  with a colored status dot, a save-status pill (amber spinner while saving,
+  green check when saved, red when it fails), "Lihat undangan" for a
+  published event, and "Pratinjau" on small screens.
+- **Section navigation:** icons, grouped into "Isi undangan" and "Tampilan".
+  A vertical list only on 2xl screens; below that, a row of chips above the
+  form (wrapping on lg, scrolling on phones), so the form keeps its width.
+  Button names are unchanged (tests and screen readers see just the label).
+- **Forms:** every section starts with the same header (icon, title,
+  description, `components/editor/section-header.tsx`). Identity groups are
+  cards, side by side only when their container is wide enough (container
+  query). Switching sections fades the form in with an opacity-only
+  animation (`animate-fade-in`), since a transform would make the date and
+  time pickers' fixed popovers position against the form instead of the
+  screen.
+- **Live preview:** the same phone mockup as the Homepage, at the real 390px
+  width scaled to fit, on a dotted background, sticky beside the form. On
+  small screens it opens full screen with a close button. It is rendered
+  once, so its text never appears twice on the page.
+
+**Bug fixed on the way:** the dashboard sidebar marked both "Desain
+Undangan" and "Pengaturan Acara" active in the editor, because "/edit" was
+matched as a prefix of "/editor". Matching now uses whole path segments;
+`components/dashboard/dashboard-nav.test.tsx` covers it.

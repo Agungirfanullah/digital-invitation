@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/forms/form-error";
 import { ThemeColorField } from "@/components/editor/sections/theme-color-field";
 import { ThemeFontField } from "@/components/editor/sections/theme-font-field";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 const MAX_UPLOAD_MB = Math.round(GALLERY_UPLOAD_MAX_BYTES / (1024 * 1024));
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp,image/gif";
@@ -92,13 +93,13 @@ export function ThemeForm({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Warna &amp; Font</h2>
-        <p className="text-muted-foreground text-sm">
+      <EditorSectionHeader section="theme">
+        <h2 className="text-xl font-semibold tracking-tight">Warna &amp; Font</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Pilih warna dan huruf undangan. Biarkan di &quot;Bawaan tema&quot; untuk memakai tampilan
           tema yang dipilih.
         </p>
-      </div>
+      </EditorSectionHeader>
 
       <fieldset className="grid gap-4 sm:grid-cols-2">
         <legend className="mb-1 text-sm font-medium sm:col-span-2">Warna</legend>

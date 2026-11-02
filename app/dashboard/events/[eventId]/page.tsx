@@ -45,12 +45,34 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
 
   return (
     <div className="mx-auto max-w-3xl space-y-5">
-      <Link
-        href="/dashboard/events"
-        className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
-      >
-        <span aria-hidden="true">←</span> Kembali ke Undangan
-      </Link>
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 text-sm">
+        <Link
+          href="/dashboard/events"
+          className="group text-muted-foreground hover:text-foreground border-border/60 bg-card hover:border-primary/30 focus-visible:ring-ring inline-flex shrink-0 items-center gap-2 rounded-full border py-1.5 pr-3.5 pl-2 font-medium shadow-xs transition-all outline-none focus-visible:ring-2"
+        >
+          <span className="bg-muted group-hover:bg-primary/10 group-hover:text-primary flex size-6 items-center justify-center rounded-full transition-all group-hover:-translate-x-0.5">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="size-3.5"
+            >
+              <path d="M19 12H5M11 18l-6-6 6-6" />
+            </svg>
+          </span>
+          Semua undangan
+        </Link>
+        <span aria-hidden="true" className="text-muted-foreground/50">
+          /
+        </span>
+        <span aria-current="page" className="text-foreground truncate font-medium">
+          {event.title}
+        </span>
+      </nav>
 
       <div className="bg-card border-border/60 overflow-hidden rounded-3xl border shadow-sm">
         <div className="from-primary text-primary-foreground space-y-4 bg-gradient-to-br to-emerald-800 p-6 sm:p-7">
@@ -84,7 +106,7 @@ export default async function EventDetailPage({ params }: EventDetailPageProps) 
           </div>
         </div>
 
-        <div className="p-5 sm:p-6">
+        <div className="p-5 sm:p-7">
           <EventMenuGrid eventId={event.id} />
         </div>
       </div>

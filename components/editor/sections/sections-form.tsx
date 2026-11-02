@@ -12,6 +12,7 @@ import {
   type SectionOverrides,
 } from "@/lib/event-types/sections";
 import { FormError } from "@/components/forms/form-error";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 interface SectionsFormProps {
   eventId: string;
@@ -87,12 +88,12 @@ export function SectionsForm({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Bagian Undangan</h2>
-        <p className="text-muted-foreground text-sm">
+      <EditorSectionHeader section="sections">
+        <h2 className="text-xl font-semibold tracking-tight">Bagian Undangan</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Pilih dan atur urutan bagian yang ditampilkan di undangan. Penutup selalu tampil terakhir.
         </p>
-      </div>
+      </EditorSectionHeader>
 
       <FormError message={error} />
 

@@ -15,6 +15,7 @@ import { useAutosave, type SaveStatus } from "@/components/editor/use-autosave";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/forms/form-field";
 import { FormError } from "@/components/forms/form-error";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 interface LoveStoryFormProps {
   eventId: string;
@@ -88,10 +89,12 @@ export function LoveStoryForm({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">{config.storyNavLabel}</h2>
-        <p className="text-muted-foreground text-sm">{config.storyDescription}</p>
-      </div>
+      <EditorSectionHeader section="story">
+        <h2 className="text-xl font-semibold tracking-tight">{config.storyNavLabel}</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+          {config.storyDescription}
+        </p>
+      </EditorSectionHeader>
 
       <FormField
         label="Judul bagian"

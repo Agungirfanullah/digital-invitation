@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/forms/form-field";
 import { GalleryImageUploadForm } from "@/components/editor/sections/gallery-upload-form";
 import { FormError } from "@/components/forms/form-error";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 const MAX_UPLOAD_MB = Math.round(GALLERY_UPLOAD_MAX_BYTES / (1024 * 1024));
 
@@ -47,13 +48,13 @@ export function GalleryForm({ eventId, value, onChange }: GalleryFormProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Galeri</h2>
-        <p className="text-muted-foreground text-sm">
+      <EditorSectionHeader section="gallery">
+        <h2 className="text-xl font-semibold tracking-tight">Galeri</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Unggah foto (JPEG, PNG, WebP, atau GIF — maksimal {MAX_UPLOAD_MB}MB per foto, bisa banyak
           sekaligus) atau tambahkan tautan video untuk ditampilkan di undangan.
         </p>
-      </div>
+      </EditorSectionHeader>
 
       {items.length === 0 && (
         <p className="text-muted-foreground border-border/70 bg-card/50 rounded-2xl border-2 border-dashed p-6 text-center text-sm">

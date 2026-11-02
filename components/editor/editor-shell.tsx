@@ -93,97 +93,152 @@ export function EditorShell({
     ],
   );
 
+  const isPublished = initialEvent.status === "PUBLISHED";
+
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
+    <div className="border-border/60 bg-card flex min-h-[calc(100dvh-8rem)] flex-col rounded-3xl border shadow-sm">
+      <header className="border-border/60 flex flex-wrap items-center justify-between gap-3 rounded-t-3xl border-b px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link href={`/dashboard/events/${eventId}`}>&larr; Kembali</Link>
-          </Button>
+          <Link
+            href={`/dashboard/events/${eventId}`}
+            aria-label="Kembali ke ringkasan acara"
+            title="Kembali ke ringkasan acara"
+            className="group border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/30 focus-visible:ring-ring flex size-9 shrink-0 items-center justify-center rounded-full border transition-all outline-none focus-visible:ring-2"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="size-4 transition-transform group-hover:-translate-x-0.5"
+            >
+              <path d="M19 12H5M11 18l-6-6 6-6" />
+            </svg>
+          </Link>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium">{initialEvent.title}</p>
-            <p className="text-muted-foreground text-xs">
-              {EVENT_STATUS_LABELS[initialEvent.status]}
+            <p className="truncate font-semibold tracking-tight">{initialEvent.title}</p>
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs">
+              <span
+                aria-hidden="true"
+                className={`size-1.5 rounded-full ${isPublished ? "bg-emerald-500" : "bg-amber-500"}`}
+              />
+              <span className={isPublished ? "text-emerald-700" : "text-amber-700"}>
+                {EVENT_STATUS_LABELS[initialEvent.status]}
+              </span>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <SaveStatusIndicator status={headerStatus} error={headerError} />
+          {isPublished && (
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="hidden rounded-full sm:inline-flex"
+            >
+              <a href={`/invite/${initialEvent.slug}`} target="_blank" rel="noopener noreferrer">
+                Lihat undangan
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                  className="size-3.5"
+                >
+                  <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+                </svg>
+              </a>
+            </Button>
+          )}
           <Button
             type="button"
-            variant="outline"
             size="sm"
-            className="lg:hidden"
-            onClick={() => setPreviewOpenOnMobile((open) => !open)}
+            className="rounded-full lg:hidden"
+            onClick={() => setPreviewOpenOnMobile(true)}
           >
-            {previewOpenOnMobile ? "Tutup Pratinjau" : "Pratinjau"}
+            Pratinjau
           </Button>
         </div>
       </header>
 
       <div className="flex flex-1 flex-col lg:flex-row">
-        <EditorSidebar type={type} active={activeSection} onChange={changeSection} />
+        <div className="flex min-w-0 flex-1 flex-col 2xl:flex-row">
+          <EditorSidebar type={type} active={activeSection} onChange={changeSection} />
 
-        <main className="flex-1 border-t p-4 lg:border-t-0 lg:border-r lg:p-6">
-          {activeSection === "identity" && identity.family !== "GENERIC" && (
-            <IdentityForm
-              eventId={eventId}
-              type={type}
-              value={identity}
-              onSaved={setIdentity}
-              onStatusChange={reportStatus}
-            />
-          )}
-          {activeSection === "schedule" && (
-            <ScheduleForm eventId={eventId} items={schedules} onChange={setSchedules} />
-          )}
-          {activeSection === "story" && (
-            <LoveStoryForm
-              eventId={eventId}
-              type={type}
-              value={loveStory}
-              onChange={setLoveStory}
-              onStatusChange={reportStatus}
-            />
-          )}
-          {activeSection === "gallery" && (
-            <GalleryForm eventId={eventId} value={gallery} onChange={setGallery} />
-          )}
-          {activeSection === "sections" && (
-            <SectionsForm
-              eventId={eventId}
-              type={type}
-              value={sectionOverrides}
-              onSaved={setSectionOverrides}
-              order={sectionOrder}
-              onOrderSaved={setSectionOrder}
-            />
-          )}
-          {activeSection === "theme" && (
-            <ThemeForm
-              eventId={eventId}
-              templateKey={templateKey}
-              value={theme}
-              onSaved={setTheme}
-              onStatusChange={reportStatus}
-            />
-          )}
-          {activeSection === "template" && (
-            <TemplateForm
-              eventId={eventId}
-              templates={templates}
-              previews={templatePreviews}
-              value={templateKey}
-              onSaved={setTemplateKey}
-            />
-          )}
-        </main>
+          <main className="@container min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-7">
+            <div className="animate-fade-in mx-auto max-w-2xl space-y-6" key={activeSection}>
+              {activeSection === "identity" && identity.family !== "GENERIC" && (
+                <IdentityForm
+                  eventId={eventId}
+                  type={type}
+                  value={identity}
+                  onSaved={setIdentity}
+                  onStatusChange={reportStatus}
+                />
+              )}
+              {activeSection === "schedule" && (
+                <ScheduleForm eventId={eventId} items={schedules} onChange={setSchedules} />
+              )}
+              {activeSection === "story" && (
+                <LoveStoryForm
+                  eventId={eventId}
+                  type={type}
+                  value={loveStory}
+                  onChange={setLoveStory}
+                  onStatusChange={reportStatus}
+                />
+              )}
+              {activeSection === "gallery" && (
+                <GalleryForm eventId={eventId} value={gallery} onChange={setGallery} />
+              )}
+              {activeSection === "sections" && (
+                <SectionsForm
+                  eventId={eventId}
+                  type={type}
+                  value={sectionOverrides}
+                  onSaved={setSectionOverrides}
+                  order={sectionOrder}
+                  onOrderSaved={setSectionOrder}
+                />
+              )}
+              {activeSection === "theme" && (
+                <ThemeForm
+                  eventId={eventId}
+                  templateKey={templateKey}
+                  value={theme}
+                  onSaved={setTheme}
+                  onStatusChange={reportStatus}
+                />
+              )}
+              {activeSection === "template" && (
+                <TemplateForm
+                  eventId={eventId}
+                  templates={templates}
+                  previews={templatePreviews}
+                  value={templateKey}
+                  onSaved={setTemplateKey}
+                />
+              )}
+            </div>
+          </main>
+        </div>
 
         <aside
-          className={`${previewOpenOnMobile ? "block" : "hidden"} bg-background fixed inset-0 top-[57px] z-10 lg:static lg:top-auto lg:block lg:w-96`}
+          aria-label="Pratinjau undangan"
+          className={`${previewOpenOnMobile ? "flex" : "hidden"} bg-background lg:border-border/60 lg:bg-muted/30 fixed inset-0 z-50 flex-col lg:sticky lg:top-6 lg:z-auto lg:flex lg:h-[calc(100dvh-3rem)] lg:w-[380px] lg:shrink-0 lg:self-start lg:rounded-br-3xl lg:border-l xl:w-[420px]`}
         >
-          <EditorPreview invitation={previewInvitation} />
+          <EditorPreview
+            invitation={previewInvitation}
+            onClose={() => setPreviewOpenOnMobile(false)}
+          />
         </aside>
       </div>
     </div>

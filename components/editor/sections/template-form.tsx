@@ -7,6 +7,7 @@ import type { EditorTemplateOption } from "@/lib/editor/types";
 import { FormError } from "@/components/forms/form-error";
 import { PhoneFrame } from "@/components/invitation/phone-frame";
 import { Button } from "@/components/ui/button";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 interface TemplateFormProps {
   eventId: string;
@@ -42,12 +43,12 @@ export function TemplateForm({ eventId, templates, previews, value, onSaved }: T
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Tema</h2>
-        <p className="text-muted-foreground text-sm">
+      <EditorSectionHeader section="template">
+        <h2 className="text-xl font-semibold tracking-tight">Tema</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Pilih tampilan undangan. Isi acaramu tetap sama, hanya gayanya yang berganti.
         </p>
-      </div>
+      </EditorSectionHeader>
 
       <div className="bg-secondary/60 rounded-lg px-4 py-3">
         <p className="text-muted-foreground text-xs">Tema Aktif</p>

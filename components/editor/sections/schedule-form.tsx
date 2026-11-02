@@ -14,6 +14,7 @@ import { DatePicker } from "@/components/forms/date-picker";
 import { FormField } from "@/components/forms/form-field";
 import { TimePicker } from "@/components/forms/time-picker";
 import { FormError } from "@/components/forms/form-error";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 interface ScheduleFormProps {
   eventId: string;
@@ -50,12 +51,12 @@ export function ScheduleForm({ eventId, items, onChange }: ScheduleFormProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">Jadwal Acara</h2>
-        <p className="text-muted-foreground text-sm">
+      <EditorSectionHeader section="schedule">
+        <h2 className="text-xl font-semibold tracking-tight">Jadwal Acara</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Rangkaian acara seperti akad, resepsi, atau acara lainnya.
         </p>
-      </div>
+      </EditorSectionHeader>
 
       <FormError message={deleteError} />
 

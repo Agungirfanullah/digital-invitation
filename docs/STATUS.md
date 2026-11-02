@@ -164,7 +164,9 @@ digital-gift display) do not become MVP-defining by that fact.
     (done, D-096) → templates, each as its own change. Templates: audit done
     2026-11-02; step 1 (richer demo content and the sections all templates
     share, D-098) done; step 2 (differentiating the six look-alike templates
-    and Royal Gold vs Art Deco) and step 3 (polish) not started. Couple
+    and Royal Gold vs Art Deco) and step 3 (polish) not started. Also
+    done 2026-11-02 at the owner's request: event hub menu and invitation
+    editor redesign (D-099). Couple
     parents' names are still not shown publicly; waiting on the product
     owner (D-098).
 

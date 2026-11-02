@@ -56,7 +56,11 @@ function eventItems(eventId: string, pathname: string): NavItem[] {
     href: `${base}${path}`,
     label,
     icon,
-    active: path === "" ? pathname === base : pathname.startsWith(`${base}${path}`),
+    // Whole path segments only: "/edit" must not match "/editor".
+    active:
+      path === ""
+        ? pathname === base
+        : pathname === `${base}${path}` || pathname.startsWith(`${base}${path}/`),
   });
   return [
     item("", "Ringkasan", NAV_ICONS.overview),

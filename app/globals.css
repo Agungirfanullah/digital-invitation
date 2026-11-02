@@ -271,6 +271,21 @@
   animation: scale-in 0.5s ease-out both;
 }
 
+/* Opacity only: no transform, so fixed-position popovers inside (date and
+   time pickers) keep positioning against the viewport. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.35s ease-out both;
+}
+
 /* Scroll Reveal Animations */
 .scroll-reveal-up,
 .scroll-reveal-down,
@@ -344,6 +359,7 @@
   .animate-shimmer,
   .animate-gradient,
   .animate-fade-in-up,
+  .animate-fade-in,
   .animate-scale-in,
   .animate-marquee {
     animation: none;

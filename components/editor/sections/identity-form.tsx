@@ -14,6 +14,7 @@ import {
 import { useAutosave, type SaveStatus } from "@/components/editor/use-autosave";
 import { IdentityPhotoField } from "@/components/editor/sections/identity-photo-field";
 import { FormField } from "@/components/forms/form-field";
+import { EditorSectionHeader } from "@/components/editor/section-header";
 
 /** An identity with a profile (every family except GENERIC). */
 type ProfileIdentity = Exclude<IdentityProfileData, { family: "GENERIC" }>;
@@ -120,17 +121,28 @@ export function IdentityForm({ eventId, type, value, onSaved, onStatusChange }: 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">{config.identityNavLabel}</h2>
-        <p className="text-muted-foreground text-sm">
+      <EditorSectionHeader section="identity">
+        <h2 className="text-xl font-semibold tracking-tight">{config.identityNavLabel}</h2>
+        <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
           Informasi ini tampil di bagian sampul undangan.
         </p>
-      </div>
+      </EditorSectionHeader>
 
-      <div className="grid gap-8 sm:grid-cols-2">
+      <div className="grid gap-5 @xl:grid-cols-2">
         {groups.map((group, index) => (
-          <fieldset key={group.legend ?? index} className="space-y-4">
-            {group.legend && <legend className="text-sm font-medium">{group.legend}</legend>}
+          <fieldset
+            key={group.legend ?? index}
+            className={
+              group.legend
+                ? "border-border/60 bg-card space-y-4 rounded-2xl border px-5 pt-2 pb-5 shadow-xs"
+                : "space-y-4"
+            }
+          >
+            {group.legend && (
+              <legend className="bg-primary/10 text-primary -ml-1 rounded-full px-3 py-1 text-xs font-semibold tracking-wide">
+                {group.legend}
+              </legend>
+            )}
             {group.fields.map((def) =>
               def.kind === "photo" ? (
                 <IdentityPhotoField
