@@ -3621,3 +3621,31 @@ and the slug lists in `default-themes.test.ts`, `registry.test.ts`,
 never updated) was run against DEV on 2026-11-02. **Production needs the
 seed run once** before the template appears in the editor there; until
 then `/demo/traditional-jawa` works but owners cannot pick it.
+
+## D-103 — Template Web Fonts Actually Load; Traditional Jawa Refined
+
+**Context:** the default themes name web fonts (Playfair Display, Cinzel,
+Cormorant Garamond, Marcellus, Oswald, Great Vibes...), but nothing loaded
+them: the app loaded only Plus Jakarta Sans, and the CSP allows fonts from
+this site only. Every template fell back to Georgia or Helvetica, so their
+typography was far closer to each other than designed. A design review of
+Traditional Jawa (D-102) also found a too-plain gunungan, a parang strip
+that read as hazard stripes, portraits cropped at the head, and the same
+title ornament on every section.
+
+**Decision (fonts):** `app/template-fonts.ts` loads the 18 families through
+`next/font/google`, which self-hosts them (CSP `font-src 'self'` unchanged),
+with `preload: false`, so a page downloads only the families it uses (two
+or three files on an invitation, none extra on the dashboard). Their CSS
+variables sit on `<html>`. Theme stacks keep plain names (stored and shown
+in the editor); `resolveFontStack()` (`lib/invitations/font-stack.ts`) maps
+each known name to `var(--font-x, 'Name')` in `themeToCssVars()` and the
+editor's font sample. Floral Romance's script font moved from Brush Script
+MT (missing on phones) to Great Vibes. The editor's own font picker still
+offers system fonts only; adding web fonts there is a separate choice.
+
+**Decision (Traditional Jawa):** a detailed gunungan (flame fringe, inner
+border, tree of life with ukel branches, two birds, gapura with doors), a
+real parang strip (diagonal S-curves with mlinjon, a light version on the
+cover), a wider portrait frame focused on the upper part of the photo, and
+title ornaments that vary by section (gunungan, kawung, truntum).

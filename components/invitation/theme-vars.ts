@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import { resolveReadableForeground } from "@/lib/invitations/color-contrast";
+import { resolveFontStack } from "@/lib/invitations/font-stack";
 import type { PublicTheme } from "@/lib/invitations/types";
 
 /**
@@ -34,9 +35,10 @@ export function themeToCssVars(theme: PublicTheme): CSSProperties {
     "--ii-text": theme.textColor,
     "--ii-accent": theme.accentColor,
     "--ii-muted": theme.secondaryColor,
-    "--ii-heading-font": theme.headingFont,
-    "--ii-body-font": theme.bodyFont,
-    "--ii-script-font": theme.scriptFont,
+    // Known web fonts point at their self-hosted next/font files.
+    "--ii-heading-font": resolveFontStack(theme.headingFont),
+    "--ii-body-font": resolveFontStack(theme.bodyFont),
+    "--ii-script-font": resolveFontStack(theme.scriptFont),
 
     "--background": theme.backgroundColor,
     "--foreground": theme.textColor,

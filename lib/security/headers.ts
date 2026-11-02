@@ -48,7 +48,8 @@ export interface SecurityHeaderOptions {
  * minted by script already trusted by script-src. No other scheme/host is
  * allowed. See docs/DECISIONS.md D-053.
  *
- * font-src: no next/font, no Google Fonts, no @font-face — 'self' only.
+ * font-src: 'self' only. Fonts come from next/font, which self-hosts them
+ * (app/layout.tsx, app/template-fonts.ts); no Google Fonts request is made.
  */
 export function buildContentSecurityPolicy({ nonce, isDev }: SecurityHeaderOptions): string {
   const directives = [

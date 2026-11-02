@@ -1,6 +1,7 @@
 "use client";
 
 import { FONT_GROUPS, findFontOption } from "@/lib/invitations/theme-options";
+import { resolveFontStack } from "@/lib/invitations/font-stack";
 import { Select } from "@/components/ui/select";
 
 interface ThemeFontFieldProps {
@@ -54,7 +55,7 @@ export function ThemeFontField({
       </Select>
       <p
         className="text-muted-foreground truncate text-base"
-        style={{ fontFamily: value ?? defaultValue }}
+        style={{ fontFamily: resolveFontStack(value ?? defaultValue) }}
         aria-hidden
       >
         Naya &amp; Bambang — 1 November 2026

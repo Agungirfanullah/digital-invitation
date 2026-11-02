@@ -57,9 +57,36 @@ const ON_BAND_VARS = {
   "--ii-primary": "var(--primary-foreground)",
 } as CSSProperties;
 
-/** Gunungan outline, also used to clip portraits. */
+/** Portrait frame: a gunungan silhouette, full enough at the top to keep a face in frame. */
 const GUNUNGAN_CLIP =
-  "polygon(50% 0, 64% 10%, 76% 24%, 88% 42%, 96% 60%, 100% 78%, 100% 100%, 0 100%, 0 78%, 4% 60%, 12% 42%, 24% 24%, 36% 10%)";
+  "polygon(50% 0, 66% 7%, 80% 18%, 91% 34%, 98% 52%, 100% 70%, 100% 100%, 0 100%, 0 70%, 2% 52%, 9% 34%, 20% 18%, 34% 7%)";
+
+type Point = { x: number; y: number; angle: number };
+
+/**
+ * Points along the right edge of the gunungan (a cubic curve from the base
+ * to the apex), each with the angle of the outward normal, for the flame
+ * fringe. Computed once; the left edge mirrors it.
+ */
+const GUNUNGAN_FRINGE: Point[] = (() => {
+  const p0 = { x: 110, y: 124 };
+  const p1 = { x: 110, y: 88 };
+  const p2 = { x: 88, y: 40 };
+  const p3 = { x: 60, y: 8 };
+  const points: Point[] = [];
+  for (let i = 1; i < 14; i++) {
+    const t = i / 14;
+    const u = 1 - t;
+    const x = u ** 3 * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t ** 3 * p3.x;
+    const y = u ** 3 * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t ** 3 * p3.y;
+    const dx = 3 * u * u * (p1.x - p0.x) + 6 * u * t * (p2.x - p1.x) + 3 * t * t * (p3.x - p2.x);
+    const dy = 3 * u * u * (p1.y - p0.y) + 6 * u * t * (p2.y - p1.y) + 3 * t * t * (p3.y - p2.y);
+    // The tangent runs up the curve; the outward normal is 90 degrees from it.
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+    points.push({ x, y, angle });
+  }
+  return points;
+})();
 
 /**
  * A pattern id unique to this instance: the template can render several
@@ -133,81 +160,167 @@ function TruntumPattern() {
   );
 }
 
-/** Parang: diagonal S-curves in a narrow strip. */
-function ParangStrip({ className = "" }: { className?: string }) {
+/**
+ * Parang: rows of S-shaped curves running on the diagonal, with the small
+ * lozenge (mlinjon) between rows. "dark" sits the motif on the primary
+ * color; "light" is a quieter version on the page tint, used on the cover.
+ */
+function ParangStrip({
+  className = "",
+  tone = "dark",
+}: {
+  className?: string;
+  tone?: "dark" | "light";
+}) {
+  const ground =
+    tone === "dark"
+      ? "var(--ii-primary)"
+      : "color-mix(in oklab, var(--ii-secondary) 70%, var(--ii-background))";
   return (
     <svg
-      viewBox="0 0 160 12"
-      preserveAspectRatio="none"
+      viewBox="0 0 160 20"
+      preserveAspectRatio="xMidYMid slice"
       aria-hidden="true"
-      className={`block h-3 w-full ${className}`}
+      className={`block h-5 w-full ${className}`}
     >
-      <rect width="160" height="12" fill="var(--ii-primary)" />
-      {Array.from({ length: 16 }, (_, i) => (
-        <path
-          key={i}
-          d={`M${i * 10 - 2} 12C${i * 10 + 2} 8 ${i * 10 + 2} 4 ${i * 10 + 6} 0`}
-          fill="none"
-          stroke="var(--ii-accent)"
-          strokeWidth="2.2"
-        />
-      ))}
+      <rect width="160" height="20" fill={ground} />
+      {Array.from({ length: 12 }, (_, i) => {
+        const x = i * 16 - 8;
+        return (
+          <g key={i}>
+            <path
+              d={`M${x} 22C${x + 1} 15 ${x + 9} 16 ${x + 9} 10S${x + 16} 4 ${x + 18} -2`}
+              fill="none"
+              stroke="var(--ii-accent)"
+              strokeWidth={3.2}
+              strokeLinecap="round"
+            />
+            <path
+              d={`M${x + 6} 22C${x + 7} 15 ${x + 15} 16 ${x + 15} 10S${x + 22} 4 ${x + 24} -2`}
+              fill="none"
+              stroke="var(--ii-accent)"
+              strokeWidth={0.9}
+              opacity={0.7}
+            />
+            <path
+              d={`M${x + 12} 4l1.6 2-1.6 2-1.6-2z`}
+              fill={tone === "dark" ? "var(--ii-accent)" : "var(--ii-primary)"}
+            />
+          </g>
+        );
+      })}
     </svg>
   );
 }
 
-/** The gunungan (kayon): a tall pointed silhouette with a tree of life and a gate at its foot. */
+const FLAME = "M0 -8C3.4 -4 3.6 0.6 0 3C-3.6 0.6 -3.4 -4 0 -8Z";
+const GUNUNGAN_OUTLINE = "M60 8C88 40 110 88 110 124H10C10 88 32 40 60 8Z";
+
+/**
+ * The gunungan (kayon) of wayang, simplified for a decorative mark: a flame
+ * fringe along the silhouette, an inner border, the tree of life with
+ * curling (ukel) branches and a pair of birds, a crowning bud, and the
+ * gate (gapura) with closed doors at its foot.
+ */
 function Gunungan({ className = "" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 120 160"
+      viewBox="-6 -8 132 148"
       aria-hidden="true"
       className={`text-[color:var(--ii-accent)] ${className}`}
     >
+      <g fill="currentColor">
+        {GUNUNGAN_FRINGE.map((point, index) => (
+          <g key={index}>
+            <path
+              d={FLAME}
+              transform={`translate(${point.x} ${point.y}) rotate(${point.angle})`}
+              opacity={0.85}
+            />
+            <path
+              d={FLAME}
+              transform={`translate(${120 - point.x} ${point.y}) rotate(${-point.angle})`}
+              opacity={0.85}
+            />
+          </g>
+        ))}
+        <path d={FLAME} transform="translate(60 2) scale(1.3)" />
+      </g>
       <path
-        d="M60 4C74 18 92 38 104 64 112 82 116 104 116 124H4C4 104 8 82 16 64 28 38 46 18 60 4Z"
+        d={GUNUNGAN_OUTLINE}
         fill="currentColor"
-        fillOpacity={0.12}
+        fillOpacity={0.14}
         stroke="currentColor"
         strokeWidth={1.6}
       />
       <path
-        d="M60 14C71 26 85 43 95 64 101 79 105 97 106 116H14C15 97 19 79 25 64 35 43 49 26 60 14Z"
+        d={GUNUNGAN_OUTLINE}
+        transform="translate(60 124) scale(0.86) translate(-60 -124)"
         fill="none"
         stroke="currentColor"
         strokeWidth={0.8}
-        opacity={0.7}
+        strokeDasharray="1.5 2"
       />
-      {/* Tree of life: trunk with paired branches. */}
-      <g fill="none" stroke="currentColor" strokeWidth={1.2} strokeLinecap="round">
-        <path d="M60 116V30" />
-        {[44, 58, 72, 86, 100].map((y, i) => (
-          <g key={y}>
-            <path
-              d={`M60 ${y}C${52 - i * 3} ${y - 4} ${46 - i * 4} ${y - 2} ${40 - i * 4} ${y + 6}`}
-            />
-            <path
-              d={`M60 ${y}C${68 + i * 3} ${y - 4} ${74 + i * 4} ${y - 2} ${80 + i * 4} ${y + 6}`}
-            />
-          </g>
-        ))}
+
+      {/* Tree of life: a tapering trunk, curling branches, leaves. */}
+      <path d="M58 104L59 30h2l1 74z" fill="currentColor" />
+      <g fill="none" stroke="currentColor" strokeWidth={1.3} strokeLinecap="round">
+        {[38, 50, 62, 74, 86].map((y, i) => {
+          const reach = 10 + i * 4;
+          return (
+            <g key={y}>
+              <path
+                d={`M60 ${y}C${56 - reach * 0.3} ${y - 6} ${60 - reach} ${y - 5} ${60 - reach} ${y + 1}a3 3 0 1 0 4 -2`}
+              />
+              <path
+                d={`M60 ${y}C${64 + reach * 0.3} ${y - 6} ${60 + reach} ${y - 5} ${60 + reach} ${y + 1}a3 3 0 1 1 -4 -2`}
+              />
+            </g>
+          );
+        })}
       </g>
+      <g fill="currentColor" fillOpacity={0.55}>
+        {[38, 50, 62, 74, 86].map((y, i) => {
+          const reach = 6 + i * 3;
+          return (
+            <g key={y}>
+              <ellipse
+                cx={60 - reach}
+                cy={y - 5}
+                rx="2.6"
+                ry="1.3"
+                transform={`rotate(-30 ${60 - reach} ${y - 5})`}
+              />
+              <ellipse
+                cx={60 + reach}
+                cy={y - 5}
+                rx="2.6"
+                ry="1.3"
+                transform={`rotate(30 ${60 + reach} ${y - 5})`}
+              />
+            </g>
+          );
+        })}
+      </g>
+      {/* Two birds facing the trunk. */}
       <g fill="currentColor">
-        {[36, 52, 66, 80, 94].map((y, i) => (
-          <g key={y}>
-            <circle cx={48 - i * 4} cy={y + 2} r="2" />
-            <circle cx={72 + i * 4} cy={y + 2} r="2" />
-          </g>
-        ))}
+        <path d="M43 66c3-3 8-3 11 0-2 0-4 1-5 3-1-2-3-3-6-3z" />
+        <path d="M77 66c-3-3-8-3-11 0 2 0 4 1 5 3 1-2 3-3 6-3z" />
       </g>
-      {/* Gate at the foot. */}
+      <circle cx="60" cy="27" r="3" fill="currentColor" />
+
+      {/* Gate (gapura): stepped roof, arched doorway, closed doors. */}
+      <g fill="currentColor">
+        <path d="M46 106h28l-3-4H49zM50 102h20l-3-4H53z" />
+        <path d="M44 106h32v18H44z" fillOpacity={0.3} />
+      </g>
       <path
-        d="M44 124v-12h32v12M50 124v-7a10 10 0 0 1 20 0v7"
+        d="M44 124v-18h32v18M52 124v-9a8 8 0 0 1 16 0v9M60 115v9"
         fill="none"
         stroke="currentColor"
-        strokeWidth={1.4}
+        strokeWidth={1.3}
       />
-      <path d="M30 124h60v8H30zM22 132h76v6H22z" fill="currentColor" />
+      <path d="M26 124h68v6H26zM18 130h84v6H18z" fill="currentColor" />
     </svg>
   );
 }
@@ -223,12 +336,64 @@ function Band({ children, className = "" }: { children: ReactNode; className?: s
   );
 }
 
-function SectionTitle({ children }: { children: ReactNode }) {
+/** A single kawung blossom. */
+function KawungMark({ className = "" }: { className?: string }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <Gunungan className="h-10 w-8" />
+    <svg
+      viewBox="0 0 36 36"
+      aria-hidden="true"
+      className={`text-[color:var(--ii-accent)] ${className}`}
+    >
+      <g fill="currentColor" fillOpacity={0.25} stroke="currentColor" strokeWidth={1.2}>
+        <ellipse cx="18" cy="8" rx="5" ry="7.5" />
+        <ellipse cx="18" cy="28" rx="5" ry="7.5" />
+        <ellipse cx="8" cy="18" rx="7.5" ry="5" />
+        <ellipse cx="28" cy="18" rx="7.5" ry="5" />
+      </g>
+      <circle cx="18" cy="18" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+/** A single truntum star blossom. */
+function TruntumMark({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={`text-[color:var(--ii-accent)] ${className}`}
+    >
+      <g transform="translate(12 12)" fill="currentColor">
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
+          <ellipse key={angle} cx="0" cy="-6.5" rx="1.8" ry="4" transform={`rotate(${angle})`} />
+        ))}
+        <circle r="2" />
+      </g>
+    </svg>
+  );
+}
+
+type TitleMark = "gunungan" | "kawung" | "truntum";
+
+/**
+ * Section title. The ornament above it changes by section (gunungan,
+ * kawung or truntum), so the page does not repeat one opener all the way
+ * down.
+ */
+function SectionTitle({ children, mark = "kawung" }: { children: ReactNode; mark?: TitleMark }) {
+  return (
+    <div className="flex flex-col items-center gap-3">
+      {mark === "gunungan" && <Gunungan className="h-14 w-12" />}
+      {mark === "kawung" && <KawungMark className="size-8" />}
+      {mark === "truntum" && (
+        <span aria-hidden="true" className="flex items-center gap-2">
+          <TruntumMark className="size-3 opacity-70" />
+          <TruntumMark className="size-5" />
+          <TruntumMark className="size-3 opacity-70" />
+        </span>
+      )}
       <p
-        className="text-center text-2xl tracking-wide text-[color:var(--ii-primary)]"
+        className="text-center text-3xl tracking-wide text-[color:var(--ii-primary)]"
         style={{ fontFamily: "var(--ii-heading-font)" }}
       >
         {children}
@@ -254,14 +419,14 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
       <CoverPhotoLayer imageUrl={coverPhotoUrl} />
       {!coverPhotoUrl && <TruntumPattern />}
       <div className="absolute inset-x-0 top-0">
-        <ParangStrip />
+        <ParangStrip tone={coverPhotoUrl ? "dark" : "light"} />
       </div>
       <div className="absolute inset-x-0 bottom-0">
-        <ParangStrip />
+        <ParangStrip tone={coverPhotoUrl ? "dark" : "light"} />
       </div>
 
       <div className="relative flex w-full max-w-sm flex-col items-center gap-4">
-        <Gunungan className="h-40 w-30" />
+        <Gunungan className="h-48 w-36" />
         <p className="mt-2 text-xs tracking-[0.45em] text-[color:var(--ii-accent)] uppercase">
           {EVENT_TYPE_LABELS[invitation.type]}
         </p>
@@ -277,7 +442,7 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
           </p>
         )}
         <div className="mt-6 w-full max-w-xs">
-          <ParangStrip className="h-2" />
+          <ParangStrip tone="light" className="h-3" />
           <div
             className={`px-6 py-4 ${coverPhotoUrl ? "bg-black/30" : "bg-[color:var(--ii-background)]/85"}`}
           >
@@ -288,7 +453,7 @@ function Hero({ invitation }: { invitation: PublicInvitation }) {
               {invitation.guest?.displayName ?? "Bapak/Ibu/Saudara/i Tamu Undangan"}
             </p>
           </div>
-          <ParangStrip className="h-2" />
+          <ParangStrip tone="light" className="h-3" />
         </div>
       </div>
     </section>
@@ -301,7 +466,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
       <h2 id="identity-heading" className="sr-only">
         {identity.heading}
       </h2>
-      <SectionTitle>{identity.heading}</SectionTitle>
+      <SectionTitle mark="gunungan">{identity.heading}</SectionTitle>
       {identity.members.length > 0 && (
         <div className="mx-auto mt-12 flex max-w-lg flex-col items-center gap-10">
           {identity.members.map((member, index) => (
@@ -323,7 +488,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
                   >
                     <div
                       style={{ clipPath: GUNUNGAN_CLIP }}
-                      className="h-56 w-44 bg-[color:var(--ii-secondary)]"
+                      className="h-60 w-48 bg-[color:var(--ii-secondary)]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element -- our own uploaded storage object. */}
                       <img
@@ -331,7 +496,7 @@ function Identity({ identity }: { identity: PublicIdentity }) {
                         alt={`Foto ${member.name}`}
                         loading="lazy"
                         decoding="async"
-                        className="size-full object-cover"
+                        className="size-full object-cover object-[50%_25%]"
                       />
                     </div>
                   </div>
@@ -463,7 +628,7 @@ function LoveStory({
       <h2 id="love-story-heading" className="sr-only">
         {loveStory.title ?? defaultTitle}
       </h2>
-      <SectionTitle>{loveStory.title ?? defaultTitle}</SectionTitle>
+      <SectionTitle mark="truntum">{loveStory.title ?? defaultTitle}</SectionTitle>
       <ol className="mx-auto mt-12 flex max-w-md flex-col">
         {loveStory.items.map((item, index) => (
           <li key={item.id} className="relative flex gap-5 pb-10 last:pb-0">
@@ -473,20 +638,7 @@ function LoveStory({
                 className="absolute top-9 bottom-0 left-[17px] w-px bg-[color:var(--ii-accent)]/50"
               />
             )}
-            {/* A single kawung blossom as the timeline node. */}
-            <svg
-              viewBox="0 0 36 36"
-              aria-hidden="true"
-              className="size-9 shrink-0 text-[color:var(--ii-accent)]"
-            >
-              <g fill="currentColor" fillOpacity={0.25} stroke="currentColor" strokeWidth={1.2}>
-                <ellipse cx="18" cy="8" rx="5" ry="7.5" />
-                <ellipse cx="18" cy="28" rx="5" ry="7.5" />
-                <ellipse cx="8" cy="18" rx="7.5" ry="5" />
-                <ellipse cx="28" cy="18" rx="7.5" ry="5" />
-              </g>
-              <circle cx="18" cy="18" r="2" fill="currentColor" />
-            </svg>
+            <KawungMark className="size-9 shrink-0" />
             <div className="min-w-0 flex-1">
               {item.imageUrl && (
                 // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
@@ -530,7 +682,7 @@ function Gallery({ galleries }: { galleries: PublicGallery[] }) {
       <h2 id="gallery-heading" className="sr-only">
         Galeri
       </h2>
-      <SectionTitle>Galeri</SectionTitle>
+      <SectionTitle mark="truntum">Galeri</SectionTitle>
       {nonEmpty.map((gallery, index) => (
         <div key={index} className="mx-auto mt-12 max-w-xl">
           {gallery.title && (
@@ -579,7 +731,7 @@ function Gift({ giftMethods }: { giftMethods: PublicGiftMethod[] }) {
       <h2 id="gift-heading" className="sr-only">
         Kirim Hadiah
       </h2>
-      <SectionTitle>Kirim Hadiah</SectionTitle>
+      <SectionTitle mark="truntum">Kirim Hadiah</SectionTitle>
       <div className="mx-auto mt-10 flex max-w-md flex-col gap-6 text-[color:var(--ii-text)]">
         {giftMethods.map((method) => (
           <div
@@ -681,7 +833,7 @@ function Closing({ copy }: { copy: InvitationCopy }) {
   return (
     <section aria-label="Penutup">
       <Band className="flex min-h-[60vh] flex-col items-center justify-center px-8 py-20 text-center">
-        <Gunungan className="mb-8 h-28 w-22" />
+        <Gunungan className="mb-8 h-36 w-28" />
         <p
           className="mx-auto max-w-lg text-xl leading-relaxed text-balance text-[color:var(--ii-primary)] sm:text-2xl"
           style={{ fontFamily: "var(--ii-heading-font)" }}

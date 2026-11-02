@@ -39,7 +39,7 @@ export const TEMPLATE_DEFAULT_THEMES: Record<string, PublicTheme> = {
     accentColor: "#c98a8a",
     headingFont: "'Playfair Display', Georgia, serif",
     bodyFont: "'Helvetica Neue', Arial, sans-serif",
-    scriptFont: "'Brush Script MT', 'Segoe Script', cursive",
+    scriptFont: "'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive",
     backgroundImageUrl: null,
   },
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
+import { templateFontVariables } from "./template-fonts";
 import "./globals.css";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -69,7 +70,10 @@ export const metadata: Metadata = {
 // layout would put it on every route, customers' invitations included (D-092).
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={`h-full antialiased ${plusJakartaSans.variable}`}>
+    <html
+      lang="id"
+      className={`h-full antialiased ${plusJakartaSans.variable} ${templateFontVariables}`}
+    >
       <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );
