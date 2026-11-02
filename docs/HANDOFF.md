@@ -100,6 +100,10 @@ Templates are guest-facing and the riskiest part, so:
 - **GitHub API without auth** allows 60 requests/hour and `gh` is not
   installed. Poll CI sparingly; the run page HTML is not rate-limited, and
   job logs/artifacts need the owner to download them.
+- **Cancelled CI runs leave test rows behind** (`cancel-in-progress` kills
+  Vitest before `afterEach`). Never use fixed values for globally unique
+  columns (slug, token) in integration tests; add a per-run suffix. This broke
+  CI from `1df842d` until 2026-11-02.
 - **Accessible names:** an inline-block or an inline `<svg>` inside a
   heading adds a space to its accessible name ("Cantik , Personal");
   use CSS `text-decoration` for underlines.

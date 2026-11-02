@@ -21,6 +21,12 @@ const createdUserIds: string[] = [];
 const createdEventIds: string[] = [];
 const createdTemplateIds: string[] = [];
 
+// Slugs are globally unique in the shared DEV database. A run killed
+// mid-test (CI cancels an in-progress run on a newer push) skips afterEach
+// and leaves its rows behind, so fixed slugs would fail every later run.
+// Each run uses its own.
+const RUN_ID = randomUUID().slice(0, 8);
+
 afterEach(async () => {
   if (createdEventIds.length) {
     await prisma.event.deleteMany({ where: { id: { in: createdEventIds } } });
@@ -106,7 +112,7 @@ describe("completeOnboarding", () => {
         ownerId: user.id,
         type: "WEDDING",
         title: "Existing",
-        slug: "acara-unik",
+        slug: `acara-unik-${RUN_ID}`,
         status: "DRAFT",
       },
     });
@@ -114,12 +120,12 @@ describe("completeOnboarding", () => {
 
     const result = await completeOnboarding(
       user.id,
-      coupleInput({ title: "Acara Unik", templateSlug }),
+      coupleInput({ title: `Acara Unik ${RUN_ID}`, templateSlug }),
     );
     createdEventIds.push(result.eventId);
 
     const event = await prisma.event.findUniqueOrThrow({ where: { id: result.eventId } });
-    expect(event.slug).toBe("acara-unik-2");
+    expect(event.slug).toBe(`acara-unik-${RUN_ID}-2`);
   });
 
   it("PERSON family: stores the single name via nickname, not a couple profile", async () => {
@@ -194,7 +200,7 @@ describe("completeOnboarding", () => {
     const user = await createTestUser("slug-exhausted");
     const templateSlug = await getImplementedTemplateSlug();
 
-    const base = "duplikat";
+    const base = `duplikat-${RUN_ID}`;
     const conflicting = await Promise.all(
       [base, `${base}-2`, `${base}-3`, `${base}-4`, `${base}-5`].map((slug) =>
         prisma.event.create({
@@ -205,7 +211,7 @@ describe("completeOnboarding", () => {
     createdEventIds.push(...conflicting.map((event) => event.id));
 
     await expect(
-      completeOnboarding(user.id, coupleInput({ title: "Duplikat", templateSlug })),
+      completeOnboarding(user.id, coupleInput({ title: `Duplikat ${RUN_ID}`, templateSlug })),
     ).rejects.toThrow(SlugConflictError);
   });
 });

@@ -3657,6 +3657,16 @@ See "Remaining Manual Configuration" under Phase 1 above.
 
 ## Latest Verification
 
+**2026-11-02 — CI red again since `1df842d`, cause found:** every run failed
+in `lib/onboarding/service.integration.test.ts` → "retries with a numeric
+suffix…" with `Unique constraint failed on the fields: (slug)`. The run for
+`fd5f730` was cancelled mid-test by a newer push (`cancel-in-progress`),
+after creating events with the fixed slugs `acara-unik`/`acara-unik-2` but
+before `afterEach` could delete them; every later run then collided with
+those rows. The two onboarding slug tests now use a per-run suffix. The DEV
+database also holds about 270 leftover test users from interrupted runs over
+time; they break nothing now and were left for the product owner to decide.
+
 **2026-10-27, CI green again on `f1d16ff`:** both GitHub Actions jobs,
 Validate (Prisma, typecheck, lint, Vitest, `next build`) and E2E
 (Playwright, 119 tests against a production build), concluded `success`
