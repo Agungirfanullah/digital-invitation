@@ -16,6 +16,7 @@ import { GardenTropicalTemplate } from "@/components/invitation/templates/garden
 import { ArtDecoTemplate } from "@/components/invitation/templates/art-deco-template";
 import { VintageSepiaTemplate } from "@/components/invitation/templates/vintage-sepia-template";
 import { IndustrialLoftTemplate } from "@/components/invitation/templates/industrial-loft-template";
+import { TraditionalJawaTemplate } from "@/components/invitation/templates/traditional-jawa-template";
 import type { PublicInvitation } from "@/lib/invitations/types";
 import type { RsvpGuestView } from "@/lib/rsvp/types";
 
@@ -66,6 +67,7 @@ const TEMPLATE_REGISTRY: Record<string, ComponentType<InvitationTemplateProps>> 
   "art-deco": ArtDecoTemplate,
   "vintage-sepia": VintageSepiaTemplate,
   "industrial-loft": IndustrialLoftTemplate,
+  "traditional-jawa": TraditionalJawaTemplate,
 };
 
 const DEFAULT_TEMPLATE_KEY = "minimal-elegant";

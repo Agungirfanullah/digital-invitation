@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 /**
  * How the sections every template shares (countdown, gallery, RSVP form,
  * desktop cover panel) adapt to the active template, so those sections do
- * not look identical across all 16 templates. Presentation only: no data or
+ * not look identical across all templates. Presentation only: no data or
  * behavior depends on it.
  *
  * - `shape`: corner style of cards, photos and form controls.
@@ -41,6 +41,7 @@ const LOOKS: Record<string, TemplateLook> = {
   "art-deco": { shape: "square", countdown: "tint", panel: "geometric" },
   "vintage-sepia": { shape: "soft", countdown: "tint", panel: "ornate" },
   "industrial-loft": { shape: "square", countdown: "photo", panel: "editorial" },
+  "traditional-jawa": { shape: "square", countdown: "tint", panel: "ornate" },
 };
 
 export function templateLook(templateKey: string | null): TemplateLook {

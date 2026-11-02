@@ -29,6 +29,7 @@ describe("TEMPLATE_DEFAULT_THEMES", () => {
         "rustic-earth",
         "soft-romantic",
         "traditional-nusantara",
+        "traditional-jawa",
         "vintage-sepia",
       ].sort(),
     );

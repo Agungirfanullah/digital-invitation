@@ -41,6 +41,7 @@ const ALL_SLUGS = [
   "art-deco",
   "vintage-sepia",
   "industrial-loft",
+  "traditional-jawa",
 ];
 
 describe.each(ALL_SLUGS)("%s — edge cases", (slug) => {

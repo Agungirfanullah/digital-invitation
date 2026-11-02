@@ -198,6 +198,19 @@ export const TEMPLATE_DEFAULT_THEMES: Record<string, PublicTheme> = {
     scriptFont: "Georgia, serif",
     backgroundImageUrl: null,
   },
+
+  // Sogan: the deep brown of classic Javanese batik, with gold and cream.
+  "traditional-jawa": {
+    primaryColor: "#3d2817",
+    secondaryColor: "#e7d8bc",
+    backgroundColor: "#f6efe1",
+    textColor: "#2a1b10",
+    accentColor: "#a8802f",
+    headingFont: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
+    bodyFont: "'Helvetica Neue', Arial, sans-serif",
+    scriptFont: "Georgia, serif",
+    backgroundImageUrl: null,
+  },
 };
 
 /** Unknown/null slugs fall back to the same global default `parseTheme()` has always used — never throws, never renders with a missing palette. */

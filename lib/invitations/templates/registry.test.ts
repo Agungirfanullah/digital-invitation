@@ -19,6 +19,7 @@ const SEEDED_SLUGS = [
   "art-deco",
   "vintage-sepia",
   "industrial-loft",
+  "traditional-jawa",
 ];
 
 describe("template registry", () => {

@@ -141,6 +141,7 @@ const NEW_TEMPLATES: { slug: string; name: string }[] = [
   { slug: "art-deco", name: "Art Deco" },
   { slug: "vintage-sepia", name: "Vintage Sepia" },
   { slug: "industrial-loft", name: "Industrial Loft" },
+  { slug: "traditional-jawa", name: "Traditional Jawa" },
 ];
 
 test.describe("template system", () => {

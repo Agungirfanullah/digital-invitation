@@ -163,8 +163,10 @@ digital-gift display) do not become MVP-defining by that fact.
     Order chosen: homepage (done, D-095) → dashboard and account pages
     (done, D-096) → templates, each as its own change. Templates: audit done
     2026-11-02; step 1 (richer demo content and the sections all templates
-    share, D-098) done; step 2 (differentiating the six look-alike templates
-    and Royal Gold vs Art Deco) and step 3 (polish) not started. Also
+    share, D-098) done; step 2 (eight look-alike templates rebuilt with their
+    own composition, D-101) done; Traditional Jawa added as a 17th template
+    (D-102; production still needs `npm run db:seed`); step 3 (polish of the
+    other eight) not started. Also
     done 2026-11-02 at the owner's request: event hub menu and invitation
     editor redesign (D-099). Couple parents' names are shown publicly since
     D-100 (owner's decision).

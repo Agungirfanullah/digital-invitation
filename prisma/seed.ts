@@ -29,6 +29,7 @@ async function main() {
     { name: "Art Deco", slug: "art-deco", category: "formal" },
     { name: "Vintage Sepia", slug: "vintage-sepia", category: "wedding" },
     { name: "Industrial Loft", slug: "industrial-loft", category: "general" },
+    { name: "Traditional Jawa", slug: "traditional-jawa", category: "wedding" },
   ];
 
   for (const template of templates) {

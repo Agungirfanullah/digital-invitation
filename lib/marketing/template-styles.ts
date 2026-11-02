@@ -21,6 +21,7 @@ const STYLE_BY_SLUG: Record<string, TemplateStyle> = {
   "industrial-loft": "Modern",
   "cinematic-journey": "Modern",
   "traditional-nusantara": "Tradisional",
+  "traditional-jawa": "Tradisional",
   "rustic-earth": "Tradisional",
   "vintage-sepia": "Tradisional",
   "playful-pop": "Ceria",

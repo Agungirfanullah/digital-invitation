@@ -3553,3 +3553,71 @@ details).
 **Consequences:** existing published couple invitations whose owners filled
 in the parent fields start showing them right away. No schema or query
 change: the fields were already loaded.
+
+## D-101 — Templates Step 2: Eight Look-Alike Templates Get Their Own Composition
+
+**Context:** the 2026-11-02 audit (D-098) found six templates that looked
+alike (Minimal Elegant, Floral Romance, Soft Romantic, Blue Bloom, Garden
+Tropical, Traditional Nusantara: cream page, centered round or arched photo,
+the same card) and two near-twins (Royal Gold, Art Deco), against CLAUDE.md
+§9.2. The product owner approved all three stages at once.
+
+**Decision (presentation only; data, sections, order, RSVP/wish logic and
+accessible names are unchanged):**
+
+| Template | New composition |
+| --- | --- |
+| Royal Gold | Crest monogram in a laurel wreath, double frames with curled corners, centered symmetry, bands in the primary color |
+| Art Deco | Strictly angular: sunburst, chamfered panels, octagonal portraits, chevron rules, wide capitals, vertical "pillar" rules on primary bands, Roman-numeral story |
+| Floral Romance | Flower clusters in the Hero's corners, script names, petal-shaped portraits with a bloom, sprig-flanked titles, blush washes |
+| Garden Tropical | Palm fronds at the page edges, primary (green) bands alternating with sage, tall arched portraits with a frond over the corner |
+| Blue Bloom | Porcelain: the Hero is a decorated plate, patterned ring portraits, tile-corner cards, tinted sections with scalloped edges; no dark bands |
+| Traditional Nusantara | Sawtooth band edges, diamond lattice, eight-point rosettes, carved panels with stepped corners; motifs stay generic (design audit Decision 7 still open) |
+| Soft Romantic | Blush gradient page, blurred color clouds, frosted glass cards, glowing overlapping portraits; no botanical or geometric motif (design audit §4.5) |
+| Minimal Elegant | White gallery: left-aligned editorial type, hairline rules, no cards, small square portraits, date/time/place as a definition list, year column for the story |
+
+**How the bands stay legible:** a band wrapper paints `--ii-primary` and
+keeps it as `--ii-band`; the inner element rescopes `--ii-text` and
+`--ii-primary` to the theme's computed readable foreground
+(`--primary-foreground`). RSVP and wish forms never sit on a band. Buttons
+on bands use the foreground on the band color, not accent on accent.
+
+**Minimal Elegant** renders the shared section components
+(`components/invitation/sections/{hero,identity,schedule,love-story,
+gallery,gift,wishes,closing}-section.tsx`), which no other template uses, so
+they were restyled in place; `section-heading.tsx` is its shared heading.
+
+**Verified:** every template with and without a cover photo at 390×844
+(no console errors, no horizontal overflow), all component tests, and the
+invitation, template, editor, RSVP, wishes, gallery, OG and homepage E2E
+specs.
+
+**Consequences:** existing invitations using these eight templates change
+look immediately. Owners' own colors and fonts still apply.
+
+## D-102 — Traditional Jawa Added as a 17th Template
+
+**Context:** Traditional Nusantara's motifs were kept generic because an
+attributed regional motif was an open product decision (Phase 3 design
+audit §17, Decision 7). The product owner asked for a Javanese style and
+chose to add it as its own template, so invitations already using
+Traditional Nusantara keep their look.
+
+**Decision:** `traditional-jawa` ("Traditional Jawa", category wedding)
+joins the catalog. Its marks come from Javanese tradition, drawn as
+simplified decorative renderings: the gunungan (kayon) of wayang as the
+Hero and Closing centerpiece and as the portrait frame, a truntum field
+behind the Hero, a kawung lattice on deep sogan-brown bands, and parang
+strips along card edges. Default palette: sogan brown, gold, cream
+(`default-themes.ts`). SVG pattern ids are made unique per instance with
+`useId`, since a template can render several times on one page.
+
+Registered per D-079's contract: `registry.ts`, `default-themes.ts`,
+`template-look.ts`, the Homepage style group "Tradisional", `prisma/seed.ts`
+and the slug lists in `default-themes.test.ts`, `registry.test.ts`,
+`cross-template.test.tsx` and `e2e/templates.spec.ts`.
+
+**Consequences:** no schema change. The seed (idempotent; existing rows are
+never updated) was run against DEV on 2026-11-02. **Production needs the
+seed run once** before the template appears in the editor there; until
+then `/demo/traditional-jawa` works but owners cannot pick it.
