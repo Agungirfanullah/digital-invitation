@@ -6,7 +6,7 @@
 
 This file hands a new agent session the context of the recent working
 days. It is a summary and a pointer list; the sources of truth stay
-`CLAUDE.md`, `docs/DECISIONS.md` (D-092 to D-104) and `docs/STATUS.md`.
+`CLAUDE.md`, `docs/DECISIONS.md` (D-092 to D-105) and `docs/STATUS.md`.
 Read those for detail, and update or replace this file at the end of the
 next session.
 
@@ -60,7 +60,8 @@ next session.
 | `6bbb9a1` `53ad858` `25b5f9b` | Eight look-alike templates rebuilt with their own composition (Royal Gold, Art Deco, Floral Romance, Garden Tropical, Blue Bloom, Traditional Nusantara, Soft Romantic, Minimal Elegant) | D-101 |
 | `f03d410` | 17th template **Traditional Jawa** (gunungan, truntum, kawung, parang); seeded on DEV and production | D-102 |
 | `a927d1e` | Template web fonts actually load (18 families via `next/font`, `preload: false`); Traditional Jawa refined | D-103 |
-| (pending push) | Step 3 polish of the other eight templates; one RSVP heading per page (`RsvpSection embedded`) | D-104 |
+| `0fa629b` | Step 3 polish of the other eight templates; one RSVP heading per page (`RsvpSection embedded`); handoff refreshed | D-104 |
+| (pending push) | Template web fonts in the editor font picker; deleted-event race shows "not found" instead of a 500 | D-105 |
 
 ## 3. Current state
 
@@ -90,14 +91,9 @@ Open items (ask which first):
 3. **`connection_limit=1` per server process** occasionally fails the
    onboarding transaction under load (`Unable to start a transaction in the
    given time`, seen locally). Infrastructure setting; needs approval.
-4. **Editor font picker** still lists system fonts only; the 18 template
-   web fonts could be offered there (separate product choice).
-5. **Demo photos in traditional attire** for Traditional Jawa/Nusantara —
+4. **Demo photos in traditional attire** for Traditional Jawa/Nusantara —
    needs licensed photos from the owner (never use people's photos without
    rights).
-6. **Backend bug:** opening the editor right after its event is deleted
-   throws `findUniqueOrThrow` (500) instead of "Acara tidak ditemukan".
-   Seen in E2E server logs; not fixed.
 
 ## 5. Gotchas learned (save time)
 

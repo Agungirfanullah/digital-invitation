@@ -128,10 +128,13 @@ function mapSchedule(schedule: {
 export async function getEditorEvent(eventId: string, userId: string): Promise<EditorEventData> {
   await requireEditorAccess(eventId, userId);
 
-  const event = await prisma.event.findUniqueOrThrow({
+  // The event can be deleted between the access check and this read (another
+  // tab, a co-owner); treat that as "not found", not a server error.
+  const event = await prisma.event.findUnique({
     where: { id: eventId },
     include: EDITOR_EVENT_INCLUDE,
   });
+  if (!event) throw new EventNotFoundError();
 
   const loveStory: EditorLoveStory | null = event.loveStories[0]
     ? {

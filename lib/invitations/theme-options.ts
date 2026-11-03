@@ -5,10 +5,12 @@
  * string, a CSS font-family string), so the schema, the database and the
  * renderer are unchanged.
  *
- * Fonts are system font stacks on purpose: the CSP allows `font-src 'self'`
- * only and no web font is loaded for invitations, so a font that is not
- * installed on the guest's device would silently fall back. Every stack
- * ends in a generic family, so the fallback is always the same style.
+ * Fonts: the template web fonts come first. They are self-hosted through
+ * next/font (D-103), so every guest sees them; their stacks match the
+ * templates' own defaults and are mapped to the loaded files by
+ * `resolveFontStack()`. Device fonts follow for owners who chose one
+ * before. Every stack ends in a generic family, so a fallback keeps the
+ * same style.
  */
 
 export interface ColorPreset {
@@ -71,7 +73,49 @@ export interface FontGroup {
 
 export const FONT_GROUPS: readonly FontGroup[] = [
   {
-    label: "Klasik (berkaki)",
+    label: "Elegan (berkaki)",
+    options: [
+      { label: "Playfair Display", stack: "'Playfair Display', Georgia, serif" },
+      {
+        label: "Cormorant Garamond",
+        stack: "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
+      },
+      { label: "Cinzel", stack: "'Cinzel', Georgia, serif" },
+      { label: "Marcellus", stack: "'Marcellus', 'Playfair Display', Georgia, serif" },
+      { label: "Libre Baskerville", stack: "'Libre Baskerville', Georgia, serif" },
+      { label: "Bodoni Moda", stack: "'Bodoni Moda', 'Playfair Display', Georgia, serif" },
+      { label: "Crimson Text", stack: "'Crimson Text', Georgia, serif" },
+      { label: "Fraunces", stack: "'Fraunces', Georgia, serif" },
+    ],
+  },
+  {
+    label: "Modern (tanpa kaki)",
+    options: [
+      { label: "Inter", stack: "'Inter', 'Helvetica Neue', Arial, sans-serif" },
+      { label: "Quicksand", stack: "'Quicksand', 'Helvetica Neue', Arial, sans-serif" },
+      { label: "Oswald", stack: "'Oswald', 'Arial Narrow', Arial, sans-serif" },
+      { label: "Bebas Neue", stack: "'Bebas Neue', 'Arial Narrow', Arial, sans-serif" },
+      {
+        label: "Baloo 2",
+        stack: "'Baloo 2', 'Arial Rounded MT Bold', 'Helvetica Neue', sans-serif",
+      },
+    ],
+  },
+  {
+    label: "Tulisan tangan",
+    options: [
+      { label: "Great Vibes", stack: "'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive" },
+      { label: "Allura", stack: "'Allura', 'Brush Script MT', cursive" },
+      { label: "Dancing Script", stack: "'Dancing Script', 'Segoe Script', cursive" },
+      { label: "Caveat", stack: "'Caveat', 'Segoe Script', cursive" },
+    ],
+  },
+  {
+    label: "Mesin ketik",
+    options: [{ label: "Special Elite", stack: "'Special Elite', 'Courier New', monospace" }],
+  },
+  {
+    label: "Font perangkat (berkaki)",
     options: [
       { label: "Georgia", stack: "Georgia, 'Times New Roman', serif" },
       { label: "Times New Roman", stack: "'Times New Roman', Times, serif" },
@@ -81,7 +125,7 @@ export const FONT_GROUPS: readonly FontGroup[] = [
     ],
   },
   {
-    label: "Modern (tanpa kaki)",
+    label: "Font perangkat (tanpa kaki)",
     options: [
       { label: "Helvetica / Arial", stack: "'Helvetica Neue', Arial, sans-serif" },
       { label: "Verdana", stack: "Verdana, Geneva, sans-serif" },
@@ -90,7 +134,7 @@ export const FONT_GROUPS: readonly FontGroup[] = [
     ],
   },
   {
-    label: "Tulisan tangan",
+    label: "Font perangkat (tulisan tangan & mesin ketik)",
     options: [
       { label: "Brush Script", stack: "'Brush Script MT', 'Segoe Script', cursive" },
       {
@@ -101,11 +145,8 @@ export const FONT_GROUPS: readonly FontGroup[] = [
         label: "Lucida Handwriting",
         stack: "'Lucida Handwriting', 'Lucida Calligraphy', cursive",
       },
+      { label: "Courier New", stack: "'Courier New', Courier, monospace" },
     ],
-  },
-  {
-    label: "Mesin ketik",
-    options: [{ label: "Courier New", stack: "'Courier New', Courier, monospace" }],
   },
 ];
 

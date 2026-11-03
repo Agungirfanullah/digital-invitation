@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { TEMPLATE_FONT_VARIABLES } from "@/lib/invitations/font-stack";
+import { TEMPLATE_DEFAULT_THEMES } from "@/lib/invitations/templates/default-themes";
+
 import { themeSchema } from "@/lib/editor/validation";
 import {
   COLOR_PRESETS,
@@ -72,7 +75,30 @@ describe("palette and font list", () => {
 
   it("finds a font by its stack", () => {
     expect(findFontOption("Georgia, 'Times New Roman', serif")?.label).toBe("Georgia");
-    expect(findFontOption("'Playfair Display', Georgia, serif")).toBeNull();
+    expect(findFontOption("'Playfair Display', Georgia, serif")?.label).toBe("Playfair Display");
+    expect(findFontOption("'Unknown Font', serif")).toBeNull();
     expect(findFontOption(null)).toBeNull();
+  });
+
+  it("offers the main family of every template's heading font", () => {
+    const firstFamily = (stack: string) => stack.split(",")[0].trim();
+    const offered = new Set(
+      FONT_GROUPS.flatMap((group) => group.options.map((option) => firstFamily(option.stack))),
+    );
+    for (const theme of Object.values(TEMPLATE_DEFAULT_THEMES)) {
+      expect(offered.has(firstFamily(theme.headingFont)), theme.headingFont).toBe(true);
+    }
+  });
+
+  it("only offers web fonts that are actually self-hosted (D-103)", () => {
+    for (const group of FONT_GROUPS) {
+      for (const { stack } of group.options) {
+        const first = stack.match(/^'([^']+)'/)?.[1];
+        const isDeviceFont = group.label.startsWith("Font perangkat");
+        if (first && !isDeviceFont) {
+          expect(TEMPLATE_FONT_VARIABLES[first], first).toBeDefined();
+        }
+      }
+    }
   });
 });

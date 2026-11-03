@@ -3682,3 +3682,21 @@ from the address.
   Journey and Modern Editorial keep their numbered layouts.
 - The copy-address button sits under the address (Modern Editorial and the
   shared gift section).
+
+## D-105 — Web Fonts in the Editor Font Picker; Deleted-Event Race Returns "Not Found"
+
+**Fonts:** the editor's "Warna & Font" picker listed device fonts only,
+because no web font used to load (D-103 fixed that). It now offers the
+template web fonts first, grouped as Elegan, Modern, Tulisan tangan and
+Mesin ketik (18 families, the same stacks as the templates' defaults), then
+the previous device fonts under "Font perangkat …", so a stored choice
+still matches its option. A test checks every offered web font is one that
+`app/template-fonts.ts` self-hosts. The stored value is still a font-family
+string; validation and schema are unchanged.
+
+**Race:** `getEditorEvent()` and `findMissingPublishRequirements()` checked
+access, then read the event with `findUniqueOrThrow`. An event deleted in
+between (another tab, a co-owner) threw a raw Prisma error and a 500 page.
+Both now read with `findUnique` and throw `EventNotFoundError`, so the page
+shows "Acara tidak ditemukan". Covered by
+`lib/editor/service.deleted-event.test.ts`.

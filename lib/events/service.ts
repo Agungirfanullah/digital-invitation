@@ -174,10 +174,12 @@ export async function updateEventForUser(eventId: string, userId: string, input:
  * and venue rule).
  */
 async function findMissingPublishRequirements(eventId: string): Promise<string[]> {
-  const record = await prisma.event.findUniqueOrThrow({
+  // Callers check access first; the event can still be deleted in between.
+  const record = await prisma.event.findUnique({
     where: { id: eventId },
     include: { ...IDENTITY_PROFILE_INCLUDE, schedules: { select: { venueId: true } } },
   });
+  if (!record) throw new EventNotFoundError();
   return getMissingPublishRequirements(
     record.type,
     toIdentityProfileData(record),
