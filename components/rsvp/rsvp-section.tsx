@@ -6,6 +6,12 @@ export interface RsvpSectionProps {
   eventId: string;
   /** Present only for a valid, same-event, personalized guest — see lib/rsvp/service.ts's getRsvpGuestView(). */
   rsvp: { token: string; view: RsvpGuestView } | null;
+  /**
+   * Inside a template section that already has its own RSVP heading (with
+   * the `rsvp-heading` id): renders just the form or the note, so the page
+   * has one heading and one id.
+   */
+  embedded?: boolean;
 }
 
 /**
@@ -18,7 +24,51 @@ export interface RsvpSectionProps {
  * The demo invitation shows the real form as a sample that cannot be sent
  * (D-098), so visitors see what their guests will fill in.
  */
-export function RsvpSection({ eventId, rsvp }: RsvpSectionProps) {
+export function RsvpSection({ eventId, rsvp, embedded = false }: RsvpSectionProps) {
+  const body = (
+    <div className="mx-auto max-w-md text-[color:var(--ii-text)]">
+      {rsvp ? (
+        <RsvpForm
+          eventId={eventId}
+          token={rsvp.token}
+          guestName={rsvp.view.guestName}
+          seatQuota={rsvp.view.seatQuota}
+          existing={rsvp.view.existing}
+        />
+      ) : isDemoInvitation(eventId) ? (
+        <RsvpForm
+          demo
+          eventId={eventId}
+          token=""
+          guestName="Tamu Undangan"
+          seatQuota={2}
+          existing={null}
+        />
+      ) : (
+        <div className="flex flex-col items-center gap-3 rounded-[var(--ii-radius,0.75rem)] border border-dashed border-[color:var(--ii-accent)]/50 px-6 py-7 text-center">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="size-7 text-[color:var(--ii-accent)]"
+          >
+            <rect x="3" y="5" width="18" height="14" rx="2" />
+            <path d="m3 7 9 6 9-6" />
+          </svg>
+          <p className="text-sm opacity-80">
+            RSVP hanya dapat diisi melalui tautan undangan pribadi Anda.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  if (embedded) return body;
+
   return (
     <section aria-labelledby="rsvp-heading" className="px-6 py-16">
       <h2
@@ -27,46 +77,7 @@ export function RsvpSection({ eventId, rsvp }: RsvpSectionProps) {
       >
         RSVP
       </h2>
-
-      <div className="mx-auto max-w-md text-[color:var(--ii-text)]">
-        {rsvp ? (
-          <RsvpForm
-            eventId={eventId}
-            token={rsvp.token}
-            guestName={rsvp.view.guestName}
-            seatQuota={rsvp.view.seatQuota}
-            existing={rsvp.view.existing}
-          />
-        ) : isDemoInvitation(eventId) ? (
-          <RsvpForm
-            demo
-            eventId={eventId}
-            token=""
-            guestName="Tamu Undangan"
-            seatQuota={2}
-            existing={null}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-3 rounded-[var(--ii-radius,0.75rem)] border border-dashed border-[color:var(--ii-accent)]/50 px-6 py-7 text-center">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="size-7 text-[color:var(--ii-accent)]"
-            >
-              <rect x="3" y="5" width="18" height="14" rx="2" />
-              <path d="m3 7 9 6 9-6" />
-            </svg>
-            <p className="text-sm opacity-80">
-              RSVP hanya dapat diisi melalui tautan undangan pribadi Anda.
-            </p>
-          </div>
-        )}
-      </div>
+      {body}
     </section>
   );
 }

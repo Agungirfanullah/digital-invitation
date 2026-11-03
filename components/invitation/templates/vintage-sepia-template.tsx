@@ -93,13 +93,19 @@ function Postmark({ className = "" }: { className?: string }) {
   );
 }
 
+/**
+ * A typed index-card label: the typewriter face in the primary color, on a
+ * dashed baseline, so it stays legible now that the face actually loads.
+ */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p
-      className="text-center text-xs font-medium tracking-[0.3em] text-[color:var(--ii-accent)] uppercase"
-      style={{ fontFamily: "var(--ii-heading-font)" }}
-    >
-      {children}
+    <p className="text-center">
+      <span
+        className="inline-block border-b border-dashed border-[color:var(--ii-accent)] px-2 pb-1.5 text-sm tracking-[0.2em] text-[color:var(--ii-primary)] uppercase"
+        style={{ fontFamily: "var(--ii-heading-font)" }}
+      >
+        {children}
+      </span>
     </p>
   );
 }
@@ -255,26 +261,43 @@ function LoveStory({
         {loveStory.title ?? defaultTitle}
       </h2>
       <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
-      <ol className="mx-auto mt-10 flex max-w-md flex-col gap-8">
-        {loveStory.items.map((item) => (
-          <li key={item.id} className="text-center">
+      <ol className="mx-auto mt-12 flex max-w-md flex-col gap-9 px-2">
+        {loveStory.items.map((item, index) => (
+          <li
+            key={item.id}
+            className={`relative border border-[color:var(--ii-accent)]/40 bg-[color:var(--ii-secondary)]/45 px-6 pt-8 pb-6 text-left shadow-sm ${
+              index % 2 === 0 ? "rotate-[0.6deg]" : "-rotate-[0.6deg]"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className="absolute -top-3 left-1/2 h-6 w-20 -translate-x-1/2 -rotate-2 bg-[color:var(--ii-accent)]/25"
+            />
+            {item.dateLabel && (
+              <p
+                className="text-xs tracking-[0.25em] text-[color:var(--ii-accent)] uppercase"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
+              >
+                {item.dateLabel}
+              </p>
+            )}
+            <p
+              className="mt-2 text-xl text-[color:var(--ii-primary)]"
+              style={{ fontFamily: "var(--ii-heading-font)" }}
+            >
+              {item.title}
+            </p>
             {item.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
               <img
                 src={item.imageUrl}
                 alt={item.title}
                 loading="lazy"
-                className="mx-auto mb-3 h-44 w-44 border-8 border-white object-cover shadow-md sepia"
+                className="mt-3 aspect-[4/3] w-full object-cover sepia-[0.35]"
               />
             )}
-            {item.dateLabel && (
-              <p className="text-xs tracking-wide text-[color:var(--ii-accent)] uppercase">
-                {item.dateLabel}
-              </p>
-            )}
-            <p className="mt-1 text-lg font-medium text-[color:var(--ii-primary)]">{item.title}</p>
             {item.description && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-80">
+              <p className="mt-2 text-sm leading-relaxed text-[color:var(--ii-text)] opacity-85">
                 {item.description}
               </p>
             )}
@@ -323,7 +346,7 @@ function Rsvp({
       </h2>
       <SectionLabel>Konfirmasi Kehadiran</SectionLabel>
       <div className="mx-auto mt-8 max-w-md">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );

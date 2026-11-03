@@ -3649,3 +3649,36 @@ border, tree of life with ukel branches, two birds, gapura with doors), a
 real parang strip (diagonal S-curves with mlinjon, a light version on the
 cover), a wider portrait frame focused on the upper part of the photo, and
 title ornaments that vary by section (gunungan, kawung, truntum).
+
+## D-104 — Templates Step 3: Polish of the Eight Distinct Templates
+
+**Context:** after D-101 to D-103, a fresh audit of the eight templates that
+already had a strong identity (Mono Frame, Industrial Loft, Rustic Earth,
+Vintage Sepia, Cinematic Journey, Modern Editorial, Dark Luxury, Playful
+Pop) found no broken layouts but several details: every template showed two
+stacked RSVP headings and repeated the `rsvp-heading` id; Rustic Earth's
+identity squeezed photo, name and parents into a fixed 144px circle, so the
+photo was pushed out of view; Vintage Sepia's section labels, now in the
+real typewriter face, read too faint; six templates shared the same
+centered love-story stack; Modern Editorial's "Salin Alamat" floated away
+from the address.
+
+**Decision (presentation only):**
+
+- `RsvpSection` gains `embedded`: inside a template section that already
+  has its RSVP heading it renders only the form or the note. All templates
+  use it, so each page has one heading and one `rsvp-heading` id (which the
+  floating section nav targets). Minimal Elegant wraps it with its own
+  left-aligned heading.
+- Rustic Earth: each partner is a stitched kraft card with the photo in a
+  dashed stamp ring, one column, a leaf divider between partners.
+- Vintage Sepia: labels become typed index-card labels in the primary color
+  on a dashed baseline.
+- Love story per template: Mono Frame bordered rows with the year in a
+  solid block; Industrial Loft a thick rail with rivets and stencil year
+  tags; Dark Luxury large gold years on a gold spine with diamonds; Playful
+  Pop tilted sticker cards with a pill year; Vintage Sepia taped diary
+  cards; Rustic Earth stitched tags with a stamp-badge year. Cinematic
+  Journey and Modern Editorial keep their numbered layouts.
+- The copy-address button sits under the address (Modern Editorial and the
+  shared gift section).

@@ -297,7 +297,7 @@ function Rsvp({
         RSVP
       </h2>
       <div className="mt-8 max-w-lg">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );
@@ -341,7 +341,7 @@ function Gift({ giftMethods }: { giftMethods: PublicGiftMethod[] }) {
                 />
               )}
               {method.instructions && (
-                <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
+                <div className="mt-2 flex flex-col items-start gap-2">
                   <p className="whitespace-pre-wrap opacity-80">{method.instructions}</p>
                   {method.type === "OTHER" && (
                     <CopyValueButton value={method.instructions} label="Salin Alamat" />

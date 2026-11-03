@@ -165,9 +165,9 @@ digital-gift display) do not become MVP-defining by that fact.
     2026-11-02; step 1 (richer demo content and the sections all templates
     share, D-098) done; step 2 (eight look-alike templates rebuilt with their
     own composition, D-101) done; Traditional Jawa added as a 17th template
-    (D-102; production still needs `npm run db:seed`) and refined, and the
+    (D-102; seeded in production on 2026-11-02, confirmed by the product owner) and refined, and the
     templates' web fonts now load (D-103); step 3 (polish of the other
-    eight) not started. Also
+    eight, D-104) done. Template refresh complete. Also
     done 2026-11-02 at the owner's request: event hub menu and invitation
     editor redesign (D-099). Couple parents' names are shown publicly since
     D-100 (owner's decision).

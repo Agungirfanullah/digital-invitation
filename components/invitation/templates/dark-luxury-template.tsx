@@ -248,28 +248,38 @@ function LoveStory({
         {loveStory.title ?? defaultTitle}
       </h2>
       <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
-      <ol className="mx-auto mt-12 flex max-w-md flex-col gap-10">
-        {loveStory.items.map((item) => (
-          <li key={item.id} className="text-center">
+      <ol className="mx-auto mt-12 flex max-w-md flex-col items-center text-center">
+        {loveStory.items.map((item, index) => (
+          <li key={item.id} className="flex flex-col items-center">
+            {index > 0 && (
+              <span aria-hidden="true" className="my-6 flex flex-col items-center gap-2">
+                <span className="h-10 w-px bg-gradient-to-b from-transparent to-[color:var(--ii-accent)]" />
+                <span className="size-2 rotate-45 bg-[color:var(--ii-accent)]" />
+                <span className="h-10 w-px bg-gradient-to-t from-transparent to-[color:var(--ii-accent)]" />
+              </span>
+            )}
+            {item.dateLabel && (
+              <p
+                className="text-4xl text-[color:var(--ii-accent)]"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
+              >
+                {item.dateLabel}
+              </p>
+            )}
             {item.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
               <img
                 src={item.imageUrl}
                 alt={item.title}
                 loading="lazy"
-                className="mx-auto mb-4 aspect-[4/5] w-48 object-cover"
+                className="my-4 aspect-[4/5] w-48 object-cover ring-1 ring-[color:var(--ii-accent)]/60 ring-offset-4 ring-offset-[color:var(--ii-background)]"
               />
-            )}
-            {item.dateLabel && (
-              <p className="text-xs tracking-[0.3em] text-[color:var(--ii-accent)] uppercase">
-                {item.dateLabel}
-              </p>
             )}
             <p className="mt-2 text-lg font-medium tracking-wide text-[color:var(--ii-primary)]">
               {item.title}
             </p>
             {item.description && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-70">
+              <p className="mt-1 max-w-sm text-sm leading-relaxed text-[color:var(--ii-text)] opacity-75">
                 {item.description}
               </p>
             )}
@@ -318,7 +328,7 @@ function Rsvp({
       </h2>
       <SectionLabel>Konfirmasi Kehadiran</SectionLabel>
       <div className="mx-auto mt-10 max-w-md">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );

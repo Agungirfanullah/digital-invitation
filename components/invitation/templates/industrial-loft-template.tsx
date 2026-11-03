@@ -240,31 +240,38 @@ function LoveStory({
         {loveStory.title ?? defaultTitle}
       </h2>
       <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
-      <ol className="mx-auto mt-12 flex max-w-md flex-col gap-10">
+      <ol className="mx-auto mt-12 flex max-w-md flex-col gap-10 border-l-4 border-[color:var(--ii-primary)] pl-7">
         {loveStory.items.map((item) => (
-          <li key={item.id} className="text-center">
+          <li key={item.id} className="relative text-left">
+            <span
+              aria-hidden="true"
+              className="absolute top-1 -left-[2.3rem] size-3.5 border-2 border-[color:var(--ii-primary)] bg-[color:var(--ii-accent)]"
+            />
+            {item.dateLabel && (
+              <p
+                className="inline-block bg-[color:var(--ii-primary)] px-2 py-0.5 text-xs tracking-[0.3em] text-[color:var(--primary-foreground)] uppercase"
+                style={{ fontFamily: "var(--ii-heading-font)" }}
+              >
+                {item.dateLabel}
+              </p>
+            )}
+            <p
+              className="mt-2 text-2xl text-[color:var(--ii-primary)] uppercase"
+              style={{ fontFamily: "var(--ii-heading-font)" }}
+            >
+              {item.title}
+            </p>
             {item.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
               <img
                 src={item.imageUrl}
                 alt={item.title}
                 loading="lazy"
-                className="mx-auto mb-4 aspect-[4/5] w-44 object-cover"
+                className="mt-3 aspect-[4/3] w-full object-cover"
               />
             )}
-            {item.dateLabel && (
-              <p className="text-xs tracking-[0.3em] text-[color:var(--ii-text)] uppercase opacity-70">
-                {item.dateLabel}
-              </p>
-            )}
-            <p
-              className="mt-2 text-xl text-[color:var(--ii-primary)] uppercase"
-              style={{ fontFamily: "var(--ii-heading-font)" }}
-            >
-              {item.title}
-            </p>
             {item.description && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-80">
+              <p className="mt-2 text-sm leading-relaxed text-[color:var(--ii-text)] opacity-80">
                 {item.description}
               </p>
             )}
@@ -313,7 +320,7 @@ function Rsvp({
       </h2>
       <SectionLabel>Konfirmasi Kehadiran</SectionLabel>
       <div className="mx-auto mt-10 max-w-md">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );

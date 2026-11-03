@@ -13,6 +13,7 @@ import { GiftSection } from "@/components/invitation/sections/gift-section";
 import { WishesSection } from "@/components/invitation/sections/wishes-section";
 import { RsvpSection } from "@/components/rsvp/rsvp-section";
 import { ClosingSection } from "@/components/invitation/sections/closing-section";
+import { SectionHeading } from "@/components/invitation/sections/section-heading";
 
 /**
  * A tiny register-mark tick (a plus-sign cross) at the page's top-left and
@@ -66,7 +67,14 @@ export function MinimalElegantTemplate({ invitation, rsvp, wishGuest }: Invitati
       <LoveStorySection loveStory={invitation.loveStory} defaultTitle={copy.storyDefaultTitle} />
     ),
     gallery: <GallerySection galleries={invitation.galleries} />,
-    rsvp: sections.rsvp && <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} />,
+    rsvp: sections.rsvp && (
+      <section aria-labelledby="rsvp-heading" className="px-8 py-20">
+        <div className="mx-auto max-w-md">
+          <SectionHeading id="rsvp-heading">Konfirmasi Kehadiran</SectionHeading>
+          <RsvpSection eventId={invitation.eventId} rsvp={rsvp ?? null} embedded />
+        </div>
+      </section>
+    ),
     gift: <GiftSection giftMethods={invitation.giftMethods} />,
     wishes: sections.wishes && (
       <WishesSection

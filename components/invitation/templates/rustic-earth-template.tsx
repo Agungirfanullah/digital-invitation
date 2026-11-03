@@ -143,31 +143,38 @@ function Identity({ identity }: { identity: PublicIdentity }) {
       </h2>
       <SectionLabel>{identity.heading}</SectionLabel>
       {identity.members.length > 0 && (
-        <div className="mx-auto mt-8 flex max-w-lg flex-wrap items-center justify-center gap-6">
+        <div className="mx-auto mt-10 flex max-w-sm flex-col items-center gap-8">
           {identity.members.map((member, index) => (
-            <div
-              key={`${index}-${member.name}`}
-              className="flex size-36 flex-col items-center justify-center rounded-full border-2 border-dashed border-[color:var(--ii-secondary)] p-4 text-center"
-            >
-              <MemberPhoto member={member} shape="arch" />
-              <p
-                className="text-lg font-medium text-[color:var(--ii-primary)]"
-                style={{ fontFamily: "var(--ii-script-font)" }}
-              >
-                {member.name}
-              </p>
-              <MemberParents member={member} />
-              {member.instagram && (
-                <a
-                  href={toInstagramProfileUrl(member.instagram)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 text-xs text-[color:var(--ii-text)] underline-offset-2 opacity-70 hover:underline"
+            <Fragment key={`${index}-${member.name}`}>
+              {index > 0 && identity.pairMembers && <LeafDivider className="w-24" />}
+              <div className="flex w-full flex-col items-center rounded-[2.5rem] border-2 border-dashed border-[color:var(--ii-secondary)] bg-[color:var(--ii-secondary)]/15 px-6 pt-7 pb-6 text-center">
+                {/* The photo sits in a dashed "stamp" ring, like the cover badge. */}
+                {member.photoUrl && (
+                  <div className="mb-4 rounded-full border-2 border-dashed border-[color:var(--ii-accent)] p-1.5">
+                    <div className="[&>div]:mb-0 [&>div]:size-32 [&>div]:border-0 [&>div]:shadow-none">
+                      <MemberPhoto member={member} shape="round" />
+                    </div>
+                  </div>
+                )}
+                <p
+                  className="text-3xl font-medium text-[color:var(--ii-primary)]"
+                  style={{ fontFamily: "var(--ii-script-font)" }}
                 >
-                  @{member.instagram}
-                </a>
-              )}
-            </div>
+                  {member.name}
+                </p>
+                <MemberParents member={member} />
+                {member.instagram && (
+                  <a
+                    href={toInstagramProfileUrl(member.instagram)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 text-xs text-[color:var(--ii-text)] underline-offset-2 opacity-70 hover:underline"
+                  >
+                    @{member.instagram}
+                  </a>
+                )}
+              </div>
+            </Fragment>
           ))}
         </div>
       )}
@@ -262,32 +269,34 @@ function LoveStory({
         {loveStory.title ?? defaultTitle}
       </h2>
       <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
-      <ol className="mx-auto mt-10 flex max-w-md flex-col">
-        {loveStory.items.map((item, index) => (
-          <li key={item.id} className="text-center">
-            {index > 0 && <LeafDivider className="my-8 w-24" />}
+      <ol className="mx-auto mt-10 flex max-w-md flex-col gap-6">
+        {loveStory.items.map((item) => (
+          <li
+            key={item.id}
+            className="rounded-[2rem] border-2 border-dashed border-[color:var(--ii-secondary)] bg-[color:var(--ii-secondary)]/15 px-6 py-6 text-center"
+          >
+            {item.dateLabel && (
+              <p className="mx-auto inline-block rounded-full border-2 border-dashed border-[color:var(--ii-accent)] px-4 py-1 text-xs font-medium tracking-[0.2em] text-[color:var(--ii-accent)]">
+                {item.dateLabel}
+              </p>
+            )}
             {item.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
               <img
                 src={item.imageUrl}
                 alt={item.title}
                 loading="lazy"
-                className="mx-auto mb-3 h-40 w-40 rounded-full border-2 border-dashed border-[color:var(--ii-secondary)] object-cover p-1.5"
+                className="mx-auto mt-4 aspect-[4/3] w-full rounded-3xl object-cover"
               />
             )}
-            {item.dateLabel && (
-              <p className="text-xs tracking-wide text-[color:var(--ii-accent)] uppercase">
-                {item.dateLabel}
-              </p>
-            )}
             <p
-              className="mt-1 text-lg font-medium text-[color:var(--ii-primary)]"
+              className="mt-3 text-3xl text-[color:var(--ii-primary)]"
               style={{ fontFamily: "var(--ii-script-font)" }}
             >
               {item.title}
             </p>
             {item.description && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-80">
+              <p className="mt-1 text-sm leading-relaxed text-[color:var(--ii-text)] opacity-80">
                 {item.description}
               </p>
             )}
@@ -339,7 +348,7 @@ function Rsvp({
       </h2>
       <SectionLabel>Konfirmasi Kehadiran</SectionLabel>
       <div className="mx-auto mt-8 max-w-md">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );

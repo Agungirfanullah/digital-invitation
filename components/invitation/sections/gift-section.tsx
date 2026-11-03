@@ -50,7 +50,7 @@ export function GiftSection({ giftMethods }: { giftMethods: PublicGiftMethod[] }
               )}
 
               {method.instructions && (
-                <div className="mt-2 flex flex-wrap items-start justify-between gap-2">
+                <div className="mt-2 flex flex-col items-start gap-2">
                   <p className="whitespace-pre-wrap opacity-80">{method.instructions}</p>
                   {/* Only the manual/physical-gift type treats `instructions` as a
                     copyable address — for BANK/EWALLET/QR it's just a note next

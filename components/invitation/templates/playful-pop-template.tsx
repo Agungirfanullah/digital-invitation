@@ -264,31 +264,36 @@ function LoveStory({
         {loveStory.title ?? defaultTitle}
       </h2>
       <SectionLabel>{loveStory.title ?? defaultTitle}</SectionLabel>
-      <ol className="mx-auto mt-10 flex max-w-md flex-col gap-8">
-        {loveStory.items.map((item) => (
-          <li key={item.id} className="text-center">
+      <ol className="mx-auto mt-10 flex max-w-md flex-col gap-7 px-2">
+        {loveStory.items.map((item, index) => (
+          <li
+            key={item.id}
+            className={`relative rounded-3xl border-4 border-[color:var(--ii-secondary)] bg-[color:var(--ii-background)] px-6 pt-8 pb-6 text-left shadow-[6px_6px_0_0_var(--ii-secondary)] ${
+              index % 2 === 0 ? "-rotate-1" : "rotate-1"
+            }`}
+          >
+            {item.dateLabel && (
+              <p className="absolute -top-4 left-5 rounded-full bg-[color:var(--ii-primary)] px-3 py-1 text-xs font-bold tracking-wide text-[color:var(--primary-foreground)] shadow-sm">
+                {item.dateLabel}
+              </p>
+            )}
             {item.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element -- external, event-owner-supplied URL.
               <img
                 src={item.imageUrl}
                 alt={item.title}
                 loading="lazy"
-                className="mx-auto mb-3 h-44 w-44 rounded-3xl border-4 border-[color:var(--ii-secondary)] object-cover"
+                className="mb-3 aspect-[4/3] w-full rounded-2xl object-cover"
               />
             )}
-            {item.dateLabel && (
-              <p className="text-xs font-bold tracking-wide text-[color:var(--ii-accent)] uppercase">
-                {item.dateLabel}
-              </p>
-            )}
             <p
-              className="mt-1 text-xl font-bold text-[color:var(--ii-primary)]"
+              className="text-xl font-bold text-[color:var(--ii-primary)]"
               style={{ fontFamily: "var(--ii-heading-font)" }}
             >
               {item.title}
             </p>
             {item.description && (
-              <p className="mt-1 text-sm text-[color:var(--ii-text)] opacity-80">
+              <p className="mt-1 text-sm leading-relaxed text-[color:var(--ii-text)] opacity-85">
                 {item.description}
               </p>
             )}
@@ -337,7 +342,7 @@ function Rsvp({
       </h2>
       <SectionLabel>Konfirmasi Kehadiran</SectionLabel>
       <div className="mx-auto mt-8 max-w-md">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );

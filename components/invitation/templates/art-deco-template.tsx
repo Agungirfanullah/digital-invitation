@@ -485,7 +485,7 @@ function Rsvp({
       </h2>
       <SectionTitle>Konfirmasi Kehadiran</SectionTitle>
       <div className="mx-auto mt-10 max-w-md">
-        <RsvpSection eventId={eventId} rsvp={rsvp} />
+        <RsvpSection eventId={eventId} rsvp={rsvp} embedded />
       </div>
     </section>
   );
