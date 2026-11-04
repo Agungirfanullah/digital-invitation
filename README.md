@@ -45,6 +45,8 @@ npm run dev
 | `npm run prisma:deploy`   | Apply pending migrations (CI/production)     |
 | `npm run prisma:studio`   | Open Prisma Studio                           |
 | `npm run db:seed`         | Run `prisma/seed.ts`                         |
+| `npm run admin:grant -- <email>` | Make an existing account an admin (D-107) |
+| `npm run storage:configure` | Allow images and MP3/M4A in the storage bucket (D-109) |
 
 ## Project layout
 

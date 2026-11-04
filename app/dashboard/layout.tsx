@@ -18,7 +18,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         </div>
 
         <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
-          <DashboardNav />
+          <DashboardNav isAdmin={user.role === "ADMIN"} />
         </div>
 
         <div className="border-border/60 mt-4 space-y-3 border-t pt-4">
@@ -38,7 +38,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <MobileDashboardBar name={user.name} email={user.email} />
+        <MobileDashboardBar name={user.name} email={user.email} isAdmin={user.role === "ADMIN"} />
         <main className="flex-1 px-4 py-6 sm:px-8 lg:px-10 lg:py-10">{children}</main>
       </div>
     </div>

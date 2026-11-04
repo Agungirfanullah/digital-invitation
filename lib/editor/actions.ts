@@ -21,6 +21,9 @@ import type { IdentityProfileData } from "@/lib/event-types/identity";
 import type { InvitationSectionKey, SectionOverrides } from "@/lib/event-types/sections";
 import { GALLERY_UPLOAD_RATE_LIMIT_MESSAGE, mapStorageErrorMessage } from "@/lib/storage/errors";
 import { validateGalleryImageUpload } from "@/lib/storage/validation";
+import { validateMusicUpload, type ValidatedAudio } from "@/lib/storage/audio-validation";
+import { FileTooLargeError, UnsupportedFileTypeError } from "@/lib/storage/errors";
+import { MUSIC_TITLE_MAX_LENGTH, type InvitationMusic } from "@/lib/invitations/music";
 import type { ValidatedGalleryImage } from "@/lib/storage/validation";
 import type { ActionResult } from "@/lib/editor/types";
 
@@ -396,6 +399,73 @@ export async function removeIdentityPhotoAction(
 ): Promise<ActionResult<null>> {
   return withEditorAuth(async (userId) => {
     await editorService.removeIdentityPhoto(eventId, userId, currentUrl);
+    return null;
+  });
+}
+
+/** Uploads an MP3/M4A as the invitation's background music (D-109). */
+export async function uploadMusicAction(
+  eventId: string,
+  formData: FormData,
+): Promise<ActionResult<InvitationMusic>> {
+  const user = await requireAppUser();
+  if (!(await checkGalleryUploadRateLimit(user.id))) {
+    return { ok: false, error: GALLERY_UPLOAD_RATE_LIMIT_MESSAGE };
+  }
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    const message = "Pilih berkas lagu (MP3 atau M4A) untuk diunggah.";
+    return { ok: false, error: message, fieldErrors: { file: [message] } };
+  }
+
+  let validated: ValidatedAudio;
+  try {
+    validated = validateMusicUpload({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      buffer: Buffer.from(await file.arrayBuffer()),
+    });
+  } catch (error) {
+    const message =
+      error instanceof UnsupportedFileTypeError
+        ? "Berkas harus berupa lagu MP3 atau M4A yang valid."
+        : error instanceof FileTooLargeError
+          ? mapStorageErrorMessage(error)
+          : "Gagal membaca berkas. Coba lagi.";
+    return { ok: false, error: message, fieldErrors: { file: [message] } };
+  }
+
+  // The file name, minus extension, is a sensible default title.
+  const title =
+    file.name
+      .replace(/\.[^.]+$/, "")
+      .replace(/[_-]+/g, " ")
+      .trim()
+      .slice(0, MUSIC_TITLE_MAX_LENGTH) || null;
+
+  try {
+    const music = await editorService.uploadEventMusic(eventId, user.id, validated, title);
+    return { ok: true, data: music };
+  } catch (error) {
+    return { ok: false, error: mapEditorErrorMessage(error) };
+  }
+}
+
+export async function chooseLibraryMusicAction(
+  eventId: string,
+  trackId: string,
+): Promise<ActionResult<InvitationMusic>> {
+  if (typeof trackId !== "string" || trackId.length > 64) {
+    return { ok: false, error: "Lagu tidak ditemukan." };
+  }
+  return withEditorAuth((userId) => editorService.chooseLibraryMusic(eventId, userId, trackId));
+}
+
+export async function removeMusicAction(eventId: string): Promise<ActionResult<null>> {
+  return withEditorAuth(async (userId) => {
+    await editorService.removeEventMusic(eventId, userId);
     return null;
   });
 }

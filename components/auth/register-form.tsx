@@ -73,6 +73,18 @@ export function RegisterForm() {
         {pending ? "Membuat akun..." : "Buat akun"}
       </Button>
 
+      <p className="text-muted-foreground text-center text-xs leading-relaxed">
+        Dengan membuat akun, kamu menyetujui{" "}
+        <Link href="/syarat-ketentuan" className="text-foreground underline underline-offset-4">
+          Syarat &amp; Ketentuan
+        </Link>{" "}
+        dan{" "}
+        <Link href="/kebijakan-privasi" className="text-foreground underline underline-offset-4">
+          Kebijakan Privasi
+        </Link>
+        .
+      </p>
+
       <p className="text-muted-foreground text-center text-sm">
         Sudah punya akun?{" "}
         <Link href="/login" className="text-foreground underline underline-offset-4">

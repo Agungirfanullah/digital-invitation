@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { getSupabaseUser } from "@/lib/auth/session";
 import { isSafeRedirectPath } from "@/lib/auth/urls";
+import { SUSPENDED_MESSAGE } from "@/lib/auth/errors";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ next?: string; reset?: string; error?: string }>;
+  searchParams: Promise<{ next?: string; reset?: string; error?: string; account?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
@@ -22,12 +23,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const callbackError =
     params.error === "callback_failed"
       ? "Tautan sudah tidak berlaku atau tidak valid. Silakan coba lagi."
-      : undefined;
+      : params.account === "suspended"
+        ? SUSPENDED_MESSAGE
+        : undefined;
 
   return (
     <LoginForm
       next={next}
       resetSuccess={params.reset === "success"}
+      accountDeleted={params.account === "deleted"}
       callbackError={callbackError}
     />
   );

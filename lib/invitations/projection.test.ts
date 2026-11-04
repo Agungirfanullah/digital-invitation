@@ -167,6 +167,7 @@ describe("toPublicInvitation — identity", () => {
         sectionOverrides: {},
         sectionOrder: null,
         openingEnabled: true,
+        music: null,
         theme: null,
         schedules: [],
         loveStory: null,

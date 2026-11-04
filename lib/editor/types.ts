@@ -1,3 +1,4 @@
+import type { InvitationMusic } from "@/lib/invitations/music";
 import type { EventStatus, EventType, GalleryItemType } from "@prisma/client";
 
 import type { IdentityProfileData } from "@/lib/event-types/identity";
@@ -95,6 +96,8 @@ export interface EditorEventData {
   sectionOrder: InvitationSectionKey[] | null;
   /** Whether the Opening/Reveal gate is enabled (docs/PRD.md §17, D-069); resolve with `resolveOpeningEnabled()`. */
   openingEnabled: boolean;
+  /** Background music, or null (D-109); resolve with `resolveMusic()`. */
+  music: InvitationMusic | null;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;

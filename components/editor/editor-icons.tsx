@@ -52,6 +52,13 @@ export const EDITOR_SECTION_ICONS: Record<EditorSectionKey, ReactNode> = {
       <path d="M9.5 7.5h5M9.5 11h5M10.5 15.5h3" />
     </svg>
   ),
+  music: (
+    <svg {...iconProps}>
+      <path d="M9 18V5.5l11-2V16" />
+      <circle cx="6.5" cy="18" r="2.5" />
+      <circle cx="17.5" cy="16" r="2.5" />
+    </svg>
+  ),
   theme: (
     <svg {...iconProps}>
       <path d="M12 3.5a8.5 8.5 0 1 0 0 17c1.1 0 1.6-.8 1.6-1.6 0-.5-.2-.9-.5-1.2a1.6 1.6 0 0 1 1.2-2.7h1.9a3.8 3.8 0 0 0 3.8-3.8c0-4.3-3.6-7.7-8-7.7Z" />

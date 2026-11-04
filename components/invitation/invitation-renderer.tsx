@@ -1,6 +1,7 @@
 import { DesktopCoverPanel } from "@/components/invitation/desktop-cover-panel";
 import { FloatingSectionNav } from "@/components/invitation/floating-section-nav";
 import { GuestQrButton } from "@/components/invitation/guest-qr-button";
+import { MusicPlayer } from "@/components/invitation/music-player";
 import { OpeningGate } from "@/components/invitation/opening-gate";
 import { templateLookVars } from "@/components/invitation/template-look";
 import { resolveTemplateComponent } from "@/lib/invitations/templates/registry";
@@ -51,6 +52,9 @@ export function InvitationRenderer({
         <>
           <FloatingSectionNav invitation={invitation} />
           {invitation.guest && <GuestQrButton guestName={invitation.guest.displayName} />}
+          {invitation.music && (
+            <MusicPlayer music={invitation.music} belowGuestButton={!!invitation.guest} />
+          )}
         </>
       )}
     </div>

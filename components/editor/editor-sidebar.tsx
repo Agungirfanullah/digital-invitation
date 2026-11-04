@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { EDITOR_SECTION_ICONS } from "@/components/editor/editor-icons";
 
 export type EditorSectionKey =
-  "identity" | "schedule" | "story" | "gallery" | "sections" | "theme" | "template";
+  "identity" | "schedule" | "story" | "gallery" | "sections" | "theme" | "template" | "music";
 
 type EditorSectionGroup = "content" | "look";
 
@@ -35,6 +35,7 @@ export function getEditorSections(
     { key: "sections", label: "Bagian Undangan", group: "look" },
     { key: "template", label: "Tema", group: "look" },
     { key: "theme", label: "Warna & Font", group: "look" },
+    { key: "music", label: "Musik", group: "look" },
   ];
 }
 

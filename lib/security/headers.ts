@@ -55,8 +55,18 @@ export function buildContentSecurityPolicy({ nonce, isDev }: SecurityHeaderOptio
   const directives = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ""}`,
+    // CSP3 split (D-108): <style> elements must carry the nonce, while
+    // style="" attributes stay allowed because invitation themes are applied
+    // as inline CSS variables. `style-src` remains as the fallback for
+    // browsers without -elem/-attr support. Development keeps inline
+    // <style> because Next's dev server injects unsigned ones.
     `style-src 'self' 'unsafe-inline'`,
+    `style-src-elem 'self' ${isDev ? "'unsafe-inline'" : `'nonce-${nonce}'`}`,
+    `style-src-attr 'unsafe-inline'`,
     `img-src 'self' https: http: data: blob:`,
+    // Background music and gallery videos are served from the storage
+    // provider's HTTPS origin (D-109).
+    `media-src 'self' https: blob:`,
     `font-src 'self'`,
     `connect-src 'self'`,
     `worker-src 'self' blob:`,

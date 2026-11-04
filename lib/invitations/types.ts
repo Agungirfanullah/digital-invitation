@@ -1,3 +1,4 @@
+import type { InvitationMusic } from "@/lib/invitations/music";
 import type { EventType, GalleryItemType, GiftMethodType } from "@prisma/client";
 
 import type { IdentityFamily } from "@/lib/event-types/config";
@@ -151,6 +152,8 @@ export interface PublicInvitation {
   sectionOrder: InvitationSectionKey[];
   /** Whether the Opening/Reveal gate is active (docs/PRD.md §17, D-069). Structural — not a member of `sections`/`sectionOrder`. */
   openingEnabled: boolean;
+  /** Background music played after the guest opens the invitation (D-109), or null. */
+  music: InvitationMusic | null;
   schedules: PublicSchedule[];
   loveStory: PublicLoveStory | null;
   galleries: PublicGallery[];

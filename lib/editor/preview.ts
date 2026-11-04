@@ -1,3 +1,4 @@
+import type { InvitationMusic } from "@/lib/invitations/music";
 import type { EventType } from "@prisma/client";
 
 import { buildPublicIdentity, type IdentityProfileData } from "@/lib/event-types/identity";
@@ -29,6 +30,7 @@ export interface PreviewSource {
   sectionOverrides: SectionOverrides;
   sectionOrder: InvitationSectionKey[] | null;
   openingEnabled: boolean;
+  music: InvitationMusic | null;
   theme: EditorTheme | null;
   schedules: EditorSchedule[];
   loveStory: EditorLoveStory | null;
@@ -72,6 +74,7 @@ export function buildPreviewInvitation(source: PreviewSource): PublicInvitation 
     sections: resolveEnabledSections(source.type, { sections: source.sectionOverrides }),
     sectionOrder: resolveSectionOrder({ sectionOrder: source.sectionOrder }),
     openingEnabled: source.openingEnabled,
+    music: source.music,
     schedules: source.schedules,
     loveStory: source.loveStory,
     galleries: source.gallery ? [source.gallery] : [],

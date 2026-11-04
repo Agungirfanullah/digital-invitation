@@ -1,4 +1,4 @@
-# Session Handoff — 2026-10-27 to 2026-11-03
+# Session Handoff — 2026-10-27 to 2026-11-04
 
 > **Cara pakai (untuk pemilik produk):** di laptop lain, `git pull`, buka
 > Claude Code di folder repo, lalu ketik:
@@ -6,7 +6,7 @@
 
 This file hands a new agent session the context of the recent working
 days. It is a summary and a pointer list; the sources of truth stay
-`CLAUDE.md`, `docs/DECISIONS.md` (D-092 to D-105) and `docs/STATUS.md`.
+`CLAUDE.md`, `docs/DECISIONS.md` (D-092 to D-110) and `docs/STATUS.md`.
 Read those for detail, and update or replace this file at the end of the
 next session.
 
@@ -61,7 +61,17 @@ next session.
 | `f03d410` | 17th template **Traditional Jawa** (gunungan, truntum, kawung, parang); seeded on DEV and production | D-102 |
 | `a927d1e` | Template web fonts actually load (18 families via `next/font`, `preload: false`); Traditional Jawa refined | D-103 |
 | `0fa629b` | Step 3 polish of the other eight templates; one RSVP heading per page (`RsvpSection embedded`); handoff refreshed | D-104 |
-| (pending push) | Template web fonts in the editor font picker; deleted-event race shows "not found" instead of a 500 | D-105 |
+| `800e16a` | Template web fonts in the editor font picker; deleted-event race shows "not found" instead of a 500 | D-105 |
+
+### 2026-11-04 (launch readiness)
+
+| Commit | Summary | Decision |
+| --- | --- | --- |
+| (pending push) | Kebijakan Privasi + Syarat & Ketentuan pages | D-106 |
+| (pending push) | Admin panel (super admin), account suspension (`User.suspendedAt` migration, applied to DEV), `npm run admin:grant` | D-107 |
+| (pending push) | Stricter style CSP (`style-src-elem` nonce) + `media-src`; `e2e/csp.spec.ts` | D-108 |
+| (pending push) | Background music (upload + library), supersedes D-069's "no music" | D-109 |
+| (pending push) | Akun page (rename, password, delete account), activity log, robots.txt, sitemap.xml; retroactive D-067/070/072/073/077 entries | D-110 |
 
 ## 3. Current state
 
@@ -80,20 +90,27 @@ next session.
   invitations open publicly (the owner tested); the `…-mumun-tech.vercel.app`
   team alias sits behind Vercel login, which is normal.
 
-## 4. Next step — waiting on the owner's choice
+## 4. Next step
 
-Open items (ask which first):
+**Production setup the owner must do for the 2026-11-04 work** (the agent
+cannot: production credentials, and the DEV bucket change was refused by
+the permission system as a shared-resource change):
 
-1. **Phase 18 (subscription/payments)** — not started; paid plans stay
-   "Segera hadir" until then (D-095). Biggest roadmap item.
-2. **Homepage JSON-LD** still states Rp0–Rp299.000 although paid plans
-   cannot be bought; offered to limit it to the free plan.
-3. **`connection_limit=1` per server process** occasionally fails the
-   onboarding transaction under load (`Unable to start a transaction in the
-   given time`, seen locally). Infrastructure setting; needs approval.
-4. **Demo photos in traditional attire** for Traditional Jawa/Nusantara —
-   needs licensed photos from the owner (never use people's photos without
-   rights).
+1. `npx prisma migrate deploy` against production (adds `User.suspendedAt`).
+2. `npm run storage:configure` against DEV **and** production, so the bucket
+   accepts MP3/M4A (until then music uploads fail and `e2e/music.spec.ts`
+   skips).
+3. Set `NEXT_PUBLIC_CONTACT_EMAIL` in Vercel (shown on the legal pages).
+4. `npm run admin:grant -- <email>` against production for the first admin.
+5. Have the legal pages reviewed by someone qualified in Indonesian law.
+6. Built-in music tracks: provide royalty-free files with their licenses;
+   add them to `public/music/` and `lib/invitations/music-library.ts`.
+
+**Still open (ask which first):** Phase 18 (subscription/payments); the
+homepage JSON-LD price range Rp0–Rp299.000; `connection_limit=1` onboarding
+transaction timeouts; demo photos in traditional attire; custom SMTP,
+Supabase plan/auto-pause and error alerting (UptimeRobot/Sentry) before
+launch.
 
 ## 5. Gotchas learned (save time)
 
@@ -142,6 +159,20 @@ Open items (ask which first):
   `playwright-report` in the repo root; it is gitignored).
 - **Traditional Nusantara stays generic** by decision; attributed regional
   motifs go in their own template (D-102).
+- **Every page must render dynamically** (or read cookies/headers) so Next
+  stamps the CSP nonce on its scripts; a statically prerendered page has
+  its scripts blocked. `e2e/csp.spec.ts` catches this; add new public pages
+  to it. Use `export const dynamic = "force-dynamic"` when a page reads no
+  request data.
+- **`"use server"` files may export only async functions**; keep constants
+  (e.g. messages) in a plain module.
+- **The dashboard streams (`loading.tsx`)**, so `notFound()` in a dashboard
+  page answers HTTP 200 with the not-found screen; assert the screen in
+  E2E, not the status code.
+- **Audit rows survive user deletion**; integration/E2E tests must delete
+  the `AuditLog` rows they create (by `userId` or `resourceId`).
+- **Supabase's admin `deleteUser` throws** (not returns an error) for a
+  non-UUID id; wrap it.
 
 ## 6. Commands
 

@@ -13,10 +13,12 @@ const initialState: AuthActionState = {};
 export function LoginForm({
   next,
   resetSuccess,
+  accountDeleted,
   callbackError,
 }: {
   next?: string;
   resetSuccess?: boolean;
+  accountDeleted?: boolean;
   callbackError?: string;
 }) {
   const [state, formAction, pending] = useActionState(loginAction, initialState);
@@ -31,6 +33,12 @@ export function LoginForm({
       {resetSuccess && (
         <p className="bg-muted text-foreground rounded-md px-3 py-2 text-sm">
           Kata sandi berhasil diperbarui. Silakan masuk dengan kata sandi baru.
+        </p>
+      )}
+
+      {accountDeleted && (
+        <p role="status" className="bg-muted text-foreground rounded-md px-3 py-2 text-sm">
+          Akunmu dan semua datanya sudah dihapus. Terima kasih sudah memakai Digital Invitation.
         </p>
       )}
 

@@ -1358,3 +1358,19 @@ of the event's own uploads (`events/<eventId>/identity/...`) are accepted.
 | `BabyFamilyProfile`   | `photoUrl`                        |
 | `HostProfile`         | `photoUrl`                        |
 | `OrganizationProfile` | `photoUrl` (the logo)             |
+
+## Account suspension, activity log and music (D-107, D-109, D-110)
+
+- `User.suspendedAt DateTime?` (migration
+  `20261104090000_add_user_suspended_at`): set by an admin; null means
+  active. Login and `requireAppUser()` refuse a suspended account.
+- `User.role` (`USER`/`ADMIN`, existing enum) now gates the admin panel.
+- `AuditLog` is written by `recordAudit()` for security-relevant changes
+  (publish/unpublish/delete event, guest delete/import, account changes,
+  admin actions). `userId` is set null when the actor is deleted, so the
+  trail survives; metadata never holds guest contact details or tokens.
+- Background music lives in the `Event.settings` JSON as
+  `music: { url, title, source }` (no column), beside `sections`,
+  `sectionOrder` and `openingEnabled`. Uploaded files sit under
+  `events/<id>/music/` in storage and are removed with the event folder on
+  account or admin deletion.

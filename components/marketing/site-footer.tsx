@@ -9,8 +9,8 @@ const EVENT_TYPES = Object.values(EVENT_TYPE_LABELS).filter((label) => label !==
 
 /**
  * Homepage Footer (docs/PRD.md §8 item 14, D-073). Only links to routes
- * that actually exist — no fabricated About/Careers/Privacy/Terms pages
- * (none exist in this repository). Each template links to its public demo,
+ * that actually exist — no fabricated About/Careers pages. The legal pages
+ * exist since D-106. Each template links to its public demo,
  * which also gives search engines a crawlable path to every demo page.
  */
 export function SiteFooter({ templates }: { templates: { slug: string; name: string }[] }) {
@@ -70,9 +70,19 @@ export function SiteFooter({ templates }: { templates: { slug: string; name: str
         <p className="text-muted-foreground border-border/60 mt-12 border-t pt-6 text-xs leading-relaxed">
           Undangan digital untuk {EVENT_TYPES.join(", ")}, dan acara lainnya.
         </p>
-        <p className="text-muted-foreground mt-2 text-xs">
-          © {new Date().getFullYear()} Digital Invitation · Platform Undangan Digital Indonesia
-        </p>
+        <div className="text-muted-foreground mt-2 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-xs">
+          <p>
+            © {new Date().getFullYear()} Digital Invitation · Platform Undangan Digital Indonesia
+          </p>
+          <p className="flex gap-4">
+            <Link href="/kebijakan-privasi" className="hover:text-foreground transition-colors">
+              Kebijakan Privasi
+            </Link>
+            <Link href="/syarat-ketentuan" className="hover:text-foreground transition-colors">
+              Syarat &amp; Ketentuan
+            </Link>
+          </p>
+        </div>
       </div>
     </footer>
   );

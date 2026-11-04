@@ -1131,3 +1131,29 @@ registry, `InvitationRenderer` and the existing services.
   with the same template-default fallback as the public projection.
 - **Template catalog** (D-079): 16 registered templates; the maintenance
   contract for adding one is recorded in D-079.
+
+# 40. Account, Admin, Audit and Music Modules (2026-11-04)
+
+- `lib/account/` — profile, password change (re-checks the current
+  password), account deletion (`deleteAccount()`: DB transaction, then
+  storage folders and the Supabase login, best effort). Page:
+  `app/dashboard/account`.
+- `lib/admin/` — `requireAdmin()` gate (404 for non-admins), queries and
+  mutations for users, events, templates and the activity log, each
+  refusing self-targeting and auditing itself. Pages under
+  `app/dashboard/admin`. Suspension ends sessions via the route handler
+  `app/api/auth/suspended`.
+- `lib/audit/log.ts` — `recordAudit()`, best effort, called from services
+  after the change succeeded.
+- `lib/legal/content.ts` + `components/legal/legal-page.tsx` — the two legal
+  pages, rendered dynamically for the CSP nonce.
+- Music: `lib/invitations/music.ts` (setting, client-safe),
+  `lib/invitations/music-library.ts` (built-in tracks),
+  `lib/storage/audio-validation.ts` (byte-level MP3/M4A check), editor
+  `components/editor/sections/music-form.tsx`, public
+  `components/invitation/music-player.tsx`, started by the Opening gate's
+  `invitation:reveal` event.
+- `scripts/` — `grant-admin.ts` (first admin) and `configure-storage.ts`
+  (bucket MIME allowlist and size limit), both env-driven like the seed.
+- CSP: `style-src-elem` with the nonce, `style-src-attr 'unsafe-inline'`,
+  `media-src 'self' https: blob:` (section 36, D-108).

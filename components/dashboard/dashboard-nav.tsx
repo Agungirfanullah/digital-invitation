@@ -23,8 +23,8 @@ export function currentEventId(pathname: string): string | null {
   return match[1];
 }
 
-function mainItems(pathname: string): NavItem[] {
-  return [
+function mainItems(pathname: string, isAdmin: boolean): NavItem[] {
+  const items: NavItem[] = [
     {
       href: "/dashboard",
       label: "Beranda",
@@ -43,7 +43,23 @@ function mainItems(pathname: string): NavItem[] {
       icon: NAV_ICONS.plus,
       active: pathname === NEW_EVENT_PATH,
     },
+    {
+      href: "/dashboard/account",
+      label: "Akun",
+      icon: NAV_ICONS.account,
+      active: pathname.startsWith("/dashboard/account"),
+    },
   ];
+  // Shown to admins only for convenience; every admin page checks the role on the server.
+  if (isAdmin) {
+    items.push({
+      href: "/dashboard/admin",
+      label: "Admin",
+      icon: NAV_ICONS.admin,
+      active: pathname.startsWith("/dashboard/admin"),
+    });
+  }
+  return items;
 }
 
 /**
@@ -107,13 +123,19 @@ function NavList({ items, onNavigate }: { items: NavItem[]; onNavigate?: () => v
 }
 
 /** The dashboard's navigation: main pages, plus the current event's pages when inside one. */
-export function DashboardNav({ onNavigate }: { onNavigate?: () => void }) {
+export function DashboardNav({
+  onNavigate,
+  isAdmin = false,
+}: {
+  onNavigate?: () => void;
+  isAdmin?: boolean;
+}) {
   const pathname = usePathname();
   const eventId = currentEventId(pathname);
 
   return (
     <nav aria-label="Navigasi dashboard" className="w-full space-y-6">
-      <NavList items={mainItems(pathname)} onNavigate={onNavigate} />
+      <NavList items={mainItems(pathname, isAdmin)} onNavigate={onNavigate} />
       {eventId && (
         <div>
           <p className="text-muted-foreground/70 mb-2 px-3 text-[11px] font-semibold tracking-wider uppercase">

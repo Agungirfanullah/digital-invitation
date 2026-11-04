@@ -25,6 +25,7 @@ import {
   IdentityPhotoNotOwnedError,
   SectionNotToggleableError,
   TemplateNotAvailableError,
+  MusicTrackNotFoundError,
 } from "@/lib/editor/errors";
 import { isKnownTemplateKey } from "@/lib/invitations/templates/registry";
 import { GalleryStorageDeletionError } from "@/lib/storage/errors";
@@ -32,11 +33,15 @@ import {
   buildCoverPhotoObjectPath,
   buildIdentityPhotoObjectPath,
   buildGalleryObjectPath,
+  buildMusicObjectPath,
   derivePathForEvent,
   derivePathFromPublicUrl,
 } from "@/lib/storage/paths";
 import { getStorageProvider } from "@/lib/storage/provider";
 import type { ValidatedGalleryImage } from "@/lib/storage/validation";
+import type { ValidatedAudio } from "@/lib/storage/audio-validation";
+import { mergeMusic, resolveMusic, type InvitationMusic } from "@/lib/invitations/music";
+import { findLibraryTrack } from "@/lib/invitations/music-library";
 import type {
   GalleryVideoItemInput,
   IdentityProfileInput,
@@ -176,6 +181,7 @@ export async function getEditorEvent(eventId: string, userId: string): Promise<E
     sectionOverrides: parseSectionOverrides(event.settings),
     sectionOrder: parseSectionOrder(event.settings),
     openingEnabled: resolveOpeningEnabled(event.settings),
+    music: resolveMusic(event.settings),
     theme: event.theme
       ? {
           primaryColor: event.theme.primaryColor,
@@ -894,4 +900,69 @@ export async function moveGalleryItem(
     reordered[swap.indexA],
   ];
   return reordered;
+}
+
+/**
+ * Stores `music` in `Event.settings` (D-109) and, when it replaces an
+ * uploaded file of this event, removes the old file (best effort). Returns
+ * the new setting.
+ */
+async function saveMusicSetting(
+  eventId: string,
+  userId: string,
+  music: InvitationMusic | null,
+): Promise<InvitationMusic | null> {
+  const event = await requireEditorAccess(eventId, userId);
+  const previous = resolveMusic(event.settings);
+  await prisma.event.update({
+    where: { id: eventId },
+    data: { settings: mergeMusic(event.settings, music) as Prisma.InputJsonObject },
+  });
+
+  if (previous?.source === "upload" && previous.url !== music?.url) {
+    const path = derivePathForEvent(previous.url, eventId);
+    if (path) {
+      try {
+        await getStorageProvider().remove(path);
+      } catch (error) {
+        console.error("[music] Failed to remove previous music file", error);
+      }
+    }
+  }
+  return music;
+}
+
+export async function uploadEventMusic(
+  eventId: string,
+  userId: string,
+  validated: ValidatedAudio,
+  title: string | null,
+): Promise<InvitationMusic> {
+  await requireEditorAccess(eventId, userId);
+  const path = buildMusicObjectPath(eventId, validated.extension);
+  const { publicUrl } = await getStorageProvider().upload(
+    path,
+    validated.buffer,
+    validated.contentType,
+  );
+  const music: InvitationMusic = { url: publicUrl, title, source: "upload" };
+  await saveMusicSetting(eventId, userId, music);
+  return music;
+}
+
+/** Picks a built-in track; an unknown id is refused rather than stored. */
+export async function chooseLibraryMusic(
+  eventId: string,
+  userId: string,
+  trackId: string,
+): Promise<InvitationMusic> {
+  const track = findLibraryTrack(trackId);
+  if (!track) throw new MusicTrackNotFoundError();
+  const music: InvitationMusic = { url: track.url, title: track.title, source: "library" };
+  await saveMusicSetting(eventId, userId, music);
+  return music;
+}
+
+export async function removeEventMusic(eventId: string, userId: string): Promise<void> {
+  await saveMusicSetting(eventId, userId, null);
 }

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const email = z.email("Masukkan email yang valid.");
 
-const password = z
+export const passwordSchema = z
   .string()
   .min(8, "Kata sandi minimal 8 karakter.")
   .regex(/[a-zA-Z]/, "Kata sandi harus mengandung huruf.")
@@ -12,7 +12,7 @@ export const registerSchema = z
   .object({
     name: z.string().trim().min(2, "Nama minimal 2 karakter.").max(100, "Nama terlalu panjang."),
     email,
-    password,
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -31,7 +31,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z
   .object({
-    password,
+    password: passwordSchema,
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {

@@ -7,6 +7,7 @@ import { ensureAppUser } from "@/lib/auth/provisioning";
 import { checkAuthRateLimit } from "@/lib/auth/rate-limit";
 import {
   EMAIL_ALREADY_REGISTERED_MESSAGE,
+  SUSPENDED_MESSAGE,
   isObfuscatedExistingUser,
   mapSupabaseAuthError,
 } from "@/lib/auth/errors";
@@ -135,7 +136,7 @@ export async function loginAction(
     return { error: mapSupabaseAuthError(error), values };
   }
 
-  await ensureAppUser({
+  const appUser = await ensureAppUser({
     id: data.user.id,
     email: data.user.email,
     name:
@@ -143,6 +144,11 @@ export async function loginAction(
         ? data.user.user_metadata.full_name
         : data.user.email.split("@")[0],
   });
+
+  if (appUser.suspendedAt) {
+    await supabase.auth.signOut();
+    return { error: SUSPENDED_MESSAGE, values };
+  }
 
   // Deliberately NOT routed to onboarding here (D-071 §8's own explicit
   // regression boundary): unlike registerAction's immediate-session path,

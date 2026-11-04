@@ -50,9 +50,14 @@ export const getCurrentAppUser = cache(async (): Promise<PrismaUser | null> => {
   });
 });
 
-/** Redirects to /login when unauthenticated. Use in protected Server Components/layouts. */
+/**
+ * Redirects to /login when unauthenticated, and ends the session of an
+ * account an admin suspended (D-107). Use in protected Server
+ * Components/layouts and in Server Actions.
+ */
 export async function requireAppUser(): Promise<PrismaUser> {
   const user = await getCurrentAppUser();
   if (!user) redirect("/login");
+  if (user.suspendedAt) redirect("/api/auth/suspended");
   return user;
 }

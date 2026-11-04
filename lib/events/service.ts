@@ -1,6 +1,7 @@
 import "server-only";
 import { EventMemberRole, EventStatus, Prisma } from "@prisma/client";
 
+import { recordAudit } from "@/lib/audit/log";
 import { prisma } from "@/lib/db/prisma";
 import { getMissingPublishRequirements } from "@/lib/event-types/identity";
 import { IDENTITY_PROFILE_INCLUDE, toIdentityProfileData } from "@/lib/event-types/identity-record";
@@ -208,10 +209,18 @@ export async function publishEventForUser(eventId: string, userId: string) {
   const missing = await findMissingPublishRequirements(eventId);
   if (missing.length > 0) throw new PublishRequirementsNotMetError(missing);
 
-  return prisma.event.update({
+  const published = await prisma.event.update({
     where: { id: eventId },
     data: { status: EventStatus.PUBLISHED, publishedAt: new Date() },
   });
+  await recordAudit({
+    userId,
+    action: "event.publish",
+    resourceType: "event",
+    resourceId: eventId,
+    metadata: { slug: published.slug },
+  });
+  return published;
 }
 
 /**
@@ -223,10 +232,18 @@ export async function unpublishEventForUser(eventId: string, userId: string) {
   const event = await getAuthorizedEvent(eventId, userId, EventMemberRole.EDITOR);
   if (!event) throw new EventNotFoundError();
 
-  return prisma.event.update({
+  const unpublished = await prisma.event.update({
     where: { id: eventId },
     data: { status: EventStatus.DRAFT },
   });
+  await recordAudit({
+    userId,
+    action: "event.unpublish",
+    resourceType: "event",
+    resourceId: eventId,
+    metadata: { slug: unpublished.slug },
+  });
+  return unpublished;
 }
 
 /**
@@ -240,7 +257,7 @@ export async function unpublishEventForUser(eventId: string, userId: string) {
 export async function deleteEventForUser(eventId: string, userId: string) {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { ownerId: true },
+    select: { ownerId: true, slug: true, title: true },
   });
 
   if (!event || event.ownerId !== userId) throw new EventNotFoundError();
@@ -251,4 +268,11 @@ export async function deleteEventForUser(eventId: string, userId: string) {
     if (isForeignKeyRestrictError(error)) throw new EventDeleteBlockedError();
     throw error;
   }
+  await recordAudit({
+    userId,
+    action: "event.delete",
+    resourceType: "event",
+    resourceId: eventId,
+    metadata: { slug: event.slug, title: event.title },
+  });
 }

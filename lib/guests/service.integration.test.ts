@@ -37,6 +37,8 @@ afterEach(async () => {
     createdEventIds.length = 0;
   }
   if (createdUserIds.length) {
+    // Audit rows survive user deletion by design; tests remove their own.
+    await prisma.auditLog.deleteMany({ where: { userId: { in: createdUserIds } } });
     await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     createdUserIds.length = 0;
   }

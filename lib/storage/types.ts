@@ -9,4 +9,6 @@ export interface StorageProvider {
   upload(path: string, body: Buffer, contentType: string): Promise<{ publicUrl: string }>;
   /** Removes the object at `path`. A no-op (does not throw) if the object doesn't exist. */
   remove(path: string): Promise<void>;
+  /** Removes every object under `prefix` (e.g. `events/<id>/`). A no-op when the folder is empty. */
+  removeFolder(prefix: string): Promise<void>;
 }

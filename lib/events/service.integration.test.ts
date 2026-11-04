@@ -44,6 +44,8 @@ afterEach(async () => {
     createdEventIds.length = 0;
   }
   if (createdUserIds.length) {
+    // Audit rows survive user deletion by design; tests remove their own.
+    await prisma.auditLog.deleteMany({ where: { userId: { in: createdUserIds } } });
     await prisma.user.deleteMany({ where: { id: { in: createdUserIds } } });
     createdUserIds.length = 0;
   }
@@ -206,6 +208,16 @@ describe("event service (integration — live Supabase DEV database)", () => {
 
     const unpublished = await unpublishEventForUser(event.id, userA.id);
     expect(unpublished.status).toBe("DRAFT");
+
+    const audit = await prisma.auditLog.findMany({
+      where: { resourceId: event.id },
+      orderBy: { createdAt: "asc" },
+      select: { action: true, userId: true },
+    });
+    expect(audit).toEqual([
+      { action: "event.publish", userId: userA.id },
+      { action: "event.unpublish", userId: userA.id },
+    ]);
   });
 
   it("S: prevents another user from publishing the event (IDOR)", async () => {

@@ -56,6 +56,14 @@ export class SectionNotToggleableError extends Error {
   }
 }
 
+/** A built-in music track id that is not in the library (D-109). */
+export class MusicTrackNotFoundError extends Error {
+  constructor() {
+    super("Unknown music library track");
+    this.name = "MusicTrackNotFoundError";
+  }
+}
+
 const GENERIC_MESSAGE = "Terjadi kesalahan. Coba lagi.";
 
 /** Maps a domain/unexpected error to an Indonesian, user-safe message. Logs the raw error for operators. */
@@ -71,6 +79,9 @@ export function mapEditorErrorMessage(error: unknown): string {
   }
   if (error instanceof SectionNotToggleableError) {
     return "Bagian ini tidak dapat diatur untuk jenis acara ini.";
+  }
+  if (error instanceof MusicTrackNotFoundError) {
+    return "Lagu tidak ditemukan.";
   }
   if (error instanceof EventNotFoundError) {
     return mapEventErrorMessage(error);

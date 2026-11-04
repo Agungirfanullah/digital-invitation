@@ -118,9 +118,9 @@ digital-gift display) do not become MVP-defining by that fact.
 3. ~~No OG image on public invitations~~ — done (D-083). Remaining work:
    confirm `NEXT_PUBLIC_APP_URL` is the production origin in Vercel (it
    builds the absolute image URLs), and spot-check a real WhatsApp share.
-4. **Error monitoring is log-only; no audit logging** (`AuditLog` unused).
-   Server errors are written as structured lines to Vercel Logs (D-089);
-   no alerting or third-party tracker yet.
+4. **Error monitoring is log-only.** Server errors are written as
+   structured lines to Vercel Logs (D-089); no alerting or third-party
+   tracker yet. ~~No audit logging~~ — `AuditLog` is written since D-110.
 5. **Supabase's built-in SMTP is heavily rate limited** (a few emails per
    hour per project): sign-up fails with "Terlalu banyak permintaan email"
    once exhausted. Production needs custom SMTP before many sign-ups.
@@ -129,17 +129,18 @@ digital-gift display) do not become MVP-defining by that fact.
    `AuditLog` and the `UserRole` enum are defined but unused (checked: no
    `prisma.<model>` access and no `UserRole` check in `lib/` or `app/`).
 7. **Open product decisions:** per-type default on/off of sections (D-062);
-   background music (deferred out of MVP, D-069); attribution of the
+   ~~background music (deferred out of MVP, D-069)~~ built in D-109; attribution of the
    "Nusantara" template motif.
-8. `style-src` still allows `'unsafe-inline'` (`lib/security/headers.ts`).
+8. ~~`style-src` still allows `'unsafe-inline'`~~ — `<style>` elements now
+   need the nonce in production; style attributes stay allowed for themes
+   (D-108).
 9. **Supabase free-tier auto-pause.** The DEV project was paused on
    2026-10-13 after about a week idle and had to be restored by hand.
    Production is a separate project subject to the same rule unless it is
    on a paid plan; a paused production project would take the live site
    down.
-10. Documentation debt recorded in `docs/DECISIONS.md` ("Index notes"):
-   D-067, D-070, D-072, D-073, D-077 are cited by code and docs but had no
-   entry of their own.
+10. ~~Documentation debt: D-067, D-070, D-072, D-073, D-077 had no entry of
+   their own~~ — written up as retroactive entries on 2026-11-04.
 11. **Follow-ups from `565f666` (D-092, found 2026-10-27):**
    - ~~every page title except the homepage shows the brand twice~~ —
      fixed 2026-10-27: pages set a bare title, the layout template adds
@@ -167,7 +168,13 @@ digital-gift display) do not become MVP-defining by that fact.
     own composition, D-101) done; Traditional Jawa added as a 17th template
     (D-102; seeded in production on 2026-11-02, confirmed by the product owner) and refined, and the
     templates' web fonts now load (D-103); step 3 (polish of the other
-    eight, D-104) done. Template refresh complete. Also
+    eight, D-104) done. Template refresh complete. 2026-11-04: legal pages
+    (D-106), admin panel with account suspension (D-107), stricter style
+    CSP (D-108), background music (D-109), Akun page, activity log,
+    robots.txt and sitemap.xml (D-110). Production needs: `prisma migrate
+    deploy` (User.suspendedAt), `npm run storage:configure` (audio in the
+    bucket), `NEXT_PUBLIC_CONTACT_EMAIL`, and a first admin via
+    `npm run admin:grant`. Also
     done 2026-11-02 at the owner's request: event hub menu and invitation
     editor redesign (D-099). Couple parents' names are shown publicly since
     D-100 (owner's decision).

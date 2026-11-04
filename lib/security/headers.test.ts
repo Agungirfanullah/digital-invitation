@@ -54,6 +54,21 @@ describe("buildContentSecurityPolicy", () => {
     expect(directives.has("frame-src")).toBe(false);
   });
 
+  it("requires the nonce on <style> elements in production but still allows style attributes", () => {
+    const prod = buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true });
+    expect(prod).toContain(`style-src-elem 'self' 'nonce-${NONCE}'`);
+    expect(prod).not.toMatch(/style-src-elem [^;]*'unsafe-inline'/);
+    expect(prod).toContain("style-src-attr 'unsafe-inline'");
+    const dev = buildContentSecurityPolicy({ nonce: NONCE, isDev: true, isHttps: false });
+    expect(dev).toMatch(/style-src-elem [^;]*'unsafe-inline'/);
+  });
+
+  it("lets audio and video load from HTTPS storage, never from http:", () => {
+    const csp = buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true });
+    expect(csp).toContain("media-src 'self' https: blob:");
+    expect(csp).not.toMatch(/media-src [^;]*http:/);
+  });
+
   it("intentionally retains unsafe-inline for style-src (theme inline styles)", () => {
     const csp = buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true });
     expect(csp).toMatch(/style-src [^;]*'unsafe-inline'/);
@@ -67,10 +82,13 @@ describe("buildContentSecurityPolicy", () => {
     expect(prod).not.toContain("'unsafe-eval'");
   });
 
-  it("never appears twice for the same nonce value", () => {
+  it("uses the nonce exactly in script-src and style-src-elem, nowhere else", () => {
     const csp = buildContentSecurityPolicy({ nonce: NONCE, isDev: false, isHttps: true });
-    const occurrences = csp.split(`'nonce-${NONCE}'`).length - 1;
-    expect(occurrences).toBe(1);
+    const withNonce = csp
+      .split("; ")
+      .filter((directive) => directive.includes(`'nonce-${NONCE}'`))
+      .map((directive) => directive.split(" ")[0]);
+    expect(withNonce).toEqual(["script-src", "style-src-elem"]);
   });
 });
 

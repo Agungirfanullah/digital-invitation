@@ -49,6 +49,15 @@ export function buildIdentityPhotoObjectPath(eventId: string, extension: string)
   return `events/${eventId}/identity/${fileName}`;
 }
 
+/** Same shape under `music/` — the invitation's background music (D-109). */
+export function buildMusicObjectPath(eventId: string, extension: string): string {
+  assertSafePathSegment(eventId, "eventId");
+  assertSafePathSegment(extension, "extension");
+
+  const fileName = `${randomBytes(16).toString("hex")}.${extension}`;
+  return `events/${eventId}/music/${fileName}`;
+}
+
 /**
  * The inverse of uploading: given a stored `GalleryItem.url`, recovers the
  * bucket-relative object path — but only when the URL is genuinely one of

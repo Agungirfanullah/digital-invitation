@@ -34,5 +34,32 @@ export function createSupabaseStorageProvider(): StorageProvider {
       // object, so any error here is a genuine provider/network failure.
       if (error) throw new StorageProviderError(error);
     },
+
+    async removeFolder(prefix) {
+      const root = prefix.replace(/\/+$/, "");
+      const paths: string[] = [];
+      // Storage has no recursive delete: walk the folder, collect files.
+      const walk = async (folder: string) => {
+        for (let offset = 0; ; offset += 100) {
+          const { data, error } = await client.storage
+            .from(bucket)
+            .list(folder, { limit: 100, offset });
+          if (error) throw new StorageProviderError(error);
+          for (const item of data) {
+            const path = `${folder}/${item.name}`;
+            // Folders are listed without an id.
+            if (item.id === null) await walk(path);
+            else paths.push(path);
+          }
+          if (data.length < 100) break;
+        }
+      };
+      await walk(root);
+
+      for (let i = 0; i < paths.length; i += 100) {
+        const { error } = await client.storage.from(bucket).remove(paths.slice(i, i + 100));
+        if (error) throw new StorageProviderError(error);
+      }
+    },
   };
 }

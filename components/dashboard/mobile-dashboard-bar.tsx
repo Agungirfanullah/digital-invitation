@@ -13,7 +13,15 @@ import { DashboardLogo, UserBadge } from "@/components/dashboard/dashboard-brand
  * drawer holding the same navigation and account controls as the desktop
  * sidebar. Closes when a link is followed, on Escape, and on the backdrop.
  */
-export function MobileDashboardBar({ name, email }: { name: string; email: string }) {
+export function MobileDashboardBar({
+  name,
+  email,
+  isAdmin = false,
+}: {
+  name: string;
+  email: string;
+  isAdmin?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
 
@@ -68,7 +76,7 @@ export function MobileDashboardBar({ name, email }: { name: string; email: strin
             id={panelId}
             className="bg-card border-border/60 animate-fade-in-up fixed inset-x-0 top-14 z-40 max-h-[calc(100dvh-3.5rem)] overflow-y-auto border-b px-4 pt-4 pb-5 shadow-xl"
           >
-            <DashboardNav onNavigate={() => setOpen(false)} />
+            <DashboardNav isAdmin={isAdmin} onNavigate={() => setOpen(false)} />
             <div className="border-border/60 mt-5 flex items-center justify-between gap-3 border-t pt-4">
               <UserBadge name={name} email={email} />
               <form action={signOutAction}>

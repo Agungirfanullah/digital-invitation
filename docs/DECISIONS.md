@@ -2596,40 +2596,71 @@ this. No schema, migration, or dependency change was introduced.
 
 ---
 
-## Index notes — decisions cited elsewhere without an entry of their own
+## Retroactive entries — D-067, D-070, D-072, D-073, D-077
 
-*Added 2026-10-13 during a documentation reconciliation. These IDs are
-cited by code comments and other documents but were never written up here.
-Only facts recoverable from the repository are recorded; nothing below is a
-new decision.*
+*Written up 2026-11-04 from what the repository shows (code, tests,
+commits, PRD), replacing the short "index notes" kept here since
+2026-10-13. They record existing behavior; nothing below is a new
+decision.*
 
-- **D-067 / D-067-FIX** — the implementation of D-066 (section
-  reordering): `sectionOrder` stored as a sibling key of `Event.settings`,
-  editor up/down controls, identical resolution in preview and templates;
-  the "FIX" makes a move skip sections that are hidden for the event type.
-  The record is D-066's "Implementation update" and `docs/DATABASE.md` §32.
-- **D-070** — a "Product Decision Resolution Audit" (cited as PD-01 by
-  D-071 point 5, and by `components/marketing/template-showcase.tsx`). Its
-  original text was not recorded in this file. Known outcomes only:
-  onboarding's schedule defaults (08:00–10:00, title from the event type
-  label) are an engineering default, not a product decision; the Homepage
-  Template Showcase uses the full, uncurated template list.
-- **D-072 / D-073** — Homepage MVP (implemented in `a9b1646`; PRD §7–8).
-  Recoverable from `components/marketing/*` and PRD §8: static copy may
-  only describe already-shipped capabilities; no fabricated social proof
-  (testimonials are generic, non-attributed statements); FAQ answers must
-  be grounded in implemented behavior; pricing comes from the `Plan` table,
-  never hardcoded; the CTA resolves to `/register` for an anonymous visitor
-  and `/dashboard` for an authenticated one. **Known tension:** paid plans
-  are displayed although no purchase flow exists (see STATUS "Open items").
-- **D-077** — mutation rate limiting (Phase 20 Batch 1, `4ea674a`): one
-  shared per-user bucket across the five event mutations
-  (create/update/publish/unpublish/delete) and one across the three gift
-  mutations (create/update/delete), 30 per 10 minutes each, keyed by the
-  authenticated user id (`lib/events/rate-limit.ts`,
-  `lib/gifts/rate-limit.ts`); plus an expired-bucket sweep every 100 calls
-  in `lib/rate-limit/index.ts`. The limiter is in-memory per process, so it
-  is not shared across serverless instances — see STATUS "Open items".
+### D-067 — Section Reordering Implementation (and D-067-FIX)
+
+**Status:** IMPLEMENTED (`d1cd56e`)
+
+**Decision:** D-066's owner-configurable section order is stored as
+`sectionOrder`, a sibling key of `sections` in `Event.settings` (no schema
+change; `docs/DATABASE.md` §32). The editor's "Bagian Undangan" form moves a
+section one step up or down; `moveSectionOrder()` swaps it with its
+neighbor and saves. The editor preview and every template resolve the
+order with the same `resolveSectionOrder()`, so they always agree. Closing
+is never part of the order and always renders last.
+
+**D-067-FIX:** a move skips neighbors that are hidden for the event type
+(e.g. sections an OTHER event cannot show), so one click always moves the
+section past a visible one. Covered by `moveSectionOrder` integration
+tests ("OTHER-type unsupported-section adjacency"). The inspection for
+D-067 also found `hero` missing from the overrides validator; fixed, with a
+regression test (`saveSectionOverridesAction accepts the hero key`).
+
+### D-070 — Product Decision Resolution Audit
+
+**Status:** RECORDED (original text was not kept)
+
+**Known outcomes** (cited as PD-01/PD-02 by D-071 and code comments):
+onboarding's default schedule (08:00–10:00, title from the event type
+label) is an engineering default, not a product decision; onboarding
+generates the event slug from the title with `slugify()` because
+`createEventForUser()` needs a unique slug the onboarding UI never asks
+for; the Homepage Template Showcase shows the full, uncurated template list
+(no "featured" subset exists in the product contract).
+
+### D-072 / D-073 — Homepage MVP Content Rules
+
+**Status:** IMPLEMENTED (`a9b1646`; PRD §7–8)
+
+**Decision:** static Homepage copy may only describe capabilities that are
+shipped; no fabricated social proof (testimonials are generic,
+non-attributed statements; no ratings or user counts); FAQ answers are
+grounded in implemented behavior (`lib/marketing/faq.ts`, also the source of
+the FAQPage JSON-LD); pricing is read from the `Plan` table through
+`getActivePlans()`, never hardcoded; the Invitation Preview renders a
+fabricated, clearly sample invitation through the real template system
+(`lib/marketing/demo-invitation.ts`); the CTA leads an anonymous visitor to
+`/register` and a signed-in one to `/dashboard`. The paid plans' "no purchase
+flow yet" tension was resolved by D-095 (marked "Segera hadir").
+
+### D-077 — Mutation Rate Limiting
+
+**Status:** IMPLEMENTED (`4ea674a`, Phase 20 Batch 1); storage superseded
+by D-089
+
+**Decision:** one shared per-user bucket across the five event mutations
+(create, update, publish, unpublish, delete) and one across the three gift
+mutations (create, update, delete), 30 per 10 minutes each, keyed by the
+authenticated user id (`lib/events/rate-limit.ts`,
+`lib/gifts/rate-limit.ts`). The original in-memory buckets were replaced by
+the database-backed `RateLimitBucket` table in D-089, so limits now hold
+across serverless instances.
 
 ---
 
@@ -3700,3 +3731,125 @@ between (another tab, a co-owner) threw a raw Prisma error and a 500 page.
 Both now read with `findUnique` and throw `EventNotFoundError`, so the page
 shows "Acara tidak ditemukan". Covered by
 `lib/editor/service.deleted-event.test.ts`.
+
+## D-106 — Kebijakan Privasi and Syarat & Ketentuan Pages
+
+**Context:** the product stores owners' and guests' personal data, and
+payment gateways (Phase 18) require published privacy and terms pages.
+Indonesia's Personal Data Protection law (UU No. 27/2022) gives people the
+right to know what is collected and to have it deleted.
+
+**Decision:** `/kebijakan-privasi` and `/syarat-ketentuan`, rendered from
+`lib/legal/content.ts`, written to match what the product does: the data
+collected (account, event content, guest data, guest responses, technical
+data: rate-limit IPs, error logs without guest tokens, the anonymous
+`/invite` analytics cookie, device type, referrer), the owner as
+controller of guest data, no sale and no third-party ads, Supabase and
+Vercel as processors, deletion through the Akun page (D-110), music
+copyright on the uploader. The brand "Digital Invitation" is the named
+operator; the contact email comes from `NEXT_PUBLIC_CONTACT_EMAIL`, and
+without it the contact section points to the dashboard and the Akun page.
+Linked from the footer and the sign-up form ("Dengan membuat akun, kamu
+menyetujui ..."), listed in the sitemap, and rendered dynamically (CSP nonce,
+see D-108).
+
+**Open:** the product owner should have both pages reviewed by someone
+qualified in Indonesian law, and set `NEXT_PUBLIC_CONTACT_EMAIL` in
+production, before launch.
+
+## D-107 — Admin Panel (Super Admin) and Account Suspension
+
+**Decision:** `/dashboard/admin`, gated server-side by `requireAdmin()`
+(`User.role === ADMIN`, the existing enum); anyone else gets a 404. The
+"Admin" menu item shows only for admins, for convenience. Pages: overview
+(live counts, recent activity), users (search, detail, change role,
+suspend/reinstate, delete), all events (search, status filter, take an
+invitation offline, delete), templates (activate/deactivate; an inactive
+template leaves the editor's choices but events using it keep it), and the
+activity log.
+
+Guards in `lib/admin/service.ts`: an admin cannot change, suspend or delete
+their own account; the last admin cannot be demoted; another admin must be
+demoted before deletion; an event with gift transactions cannot be
+deleted. Admins can unpublish but not publish (publishing stays the owner's
+decision). Every action is audited (D-110).
+
+**Suspension:** new nullable column `User.suspendedAt` (migration
+`20261104090000_add_user_suspended_at`, applied to DEV). Login refuses a
+suspended account with a clear message; an existing session is ended
+through `/api/auth/suspended` (a route handler, because only there can the
+session cookies be cleared). A suspended owner's published invitations stay
+online unless an admin unpublishes them.
+
+**First admin:** `npm run admin:grant -- email@contoh.com` (runs against
+`.env.local`, or production when `DATABASE_URL` is set in that terminal).
+
+**Production:** `prisma migrate deploy` must run before this code is used.
+
+## D-108 — Stricter Style Policy (CSP)
+
+**Decision:** `style-src-elem 'self' 'nonce-…'` (production) so `<style>`
+elements must carry the per-request nonce, and `style-src-attr
+'unsafe-inline'` so `style=""` attributes keep working (invitation themes
+are CSS variables set inline). `style-src 'self' 'unsafe-inline'` stays as
+the fallback for browsers without the CSP3 split. Development keeps inline
+`<style>` because Next's dev server injects unsigned ones. Also added:
+`media-src 'self' https: blob:` for background music and gallery video.
+
+**Verified** by `e2e/csp.spec.ts` against a production build: public
+pages, an invitation, and the editor with a date-picker popover open log no
+policy violation. That test also caught the new legal pages being
+statically prerendered (their scripts had no nonce and were blocked); they
+now render dynamically like the homepage.
+
+## D-109 — Background Music (supersedes D-069's "no music in this MVP")
+
+**Context:** D-069 left music out of the MVP. The product owner asked for
+it (2026-11-04), with owner uploads plus a built-in library.
+
+**Decision:** one track per invitation, stored in `Event.settings.music`
+(`{ url, title, source: "upload" | "library" }`, no schema change;
+`lib/invitations/music.ts`). Editor section "Musik" (Tampilan group):
+upload MP3/M4A up to 5MB (validated from the file's bytes, not its name or
+claimed type; `lib/storage/audio-validation.ts`), stored under
+`events/<id>/music/`, replacing and deleting the previous upload; remove;
+pick a built-in track. The library (`lib/invitations/music-library.ts`,
+files in `public/music/`) starts empty and its section is hidden until it
+has tracks; each track needs a recorded royalty-free license.
+
+On the public invitation the music starts when the guest presses "Buka
+Undangan" (the Opening gate dispatches `invitation:reveal` inside that
+click, which browsers accept as a user gesture); without an Opening gate it
+waits for the play button. A round button toggles play/pause, the music
+pauses while the tab is hidden, and the editor preview never plays it.
+
+**Storage:** the bucket only allowed images. `npm run storage:configure`
+(`scripts/configure-storage.ts`) adds `audio/mpeg` and `audio/mp4` and keeps
+the 6MB ceiling; it must be run per environment (DEV and production) by the
+product owner. Until then uploads are refused by storage, and
+`e2e/music.spec.ts` skips with that reason.
+
+## D-110 — Akun Page, Activity Log, robots.txt and sitemap.xml
+
+**Akun page** (`/dashboard/account`, menu item "Akun"): change the name;
+change the password after re-checking the current one (rate limited:
+5 per 15 minutes); delete the account by typing its email. Deletion
+removes, in one transaction, the owner's events (cascading guests, RSVPs,
+wishes, gallery rows) and the user (cascading memberships and
+notifications), then the event folders in storage and the Supabase login
+(both best effort, logged on failure). It is refused while payments,
+subscriptions or gift transactions exist (financial records are never
+deleted with an account).
+
+**Activity log:** `recordAudit()` (`lib/audit/log.ts`) writes `AuditLog`
+rows for publish, unpublish, event delete, guest delete, guest import,
+profile change, password change, account delete and every admin action.
+Best effort: a failure is logged and never fails the user's action.
+Metadata holds ids, slugs, counts and role changes, never guest contact
+details or tokens. Rows survive user deletion with `userId` null. Tests
+remove the rows they create.
+
+**SEO:** `app/robots.ts` disallows `/dashboard`, `/onboarding`, `/api/` and
+`/reset-password`; `/invite/` stays crawlable on purpose, so crawlers see
+invitations' `noindex` (D-094). `app/sitemap.ts` lists the homepage, every
+template demo, `/register` and the legal pages, from `NEXT_PUBLIC_APP_URL`.

@@ -68,6 +68,8 @@ export function buildDemoInvitation(templateKey: string = "minimal-elegant"): Pu
     // `InvitationRenderer`'s `bypassOpening={true}`, which skips reading
     // this field entirely (D-069).
     openingEnabled: false,
+    // No sample track: every built-in track needs its license first (D-109).
+    music: null,
     schedules: [
       {
         id: "demo-schedule",

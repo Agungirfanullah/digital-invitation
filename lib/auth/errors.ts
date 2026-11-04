@@ -63,3 +63,7 @@ export function mapSupabaseAuthError(error: AuthErrorLike | null | undefined): s
   );
   return GENERIC_MESSAGE;
 }
+
+/** Shown when an admin suspended the account (D-107). */
+export const SUSPENDED_MESSAGE =
+  "Akun ini sedang dinonaktifkan. Hubungi kami bila menurutmu ini sebuah kesalahan.";

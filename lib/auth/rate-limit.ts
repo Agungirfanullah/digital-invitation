@@ -21,6 +21,9 @@ const AUTH_RATE_LIMITS = {
   // committed to. See docs/DECISIONS.md.
   login: { limit: 30, windowMs: 10 * 60 * 1000 },
   "password-reset": { limit: 5, windowMs: 15 * 60 * 1000 },
+  // Changing the password from the Akun page verifies the current one, so
+  // this also caps guessing it from a stolen session.
+  "password-change": { limit: 5, windowMs: 15 * 60 * 1000 },
 } as const;
 
 export type AuthRateLimitAction = keyof typeof AUTH_RATE_LIMITS;

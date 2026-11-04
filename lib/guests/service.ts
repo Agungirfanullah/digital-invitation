@@ -1,6 +1,7 @@
 import "server-only";
 import { EventMemberRole, GuestCategory, GuestInvitationStatus, Prisma } from "@prisma/client";
 
+import { recordAudit } from "@/lib/audit/log";
 import { prisma } from "@/lib/db/prisma";
 import { getAuthorizedEvent } from "@/lib/events/authorization";
 import { CsvTooLargeError, EventNotFoundError, GuestNotFoundError } from "@/lib/guests/errors";
@@ -304,6 +305,13 @@ export async function deleteGuestForUser(
   // Cascades GuestInvitation/RSVP/Wish/CheckIn/etc. — enforced at the
   // database level via `onDelete: Cascade` (see prisma/schema.prisma).
   await prisma.guest.delete({ where: { id: guestId } });
+  await recordAudit({
+    userId,
+    action: "guest.delete",
+    resourceType: "guest",
+    resourceId: guestId,
+    metadata: { eventId },
+  });
 }
 
 /**
@@ -611,6 +619,17 @@ export async function confirmGuestImport(
   for (const row of importableRows) {
     await createGuestWithInvitation(eventId, row);
   }
+  await recordAudit({
+    userId,
+    action: "guest.import",
+    resourceType: "event",
+    resourceId: eventId,
+    metadata: {
+      imported: importableRows.length,
+      skippedDuplicates: preview.duplicateCount,
+      skippedInvalid: preview.invalidCount,
+    },
+  });
 
   return {
     imported: importableRows.length,

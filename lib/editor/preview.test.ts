@@ -19,6 +19,7 @@ function baseSource(overrides: Partial<PreviewSource> = {}): PreviewSource {
     sectionOverrides: {},
     sectionOrder: null,
     openingEnabled: true,
+    music: null,
     theme: null,
     schedules: [],
     loveStory: null,

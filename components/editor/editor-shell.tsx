@@ -22,6 +22,7 @@ import { TemplateForm } from "@/components/editor/sections/template-form";
 import { ScheduleForm } from "@/components/editor/sections/schedule-form";
 import { LoveStoryForm } from "@/components/editor/sections/love-story-form";
 import { GalleryForm } from "@/components/editor/sections/gallery-form";
+import { MusicForm } from "@/components/editor/sections/music-form";
 
 export function EditorShell({
   initialEvent,
@@ -46,6 +47,7 @@ export function EditorShell({
   const [schedules, setSchedules] = useState(initialEvent.schedules);
   const [loveStory, setLoveStory] = useState(initialEvent.loveStory);
   const [gallery, setGallery] = useState(initialEvent.gallery);
+  const [music, setMusic] = useState(initialEvent.music);
   const [previewOpenOnMobile, setPreviewOpenOnMobile] = useState(false);
 
   const [headerStatus, setHeaderStatus] = useState<SaveStatus>("idle");
@@ -75,6 +77,7 @@ export function EditorShell({
         sectionOverrides,
         sectionOrder,
         openingEnabled: initialEvent.openingEnabled,
+        music,
         theme,
         schedules,
         loveStory,
@@ -90,6 +93,7 @@ export function EditorShell({
       schedules,
       loveStory,
       gallery,
+      music,
     ],
   );
 
@@ -217,6 +221,9 @@ export function EditorShell({
                   onSaved={setTheme}
                   onStatusChange={reportStatus}
                 />
+              )}
+              {activeSection === "music" && (
+                <MusicForm eventId={eventId} value={music} onChange={setMusic} />
               )}
               {activeSection === "template" && (
                 <TemplateForm

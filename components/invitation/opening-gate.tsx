@@ -8,6 +8,7 @@ import { getHeroHeading, getHeroScheduleDate } from "@/lib/event-types/identity"
 import { EVENT_TYPE_LABELS } from "@/lib/events/labels";
 import { formatIndonesianDate } from "@/lib/invitations/format";
 import type { PublicInvitation } from "@/lib/invitations/types";
+import { INVITATION_REVEAL_EVENT } from "@/lib/invitations/music";
 
 /**
  * Opening/Reveal gate (docs/PRD.md §17, docs/DECISIONS.md D-069) — a
@@ -76,6 +77,8 @@ export function OpeningGate({
 
   function handleReveal() {
     setRevealed(true);
+    // Still inside the guest's click, so background music may start (D-109).
+    window.dispatchEvent(new Event(INVITATION_REVEAL_EVENT));
     // The CTA that had focus is about to become inert; move focus to the
     // now-visible content instead of silently dropping it to <body>.
     contentRef.current?.focus();

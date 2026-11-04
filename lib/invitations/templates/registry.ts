@@ -82,6 +82,9 @@ export function resolveTemplateComponent(
   return TEMPLATE_REGISTRY[DEFAULT_TEMPLATE_KEY];
 }
 
+/** Every registered template slug, in catalog order (sitemap, listings). */
+export const TEMPLATE_KEYS: readonly string[] = Object.keys(TEMPLATE_REGISTRY);
+
 export function isKnownTemplateKey(templateKey: string | null | undefined): boolean {
   return !!templateKey && templateKey in TEMPLATE_REGISTRY;
 }

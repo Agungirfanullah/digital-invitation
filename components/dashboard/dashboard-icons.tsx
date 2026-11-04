@@ -105,4 +105,16 @@ export const NAV_ICONS = {
       <path d="M14 4h4.5A1.5 1.5 0 0 1 20 5.5v13a1.5 1.5 0 0 1-1.5 1.5H14M10 16l-4-4 4-4M6 12h10" />
     </svg>
   ),
+  account: (
+    <svg {...iconProps}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M4.75 19.5c.6-3.6 3.6-5.75 7.25-5.75s6.65 2.15 7.25 5.75" />
+    </svg>
+  ),
+  admin: (
+    <svg {...iconProps}>
+      <path d="M12 3.5 5 6v5.5c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6l-7-2.5Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  ),
 } satisfies Record<string, ReactNode>;
