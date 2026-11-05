@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { requireAdmin } from "@/lib/admin/auth";
-import { auditActionLabel } from "@/lib/admin/labels";
+import { auditActionLabel, auditActorLabel } from "@/lib/admin/labels";
 import { getAdminOverview } from "@/lib/admin/service";
 import { Panel } from "@/components/dashboard/page-header";
 import { AdminShell, formatDateTime } from "@/components/admin/admin-shell";
@@ -56,10 +56,7 @@ export default async function AdminOverviewPage() {
               <li key={entry.id} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-2.5">
                 <span>
                   <span className="font-medium">{auditActionLabel(entry.action)}</span>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {entry.user?.email ?? "sistem / akun terhapus"}
-                  </span>
+                  <span className="text-muted-foreground"> · {auditActorLabel(entry)}</span>
                 </span>
                 <span className="text-muted-foreground tabular-nums">
                   {formatDateTime(entry.createdAt)}

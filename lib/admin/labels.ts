@@ -24,6 +24,23 @@ export function auditActionLabel(action: string): string {
   return AUDIT_ACTION_LABELS[action as AuditAction] ?? action;
 }
 
+/**
+ * Who did it. A row has no actor when a script wrote it (`via: "script"`,
+ * e.g. `npm run admin:grant`) or when the actor's account is gone (deleted
+ * accounts are logged without one, and later deletions null it out).
+ */
+export function auditActorLabel(entry: {
+  user: { email: string } | null;
+  metadata: unknown;
+}): string {
+  if (entry.user) return entry.user.email;
+  const via =
+    entry.metadata && typeof entry.metadata === "object"
+      ? (entry.metadata as Record<string, unknown>).via
+      : undefined;
+  return via === "script" ? "Sistem (skrip)" : "Akun yang sudah dihapus";
+}
+
 export const ADMIN_TABS = [
   { href: "/dashboard/admin", label: "Ringkasan" },
   { href: "/dashboard/admin/users", label: "Pengguna" },

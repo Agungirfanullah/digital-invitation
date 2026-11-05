@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { requireAdmin } from "@/lib/admin/auth";
-import { AUDIT_ACTION_LABELS, auditActionLabel } from "@/lib/admin/labels";
+import { AUDIT_ACTION_LABELS, auditActionLabel, auditActorLabel } from "@/lib/admin/labels";
 import { listAuditLogs } from "@/lib/admin/service";
 import { Panel } from "@/components/dashboard/page-header";
 import { AdminShell, Pager, formatDateTime } from "@/components/admin/admin-shell";
@@ -80,7 +80,7 @@ export default async function AdminAuditPage({
                     {formatDateTime(entry.createdAt)}
                   </td>
                   <td className="px-4 py-3 font-medium">{auditActionLabel(entry.action)}</td>
-                  <td className="px-4 py-3">{entry.user?.email ?? "sistem / akun terhapus"}</td>
+                  <td className="px-4 py-3">{auditActorLabel(entry)}</td>
                   <td className="text-muted-foreground px-4 py-3 text-xs break-all">
                     {entry.resourceType}
                     {entry.resourceId && ` ${entry.resourceId}`}
