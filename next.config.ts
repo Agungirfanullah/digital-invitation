@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // Comfortably above lib/storage/validation.ts's GALLERY_UPLOAD_MAX_BYTES
-      // (5MB) to leave room for multipart/form-data overhead — the real
+      // (4MB) to leave room for multipart/form-data overhead — the real
       // limit enforced on the actual file content is the one in
       // lib/storage/validation.ts, not this transport-level ceiling.
       bodySizeLimit: "6mb",

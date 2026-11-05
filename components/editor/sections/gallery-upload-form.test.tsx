@@ -75,10 +75,10 @@ describe("GalleryImageUploadForm — selecting", () => {
   it("flags unsupported and oversized files immediately and never sends them", async () => {
     uploadGalleryImageAction.mockResolvedValue(ok("good.png"));
     const { select } = setup();
-    select(png("good.png"), png("notes.txt", 10, "text/plain"), png("huge.png", 6 * 1024 * 1024));
+    select(png("good.png"), png("notes.txt", 10, "text/plain"), png("huge.png", 5 * 1024 * 1024));
 
     expect(screen.getByText(/Format tidak didukung/)).toBeInTheDocument();
-    expect(screen.getByText(/Ukuran melebihi 5MB/)).toBeInTheDocument();
+    expect(screen.getByText(/Ukuran melebihi 4MB/)).toBeInTheDocument();
     expect(screen.getByText("1 berkas siap diunggah, 2 tidak bisa diunggah.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Unggah Foto" })).toBeInTheDocument();
 

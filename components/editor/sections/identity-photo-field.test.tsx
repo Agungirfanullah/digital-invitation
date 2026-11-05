@@ -89,8 +89,8 @@ describe("IdentityPhotoField", () => {
     choose(png("notes.txt", 10, "text/plain"));
     expect(screen.getByRole("alert")).toHaveTextContent("Format tidak didukung");
 
-    choose(png("huge.png", 6 * 1024 * 1024));
-    expect(screen.getByRole("alert")).toHaveTextContent("Ukuran melebihi 5MB");
+    choose(png("huge.png", 5 * 1024 * 1024));
+    expect(screen.getByRole("alert")).toHaveTextContent("Ukuran melebihi 4MB");
 
     expect(uploadIdentityPhotoAction).not.toHaveBeenCalled();
     expect(onChange).not.toHaveBeenCalled();

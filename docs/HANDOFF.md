@@ -175,6 +175,10 @@ launch.
   the `AuditLog` rows they create (by `userId` or `resourceId`).
 - **Supabase's admin `deleteUser` throws** (not returns an error) for a
   non-UUID id; wrap it.
+- **Vercel refuses function request bodies over 4.5MB** before the app
+  runs, so the user only sees a generic failure. Every Server Action
+  upload stays at 4MB (photos `GALLERY_UPLOAD_MAX_BYTES`, music
+  `MUSIC_UPLOAD_MAX_BYTES`; tests guard both). Local dev has no such limit.
 
 ## 6. Commands
 

@@ -39,6 +39,10 @@ describe("validateGalleryImageUpload", () => {
     expect(result.height).toBe(1);
   });
 
+  it("keeps the limit below Vercel's 4.5MB function body limit", () => {
+    expect(GALLERY_UPLOAD_MAX_BYTES).toBeLessThan(4.5 * 1000 * 1000);
+  });
+
   it("rejects a file over the size limit", () => {
     expect(() =>
       validateGalleryImageUpload({
