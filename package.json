@@ -24,7 +24,8 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
     "db:seed": "prisma db seed",
-    "admin:grant": "tsx scripts/grant-admin.ts"
+    "admin:grant": "tsx scripts/grant-admin.ts",
+    "storage:configure": "tsx scripts/configure-storage.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.16.3",
