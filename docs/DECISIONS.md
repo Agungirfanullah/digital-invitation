@@ -3829,6 +3829,16 @@ the 6MB ceiling; it must be run per environment (DEV and production) by the
 product owner. Until then uploads are refused by storage, and
 `e2e/music.spec.ts` skips with that reason.
 
+**Library, first tracks (2026-11-05):** the owner chose public-domain
+classical recordings from Musopen first, with uploads staying available.
+First track: Chopin, Nocturne Op. 9 No. 2, performed by Aya Higuchi,
+Public Domain (4.4MB, 128 kbps). Raw downloads wait in the git-ignored
+`music-incoming/` folder until their title, performer and license are
+confirmed; CC BY tracks need the performer credited, and NC/ND licenses are
+never used. `/music/*.mp3|m4a` is excluded from the Proxy matcher (no
+session refresh per audio request). `lib/invitations/music-library.test.ts`
+checks every track has its file, a license and a size of 6MB or less.
+
 ## D-110 — Akun Page, Activity Log, robots.txt and sitemap.xml
 
 **Akun page** (`/dashboard/account`, menu item "Akun"): change the name;

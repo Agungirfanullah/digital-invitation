@@ -7,10 +7,11 @@ import { PrismaClient } from "@prisma/client";
 import { expect, test } from "@playwright/test";
 
 /**
- * Background music (D-109): an owner uploads an MP3 in the editor, it is
- * stored and saved, and the published invitation carries it. Skipped,
- * with the reason, while the storage bucket does not accept audio yet:
- * `npm run storage:configure` sets that up per environment.
+ * Background music (D-109): an owner picks a built-in song or uploads an
+ * MP3 in the editor, it is saved, and the published invitation carries it.
+ * The upload test is skipped, with the reason, while the storage bucket
+ * does not accept audio yet: `npm run storage:configure` sets that up per
+ * environment.
  */
 loadEnv({ path: path.join(process.cwd(), ".env.local") });
 
@@ -50,6 +51,54 @@ test.describe("background music", () => {
 
   test.afterAll(async () => {
     await prisma.$disconnect();
+  });
+
+  test("an owner picks a built-in song and the published invitation plays it", async ({
+    page,
+    request,
+  }) => {
+    const email = `e2e-music-lib-${randomUUID()}@example.com`;
+    const { data, error } = await admin.auth.admin.createUser({
+      email,
+      password: TEST_PASSWORD,
+      email_confirm: true,
+    });
+    if (error || !data.user) throw new Error(`Failed to create test auth user: ${error?.message}`);
+    userId = data.user.id;
+    await prisma.user.create({ data: { id: userId, email, name: "E2E Musik Bawaan" } });
+    const event = await prisma.event.create({
+      data: {
+        ownerId: userId,
+        type: "WEDDING",
+        title: "Pernikahan Lagu Bawaan",
+        slug: `e2e-music-lib-${randomUUID()}`,
+        status: "PUBLISHED",
+      },
+    });
+    eventId = event.id;
+
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Kata sandi", { exact: true }).fill(TEST_PASSWORD);
+    await page.getByRole("button", { name: "Masuk" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await page.goto(`/dashboard/events/${event.id}/editor`);
+    await page.getByRole("button", { name: "Musik", exact: true }).click();
+    const library = page.getByRole("region", { name: "Lagu bawaan" });
+    await library.getByRole("button", { name: "Pakai" }).first().click();
+    await expect(library.getByRole("button", { name: "Dipakai" })).toBeVisible();
+
+    const stored = await prisma.event.findUniqueOrThrow({ where: { id: event.id } });
+    const music = (stored.settings as { music?: { url: string; source: string } } | null)?.music;
+    expect(music?.source).toBe("library");
+    expect(music?.url).toMatch(/^\/music\/.+\.mp3$/);
+
+    await page.goto(`/invite/${event.slug}`);
+    await expect(page.locator("audio")).toHaveAttribute("src", music!.url);
+    const file = await request.get(music!.url);
+    expect(file.status()).toBe(200);
+    expect(file.headers()["content-type"]).toContain("audio/mpeg");
   });
 
   test("an owner uploads a song and the published invitation plays it", async ({ page }) => {

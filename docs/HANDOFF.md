@@ -103,8 +103,10 @@ the permission system as a shared-resource change):
 3. Set `NEXT_PUBLIC_CONTACT_EMAIL` in Vercel (shown on the legal pages).
 4. `npm run admin:grant -- <email>` against production for the first admin.
 5. Have the legal pages reviewed by someone qualified in Indonesian law.
-6. Built-in music tracks: provide royalty-free files with their licenses;
-   add them to `public/music/` and `lib/invitations/music-library.ts`.
+6. Built-in music tracks: one so far (Chopin Nocturne Op. 9 No. 2, PD).
+   More go through `music-incoming/` (git-ignored) with title, performer
+   and license confirmed, then `public/music/` and
+   `lib/invitations/music-library.ts` (D-109).
 
 **Still open (ask which first):** Phase 18 (subscription/payments); the
 homepage JSON-LD price range Rp0–Rp299.000; `connection_limit=1` onboarding
