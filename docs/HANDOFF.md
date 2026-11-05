@@ -107,8 +107,7 @@ Remaining:
    `lib/invitations/music-library.ts` (D-109).
 
 **Still open (ask which first):** Phase 18 (subscription/payments); the
-homepage JSON-LD price range Rp0–Rp299.000; `connection_limit=1` onboarding
-transaction timeouts; demo photos in traditional attire; custom SMTP,
+homepage JSON-LD price range Rp0–Rp299.000; demo photos in traditional attire; custom SMTP,
 Supabase plan/auto-pause and error alerting (UptimeRobot/Sentry) before
 launch.
 

@@ -3863,3 +3863,26 @@ remove the rows they create.
 `/reset-password`; `/invite/` stays crawlable on purpose, so crawlers see
 invitations' `noindex` (D-094). `app/sitemap.ts` lists the homepage, every
 template demo, `/register` and the legal pages, from `NEXT_PUBLIC_APP_URL`.
+
+## D-111 — Interactive Transactions Wait Up to 10s for a Connection
+
+**Problem:** onboarding sometimes failed with "Unable to start a
+transaction in the given time" (first seen in local E2E runs).
+`DATABASE_URL` goes through Supabase's pooler with `connection_limit=1`
+(locally and in CI), so concurrent requests in one server process queue
+for one connection. Ordinary queries wait up to Prisma's `pool_timeout`
+(10s), but interactive `$transaction` calls gave up after Prisma's default
+`maxWait` of 2s. Reproduced against the DEV database: 8 concurrent
+transactions of ~0.4s each, 4 failed with exactly this error. Production
+on Vercel shares the risk, since one function instance serves concurrent
+requests.
+
+**Decision:** the shared client (`lib/db/prisma.ts`) sets
+`transactionOptions.maxWait` to 10s, the same as `pool_timeout`, so a
+transaction waits as long as any other query instead of failing first.
+The transaction `timeout` (5s, how long one may run) is unchanged. Under
+load requests now wait instead of failing. Regression test:
+`lib/db/prisma.integration.test.ts` (fails on the old client, passes on
+the new one). Raising `connection_limit` on production's `DATABASE_URL`
+would reduce the waiting itself; that is an environment change for the
+owner, not part of this decision.
