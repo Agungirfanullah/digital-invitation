@@ -51,17 +51,26 @@ export function MusicForm({
     const file = inputRef.current?.files?.[0];
     if (!file) return;
     if (file.size > MUSIC_UPLOAD_MAX_BYTES) {
-      setError(`Ukuran lagu maksimal ${MAX_MB}MB. Coba kompres ke MP3 128 kbps.`);
+      setError(
+        `Ukuran lagu maksimal ${MAX_MB}MB. Coba kompres ke MP3 128 kbps atau potong lagunya.`,
+      );
       if (inputRef.current) inputRef.current.value = "";
       return;
     }
     const formData = new FormData();
     formData.set("file", file);
     run("upload", async () => {
-      const result = await uploadMusicAction(eventId, formData);
-      if (inputRef.current) inputRef.current.value = "";
-      if (result.ok) onChange(result.data);
-      else setError(result.fieldErrors?.file?.[0] ?? result.error);
+      try {
+        const result = await uploadMusicAction(eventId, formData);
+        if (result.ok) onChange(result.data);
+        else setError(result.fieldErrors?.file?.[0] ?? result.error);
+      } catch {
+        // The request never reached the action (connection dropped, or the
+        // host refused the body): say so instead of breaking the editor.
+        setError("Gagal mengunggah lagu. Periksa koneksi lalu coba lagi.");
+      } finally {
+        if (inputRef.current) inputRef.current.value = "";
+      }
     });
   }
 

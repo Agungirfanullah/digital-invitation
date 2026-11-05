@@ -3810,7 +3810,7 @@ it (2026-11-04), with owner uploads plus a built-in library.
 **Decision:** one track per invitation, stored in `Event.settings.music`
 (`{ url, title, source: "upload" | "library" }`, no schema change;
 `lib/invitations/music.ts`). Editor section "Musik" (Tampilan group):
-upload MP3/M4A up to 5MB (validated from the file's bytes, not its name or
+upload MP3/M4A up to 4MB (below Vercel's 4.5MB function body limit; validated from the file's bytes, not its name or
 claimed type; `lib/storage/audio-validation.ts`), stored under
 `events/<id>/music/`, replacing and deleting the previous upload; remove;
 pick a built-in track. The library (`lib/invitations/music-library.ts`,

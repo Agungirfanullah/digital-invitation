@@ -13,8 +13,13 @@ export interface InvitationMusic {
   source: MusicSource;
 }
 
-/** 5MB, like photos: room for about five minutes of MP3 at 128 kbps. */
-export const MUSIC_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+/**
+ * 4MB: about four minutes of MP3 at 128 kbps. Uploads go through a Server
+ * Action, and Vercel refuses any function request body over 4.5MB before
+ * the app sees it, so the cap stays below that with room for the form
+ * overhead.
+ */
+export const MUSIC_UPLOAD_MAX_BYTES = 4 * 1024 * 1024;
 export const MUSIC_ACCEPT = "audio/mpeg,audio/mp4,audio/x-m4a,.mp3,.m4a";
 export const MUSIC_TITLE_MAX_LENGTH = 100;
 

@@ -22,7 +22,11 @@ import type { InvitationSectionKey, SectionOverrides } from "@/lib/event-types/s
 import { GALLERY_UPLOAD_RATE_LIMIT_MESSAGE, mapStorageErrorMessage } from "@/lib/storage/errors";
 import { validateGalleryImageUpload } from "@/lib/storage/validation";
 import { validateMusicUpload, type ValidatedAudio } from "@/lib/storage/audio-validation";
-import { FileTooLargeError, UnsupportedFileTypeError } from "@/lib/storage/errors";
+import {
+  FileTooLargeError,
+  StorageProviderError,
+  UnsupportedFileTypeError,
+} from "@/lib/storage/errors";
 import { MUSIC_TITLE_MAX_LENGTH, type InvitationMusic } from "@/lib/invitations/music";
 import type { ValidatedGalleryImage } from "@/lib/storage/validation";
 import type { ActionResult } from "@/lib/editor/types";
@@ -449,6 +453,12 @@ export async function uploadMusicAction(
     const music = await editorService.uploadEventMusic(eventId, user.id, validated, title);
     return { ok: true, data: music };
   } catch (error) {
+    if (error instanceof StorageProviderError) {
+      // Logged with the provider's reason (e.g. a bucket that does not
+      // accept audio yet: `npm run storage:configure`).
+      console.error("[editor] Music upload refused by storage", error);
+      return { ok: false, error: "Lagu gagal disimpan ke penyimpanan. Coba lagi sebentar lagi." };
+    }
     return { ok: false, error: mapEditorErrorMessage(error) };
   }
 }
