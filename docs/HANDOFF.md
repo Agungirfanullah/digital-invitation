@@ -92,18 +92,16 @@ next session.
 
 ## 4. Next step
 
-**Production setup the owner must do for the 2026-11-04 work** (the agent
-cannot: production credentials, and the DEV bucket change was refused by
-the permission system as a shared-resource change):
+**Production setup for the 2026-11-04 work** (done by the owner on
+2026-11-05: production migration, DEV and production buckets accept
+MP3/M4A, first admin granted; an MP3 upload succeeded on production).
+Remaining:
 
-1. `npx prisma migrate deploy` against production (adds `User.suspendedAt`).
-2. `npm run storage:configure` against DEV **and** production, so the bucket
-   accepts MP3/M4A (until then music uploads fail and `e2e/music.spec.ts`
-   skips).
-3. Set `NEXT_PUBLIC_CONTACT_EMAIL` in Vercel (shown on the legal pages).
-4. `npm run admin:grant -- <email>` against production for the first admin.
-5. Have the legal pages reviewed by someone qualified in Indonesian law.
-6. Built-in music tracks: one so far (Chopin Nocturne Op. 9 No. 2, PD).
+1. Set `NEXT_PUBLIC_CONTACT_EMAIL` in Vercel (shown on the legal pages).
+   Deferred by the owner until a brand email exists; the pages show a
+   fallback without it.
+2. Have the legal pages reviewed by someone qualified in Indonesian law.
+3. Built-in music tracks: one so far (Chopin Nocturne Op. 9 No. 2, PD).
    More go through `music-incoming/` (git-ignored) with title, performer
    and license confirmed, then `public/music/` and
    `lib/invitations/music-library.ts` (D-109).
