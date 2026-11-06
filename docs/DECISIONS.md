@@ -3886,3 +3886,69 @@ load requests now wait instead of failing. Regression test:
 the new one). Raising `connection_limit` on production's `DATABASE_URL`
 would reduce the waiting itself; that is an environment change for the
 owner, not part of this decision.
+
+## D-112 — Phase 18 Direction: Pay Per Event, Manual Transfer First
+
+**Decisions (product owner, 2026-11-05):**
+
+1. **Pay per event, not a monthly subscription.** Every event starts on
+   the free plan; the owner upgrades one event at a time. One account can
+   hold free and paid events side by side. Prices are the same for all
+   eight event types: plans differ by capacity (guests, photos, how long
+   the invitation stays online) and features, which already scale with
+   the type (a birthday needs fewer guests than a wedding). Type-specific
+   prices stay possible later through plan configuration.
+2. **Manual bank transfer with admin confirmation first, no payment
+   gateway.** Operating a real gateway needs a Bank Indonesia payment
+   license, so "our own gateway" means: the owner gets an order with a
+   unique amount (base price plus a 3-digit code, e.g. Rp99.127), pays to
+   the business account or static QRIS, and an admin confirms it in the
+   admin panel after checking the bank statement (not a screenshot).
+   Confirmation activates the plan for that event in one transaction and
+   is written to the activity log. This is a verified, server-side
+   confirmation, consistent with CLAUDE.md §7.4 (never trust the browser).
+   Payment handling stays behind a provider interface
+   (`docs/ARCHITECTURE.md` §24) so Midtrans/Xendit can be added later
+   without changing plans or entitlements.
+3. **Free vs paid:**
+   - Free: one published free event at a time, every event type, basic
+     templates, the full editor (sections, order, colors and fonts,
+     countdown, schedule, location), up to about 50 guests with
+     personalized links and WhatsApp sharing, RSVP and wishes, a small
+     gallery, built-in music, a small "Dibuat dengan DigitalInvitation"
+     line on the invitation, online until a few days after the event.
+   - Paid: more guests and CSV import/export, all templates, a larger
+     gallery, uploading one's own music, QR check-in, analytics, digital
+     gift, no branding line, custom link, a longer online period, and
+     later photobox and live streaming.
+   - Personalized links stay free (within the guest limit), a change from
+     PRD §42's original list.
+   - Events published before enforcement starts keep full access until
+     they expire, so no live invitation loses features.
+4. **Photobox** (future, paid tier or add-on; not designed yet): (a)
+   guests take photos with an event-themed frame from the invitation on
+   their own phone, collected into the event's gallery; (b) a photobooth
+   mode for the venue that runs on a guest's phone, a tablet or a camera
+   setup at the venue.
+5. **Final prices are open.** Prices and limits live in the `Plan` table,
+   so they change without a code change. Launch with Free and Premium;
+   a top tier (photobox) and Business (teams, for wedding organizers) come
+   when those features exist.
+
+**Implementation plan (each step safe to deploy on its own):**
+
+1. Schema and entitlements: link subscriptions and payments to an event
+   and a plan, add a one-time billing interval, and a single
+   `getEventEntitlements()` that every check reads. No visible change.
+2. Manual payment: upgrade page per event, order with unique amount and
+   expiry, payment instructions, admin confirm/reject, billing history.
+3. Enforcement, switched on by a start date (`PLAN_ENFORCEMENT_STARTS_AT`;
+   unset means off, which is also the grandfathering cutoff): limits and
+   feature gates checked server-side, upgrade prompts in the UI, the
+   branding line, the online period.
+4. Homepage pricing shows real per-event plans (drops "Segera hadir" and
+   "/bulan"), JSON-LD price range, refund policy in the terms.
+
+**Needed from the owner:** the bank account (and/or static QRIS) to show
+in payment instructions, the prices, and approval of the step-1 migration
+on the DEV database.

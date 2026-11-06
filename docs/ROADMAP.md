@@ -625,6 +625,12 @@ Plan limits are enforced server-side.
 
 Payment state comes from verified provider events.
 
+**Direction (D-112):** per-event one-time plans; the first payment method
+is a manual bank transfer confirmed by an admin (a verified server-side
+confirmation), behind the provider interface so a gateway can follow.
+Delivered in four steps: schema and entitlements, manual payment,
+enforcement behind `PLAN_ENFORCEMENT_STARTS_AT`, homepage pricing.
+
 ---
 
 # 22. Phase 19 — Admin

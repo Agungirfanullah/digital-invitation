@@ -1324,6 +1324,14 @@ Initial plans:
 
 Prices and limits must come from database configuration.
 
+**Update (D-112, 2026-11-05):** plans are bought per event (one-time),
+not as a monthly subscription, at the same prices for every event type.
+Personalized guest links stay on the free plan within its guest limit.
+Launch with Free and Premium; the free/paid split and the payment method
+(manual bank transfer confirmed by an admin) are recorded in
+`docs/DECISIONS.md` D-112. Photobox, when built, belongs to a paid tier
+or add-on.
+
 ---
 
 # 43. Admin
@@ -1447,6 +1455,8 @@ Phase 2:
 - Live streaming
 - Analytics
 - Custom domains
+- Photobox (frames for guests' own phones from the invitation; a venue
+  photobooth mode on a phone, tablet or camera; D-112)
 
 Phase 3:
 
