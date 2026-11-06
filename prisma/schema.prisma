@@ -107,6 +107,8 @@ enum CheckInMethod {
 enum BillingInterval {
   MONTHLY
   YEARLY
+  // Bought once for one event (D-112).
+  ONE_TIME
 }
 
 enum SubscriptionStatus {
@@ -191,6 +193,8 @@ model Event {
   giftRegistries   GiftRegistry[]
   invitationViews  InvitationView[]
   checkIns         CheckIn[]
+  subscriptions    Subscription[]
+  payments         Payment[]
   theme            Theme?
 
   // Identity profiles — at most one is meaningful per event, chosen by
@@ -602,12 +606,16 @@ model Plan {
   updatedAt       DateTime        @updatedAt
 
   subscriptions Subscription[]
+  payments      Payment[]
 }
 
 model Subscription {
   id                     String             @id @default(cuid())
   userId                 String
   planId                 String
+  // The event this plan was bought for (D-112: plans are per event). Kept
+  // as history when the event is deleted.
+  eventId                String?
   provider               String?
   providerSubscriptionId String?
   status                 SubscriptionStatus @default(TRIALING)
@@ -617,24 +625,32 @@ model Subscription {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
-  plan Plan @relation(fields: [planId], references: [id], onDelete: Restrict)
+  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  plan  Plan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: SetNull)
 
   payments Payment[]
 
   @@index([userId])
+  @@index([eventId])
 }
 
 model Payment {
   id                String        @id @default(cuid())
   userId            String
   subscriptionId    String?
+  // What the payment is for (D-112): the event being upgraded and the plan
+  // bought. Kept as history when the event is deleted.
+  eventId           String?
+  planId            String?
   provider          String
   providerPaymentId String?
   amount            Decimal       @db.Decimal(14, 2)
   currency          String        @default("IDR")
   status            PaymentStatus @default(PENDING)
   paidAt            DateTime?
+  // A pending order stops being payable after this (manual transfer).
+  expiresAt         DateTime?
   metadata          Json?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -643,8 +659,12 @@ model Payment {
   // subscription link instead of deleting the payment history.
   user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   subscription Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  event        Event?        @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  plan         Plan?         @relation(fields: [planId], references: [id], onDelete: Restrict)
 
   @@index([userId])
+  @@index([eventId])
+  @@index([status])
 }
 
 model Coupon {

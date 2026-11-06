@@ -174,7 +174,10 @@ digital-gift display) do not become MVP-defining by that fact.
     robots.txt and sitemap.xml (D-110). Production needs: `prisma migrate
     deploy` (User.suspendedAt), `npm run storage:configure` (audio in the
     bucket), `NEXT_PUBLIC_CONTACT_EMAIL`, and a first admin via
-    `npm run admin:grant`. Also
+    `npm run admin:grant`.
+    2026-11-06: Phase 18 step 1 (D-112), per-event plan schema and
+    `getEventEntitlements()`; production needs `prisma migrate deploy`.
+    Also
     done 2026-11-02 at the owner's request: event hub menu and invitation
     editor redesign (D-099). Couple parents' names are shown publicly since
     D-100 (owner's decision).

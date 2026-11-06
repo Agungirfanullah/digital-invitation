@@ -3923,8 +3923,10 @@ owner, not part of this decision.
      later photobox and live streaming.
    - Personalized links stay free (within the guest limit), a change from
      PRD §42's original list.
-   - Events published before enforcement starts keep full access until
-     they expire, so no live invitation loses features.
+   - Events created before enforcement starts keep full access until
+     they expire, so no live invitation loses features. (Creation time
+     rather than first publish: publishing again resets `publishedAt`, so
+     an owner who unpublished and republished would otherwise lose it.)
 4. **Photobox** (future, paid tier or add-on; not designed yet): (a)
    guests take photos with an event-themed frame from the invitation on
    their own phone, collected into the event's gallery; (b) a photobooth
@@ -3950,5 +3952,11 @@ owner, not part of this decision.
    "/bulan"), JSON-LD price range, refund policy in the terms.
 
 **Needed from the owner:** the bank account (and/or static QRIS) to show
-in payment instructions, the prices, and approval of the step-1 migration
-on the DEV database.
+in payment instructions, and the prices.
+
+**Step 1 done (2026-11-06):** migration `20261106090000_per_event_plans`
+(applied to DEV with the owner's approval), `lib/plans/config.ts` and
+`getEventEntitlements()` in `lib/plans/entitlements.ts`, with unit and
+integration tests. Nothing reads entitlements yet, so behavior is
+unchanged. The `Plan` rows keep their old monthly values until step 3
+syncs them, so the homepage does not change early.

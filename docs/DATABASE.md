@@ -1374,3 +1374,23 @@ of the event's own uploads (`events/<eventId>/identity/...`) are accepted.
   `sectionOrder` and `openingEnabled`. Uploaded files sit under
   `events/<id>/music/` in storage and are removed with the event folder on
   account or admin deletion.
+
+## Per-event plans (D-112)
+
+Migration `20261106090000_per_event_plans`, additive only:
+
+- `Subscription.eventId` and `Payment.eventId` (nullable, `ON DELETE SET
+  NULL`): a plan is bought for one event. Deleting the event keeps the
+  financial history with the link cleared.
+- `Payment.planId` (nullable, `ON DELETE RESTRICT`): the plan the payment
+  bought. `Payment.expiresAt`: a pending manual-transfer order stops being
+  payable after it. Indexes on both `eventId` columns and `Payment.status`.
+- `BillingInterval.ONE_TIME` for per-event plans.
+- An event's access is resolved only by `getEventEntitlements()`
+  (`lib/plans/entitlements.ts`): an `ACTIVE` subscription for the event
+  whose `currentPeriodEnd` is null or in the future gives that plan;
+  otherwise the free plan, unless limits are off
+  (`PLAN_ENFORCEMENT_STARTS_AT` unset or in the future) or the event was
+  created before that date. `Plan.features`/`Plan.limits` keys are listed
+  in `lib/plans/config.ts`; a missing feature is off and a missing limit
+  means no limit.
